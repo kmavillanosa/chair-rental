@@ -7,8 +7,10 @@ import type { VendorPayment } from '../../types';
 import { PaymentStatusBadge } from '../../components/common/StatusBadge';
 import { formatCurrency, formatDate } from '../../utils/format';
 import LoadingSpinner from '../../components/common/LoadingSpinner';
+import { useTranslation } from 'react-i18next';
 
 export default function AdminPayments() {
+  const { t } = useTranslation();
   const [payments, setPayments] = useState<VendorPayment[]>([]);
   const [loading, setLoading] = useState(true);
   const load = () => getAllPayments().then(setPayments).finally(() => setLoading(false));
@@ -18,15 +20,15 @@ export default function AdminPayments() {
 
   return (
     <AdminLayout>
-      <h1 className="text-4xl font-bold text-gray-900 mb-6">💰 Vendor Payments</h1>
+      <h1 className="text-4xl font-bold text-gray-900 mb-6">💰 {t('adminPayments.title')}</h1>
       <div className="overflow-x-auto rounded-xl shadow">
         <Table striped>
           <Table.Head>
-            <Table.HeadCell className="text-lg">Vendor</Table.HeadCell>
-            <Table.HeadCell className="text-lg">Amount</Table.HeadCell>
-            <Table.HeadCell className="text-lg">Due Date</Table.HeadCell>
-            <Table.HeadCell className="text-lg">Status</Table.HeadCell>
-            <Table.HeadCell className="text-lg">Actions</Table.HeadCell>
+            <Table.HeadCell className="text-lg">{t('common.vendor')}</Table.HeadCell>
+            <Table.HeadCell className="text-lg">{t('common.amount')}</Table.HeadCell>
+            <Table.HeadCell className="text-lg">{t('common.dueDate')}</Table.HeadCell>
+            <Table.HeadCell className="text-lg">{t('common.status')}</Table.HeadCell>
+            <Table.HeadCell className="text-lg">{t('common.actions')}</Table.HeadCell>
           </Table.Head>
           <Table.Body>
             {payments.map(p => (
@@ -38,10 +40,10 @@ export default function AdminPayments() {
                 <Table.Cell>
                   <div className="flex gap-2">
                     {p.status !== 'paid' && (
-                      <Button size="sm" color="success" onClick={() => markPaid(p.id).then(() => { toast.success('Marked paid!'); load(); })}>Mark Paid</Button>
+                      <Button size="sm" color="success" onClick={() => markPaid(p.id).then(() => { toast.success(t('adminPayments.toastMarkedPaid')); load(); })}>{t('adminPayments.markPaid')}</Button>
                     )}
                     {p.status === 'pending' && (
-                      <Button size="sm" color="failure" onClick={() => markOverdue(p.id).then(() => { toast.success('Marked overdue!'); load(); })}>Mark Overdue</Button>
+                      <Button size="sm" color="failure" onClick={() => markOverdue(p.id).then(() => { toast.success(t('adminPayments.toastMarkedOverdue')); load(); })}>{t('adminPayments.markOverdue')}</Button>
                     )}
                   </div>
                 </Table.Cell>

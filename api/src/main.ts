@@ -8,8 +8,20 @@ import * as fs from 'fs';
 async function bootstrap() {
   const app = await NestFactory.create(AppModule);
 
+  const configuredOrigins = [process.env.FRONTEND_URL, process.env.STAFF_FRONTEND_URL]
+    .filter((origin): origin is string => Boolean(origin));
+  const devOrigins = [
+    'http://127.0.0.1:43171',
+    'http://127.0.0.1:43172',
+    'http://localhost:43171',
+    'http://localhost:43172',
+    'http://localhost:5173',
+    'http://localhost:5174',
+  ];
+  const allowedOrigins = [...new Set([...configuredOrigins, ...devOrigins])];
+
   app.enableCors({
-    origin: process.env.FRONTEND_URL || 'http://localhost:5173',
+    origin: allowedOrigins,
     credentials: true,
   });
 
@@ -20,7 +32,7 @@ async function bootstrap() {
   if (!fs.existsSync(uploadDir)) fs.mkdirSync(uploadDir, { recursive: true });
 
   const config = new DocumentBuilder()
-    .setTitle('RentEasy API')
+    .setTitle('RentalBasic API')
     .setDescription('Multi-tenant event equipment rental API')
     .setVersion('1.0')
     .addBearerAuth()

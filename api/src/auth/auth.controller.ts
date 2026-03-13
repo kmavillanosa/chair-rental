@@ -16,7 +16,11 @@ export class AuthController {
   @UseGuards(AuthGuard('google'))
   async googleCallback(@Req() req, @Res() res) {
     const { access_token, user } = this.authService.login(req.user);
-    const frontendUrl = process.env.FRONTEND_URL || 'http://localhost:5173';
+    const customerFrontendUrl = process.env.FRONTEND_URL || 'http://localhost:5173';
+    const staffFrontendUrl = process.env.STAFF_FRONTEND_URL || 'http://localhost:5174';
+    const frontendUrl = user.role === 'admin' || user.role === 'vendor'
+      ? staffFrontendUrl
+      : customerFrontendUrl;
     return res.redirect(
       `${frontendUrl}/auth/callback?token=${access_token}&role=${user.role}`,
     );

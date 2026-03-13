@@ -5,8 +5,10 @@ import AdminLayout from '../../components/layout/AdminLayout';
 import { getAllVendors, verifyVendor, warnVendor, setVendorActive, createVendor } from '../../api/vendors';
 import type { Vendor } from '../../types';
 import LoadingSpinner from '../../components/common/LoadingSpinner';
+import { useTranslation } from 'react-i18next';
 
 export default function VendorsList() {
+  const { t } = useTranslation();
   const [vendors, setVendors] = useState<Vendor[]>([]);
   const [loading, setLoading] = useState(true);
 
@@ -15,19 +17,19 @@ export default function VendorsList() {
 
   const handleVerify = async (v: Vendor) => {
     await verifyVendor(v.id, !v.isVerified);
-    toast.success(`Vendor ${v.isVerified ? 'unverified' : 'verified'}!`);
+    toast.success(v.isVerified ? t('vendorsList.toastUnverified') : t('vendorsList.toastVerified'));
     load();
   };
 
   const handleWarn = async (v: Vendor) => {
     await warnVendor(v.id);
-    toast(`Warning issued to ${v.businessName}`);
+    toast(t('vendorsList.toastWarningIssued', { name: v.businessName }));
     load();
   };
 
   const handleToggleActive = async (v: Vendor) => {
     await setVendorActive(v.id, !v.isActive);
-    toast.success(`Vendor ${v.isActive ? 'suspended' : 'activated'}!`);
+    toast.success(v.isActive ? t('vendorsList.toastSuspended') : t('vendorsList.toastActivated'));
     load();
   };
 
@@ -35,15 +37,15 @@ export default function VendorsList() {
 
   return (
     <AdminLayout>
-      <h1 className="text-4xl font-bold text-gray-900 mb-6">🏪 Vendors</h1>
+      <h1 className="text-4xl font-bold text-gray-900 mb-6">🏪 {t('vendorsList.title')}</h1>
       <div className="overflow-x-auto rounded-xl shadow">
         <Table striped>
           <Table.Head>
-            <Table.HeadCell className="text-lg">Business</Table.HeadCell>
-            <Table.HeadCell className="text-lg">Owner</Table.HeadCell>
-            <Table.HeadCell className="text-lg">Status</Table.HeadCell>
-            <Table.HeadCell className="text-lg">Warnings</Table.HeadCell>
-            <Table.HeadCell className="text-lg">Actions</Table.HeadCell>
+            <Table.HeadCell className="text-lg">{t('vendorsList.business')}</Table.HeadCell>
+            <Table.HeadCell className="text-lg">{t('vendorsList.owner')}</Table.HeadCell>
+            <Table.HeadCell className="text-lg">{t('common.status')}</Table.HeadCell>
+            <Table.HeadCell className="text-lg">{t('vendorsList.warnings')}</Table.HeadCell>
+            <Table.HeadCell className="text-lg">{t('common.actions')}</Table.HeadCell>
           </Table.Head>
           <Table.Body>
             {vendors.map(v => (
@@ -54,18 +56,18 @@ export default function VendorsList() {
                 </Table.Cell>
                 <Table.Cell>{v.user?.name}</Table.Cell>
                 <Table.Cell className="flex gap-2">
-                  <Badge color={v.isActive ? 'success' : 'failure'}>{v.isActive ? 'Active' : 'Inactive'}</Badge>
-                  {v.isVerified && <Badge color="indigo">Verified</Badge>}
+                  <Badge color={v.isActive ? 'success' : 'failure'}>{v.isActive ? t('status.toggle.active') : t('status.toggle.inactive')}</Badge>
+                  {v.isVerified && <Badge color="indigo">{t('status.toggle.verified')}</Badge>}
                 </Table.Cell>
                 <Table.Cell className="text-center">{v.warningCount}/3</Table.Cell>
                 <Table.Cell>
                   <div className="flex gap-2 flex-wrap">
                     <Button size="sm" color={v.isVerified ? 'gray' : 'success'} onClick={() => handleVerify(v)}>
-                      {v.isVerified ? '✓ Verified' : 'Verify'}
+                      {v.isVerified ? `✓ ${t('vendorsList.verified')}` : t('vendorsList.verify')}
                     </Button>
-                    <Button size="sm" color="warning" onClick={() => handleWarn(v)}>⚠️ Warn</Button>
+                    <Button size="sm" color="warning" onClick={() => handleWarn(v)}>⚠️ {t('vendorsList.warn')}</Button>
                     <Button size="sm" color={v.isActive ? 'failure' : 'success'} onClick={() => handleToggleActive(v)}>
-                      {v.isActive ? 'Suspend' : 'Activate'}
+                      {v.isActive ? t('vendorsList.suspend') : t('vendorsList.activate')}
                     </Button>
                   </div>
                 </Table.Cell>

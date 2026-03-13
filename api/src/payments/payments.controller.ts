@@ -70,8 +70,18 @@ export class PaymentsController {
   @UseGuards(JwtAuthGuard, RolesGuard)
   @Roles(UserRole.VENDOR)
   @ApiBearerAuth()
+  @Patch('delivery-rates/:id')
+  async updateDeliveryRate(@Request() req, @Param('id') id: string, @Body() body: any) {
+    const vendor = await this.vendorsService.findByUserId(req.user.id);
+    return this.service.updateDeliveryRate(vendor.id, id, body);
+  }
+
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles(UserRole.VENDOR)
+  @ApiBearerAuth()
   @Delete('delivery-rates/:id')
-  deleteDeliveryRate(@Param('id') id: string) {
-    return this.service.deleteDeliveryRate(id);
+  async deleteDeliveryRate(@Request() req, @Param('id') id: string) {
+    const vendor = await this.vendorsService.findByUserId(req.user.id);
+    return this.service.deleteDeliveryRate(vendor.id, id);
   }
 }

@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { useParams, useNavigate } from 'react-router-dom';
+import { useParams, useNavigate, useSearchParams } from 'react-router-dom';
 import { Button } from 'flowbite-react';
 import CustomerLayout from '../../components/layout/CustomerLayout';
 import { getVendorBySlug } from '../../api/vendors';
@@ -7,10 +7,13 @@ import { getInventory } from '../../api/items';
 import type { Vendor, InventoryItem } from '../../types';
 import LoadingSpinner from '../../components/common/LoadingSpinner';
 import { formatCurrency } from '../../utils/format';
+import { useTranslation } from 'react-i18next';
 
 export default function VendorLanding() {
+  const { t } = useTranslation();
   const { slug } = useParams<{ slug: string }>();
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
   const [vendor, setVendor] = useState<Vendor | null>(null);
   const [inventory, setInventory] = useState<InventoryItem[]>([]);
   const [loading, setLoading] = useState(true);
@@ -26,8 +29,17 @@ export default function VendorLanding() {
       .finally(() => setLoading(false));
   }, [slug]);
 
+  const handleBookNow = () => {
+    const startDate = searchParams.get('startDate');
+    const endDate = searchParams.get('endDate');
+    const bookingUrl = startDate && endDate
+      ? `/book/${slug}?startDate=${startDate}&endDate=${endDate}`
+      : `/book/${slug}`;
+    navigate(bookingUrl);
+  };
+
   if (loading) return <CustomerLayout><LoadingSpinner size="lg" /></CustomerLayout>;
-  if (!vendor) return <CustomerLayout><div className="text-center py-20 text-2xl">Shop not found 😔</div></CustomerLayout>;
+  if (!vendor) return <CustomerLayout><div className="text-center py-20 text-2xl">{t('vendorLandingPage.notFound')} 😔</div></CustomerLayout>;
 
   return (
     <CustomerLayout>
@@ -38,35 +50,46 @@ export default function VendorLanding() {
           <p className="text-xl text-blue-100">📍 {vendor.address}</p>
           {vendor.phone && <p className="text-xl text-blue-100 mt-1">📞 {vendor.phone}</p>}
           {vendor.description && <p className="text-xl mt-4">{vendor.description}</p>}
-          {vendor.isVerified && <span className="inline-block mt-3 bg-green-400 text-green-900 px-4 py-1 rounded-full font-semibold">✓ Verified Vendor</span>}
+          {(vendor.verificationBadge || vendor.isVerified) && (
+            <span className="inline-block mt-3 bg-green-400 text-green-900 px-4 py-1 rounded-full font-semibold">
+              ✓ {vendor.verificationBadge || t('vendorLandingPage.verifiedVendor')}
+            </span>
+          )}
         </div>
 
         {/* Book Button */}
         <div className="text-center mb-8">
-          <Button size="xl" onClick={() => navigate(`/book/${slug}`)}
+          <Button size="xl" onClick={handleBookNow}
             className="text-2xl px-12 py-4 bg-green-500 hover:bg-green-600">
-            📅 Book Now
+            📅 {t('vendorLandingPage.bookNow')}
           </Button>
         </div>
 
         {/* Inventory */}
-        <h2 className="text-3xl font-bold text-gray-900 mb-6">📦 Available Equipment</h2>
+        <h2 className="text-3xl font-bold text-gray-900 mb-6">📦 {t('vendorLandingPage.availableEquipment')}</h2>
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-          {inventory.map(item => (
-            <div key={item.id} className="bg-white rounded-2xl shadow p-5">
-              {item.pictureUrl && <img src={item.pictureUrl} alt="" className="w-full h-40 object-cover rounded-xl mb-4" />}
-              <h3 className="text-2xl font-bold">{item.itemType?.name}</h3>
-              {item.brand && <p className="text-gray-500 text-lg">{item.brand.name}</p>}
-              <div className="mt-3 space-y-1 text-xl">
-                <p>✅ Available: <strong className="text-green-600">{item.availableQuantity}</strong> units</p>
-                <p>💵 <strong>{formatCurrency(item.ratePerDay)}</strong>/day per unit</p>
-                {item.condition && <p>🔧 {item.condition}</p>}
+          {inventory.map(item => {
+            const itemPictureUrl = item.pictureUrl || item.itemType?.pictureUrl;
+
+            return (
+              <div key={item.id} className="bg-white rounded-2xl shadow p-5">
+                {itemPictureUrl && <img src={itemPictureUrl} alt={item.itemType?.name || ''} className="w-full h-40 object-cover rounded-xl mb-4" />}
+                <h3 className="text-2xl font-bold">
+                  {item.itemType?.name}
+                  {item.color ? ` (${item.color})` : ''}
+                </h3>
+                {item.brand && <p className="text-gray-500 text-lg">{item.brand.name}</p>}
+                <div className="mt-3 space-y-1 text-xl">
+                  <p>✅ {t('vendorLandingPage.availableUnits', { count: item.availableQuantity })}</p>
+                  <p>💵 {t('vendorLandingPage.ratePerUnit', { rate: formatCurrency(item.ratePerDay) })}</p>
+                  {item.condition && <p>🔧 {item.condition}</p>}
+                </div>
               </div>
-            </div>
-          ))}
+            );
+          })}
           {inventory.length === 0 && (
             <div className="col-span-3 text-center py-10 text-2xl text-gray-400">
-              No items listed yet.
+              {t('vendorLandingPage.noItems')}
             </div>
           )}
         </div>

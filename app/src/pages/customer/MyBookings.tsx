@@ -7,17 +7,19 @@ import type { Booking } from '../../types';
 import { BookingStatusBadge } from '../../components/common/StatusBadge';
 import { formatDate, formatCurrency } from '../../utils/format';
 import LoadingSpinner from '../../components/common/LoadingSpinner';
+import { useTranslation } from 'react-i18next';
 
 export default function MyBookings() {
+  const { t } = useTranslation();
   const [bookings, setBookings] = useState<Booking[]>([]);
   const [loading, setLoading] = useState(true);
   const load = () => getMyBookings().then(setBookings).finally(() => setLoading(false));
   useEffect(() => { load(); }, []);
 
   const cancel = async (id: string) => {
-    if (!window.confirm('Cancel this booking?')) return;
+    if (!window.confirm(t('myBookingsPage.cancelConfirm'))) return;
     await updateBookingStatus(id, 'cancelled');
-    toast.success('Booking cancelled.');
+    toast.success(t('myBookingsPage.toastCancelled'));
     load();
   };
 
@@ -26,12 +28,12 @@ export default function MyBookings() {
   return (
     <CustomerLayout>
       <div className="max-w-4xl mx-auto px-4 py-8">
-        <h1 className="text-4xl font-bold text-gray-900 mb-6">📅 My Bookings</h1>
+        <h1 className="text-4xl font-bold text-gray-900 mb-6">📅 {t('myBookingsPage.title')}</h1>
         {bookings.length === 0 ? (
           <div className="text-center py-20">
-            <p className="text-3xl text-gray-400">😔 No bookings yet.</p>
-            <p className="text-xl text-gray-400 mt-2">Find a vendor and book equipment!</p>
-            <Button size="xl" className="mt-6" onClick={() => window.location.href = '/'}>🔍 Find Vendors</Button>
+            <p className="text-3xl text-gray-400">😔 {t('myBookingsPage.noBookings')}</p>
+            <p className="text-xl text-gray-400 mt-2">{t('myBookingsPage.findAndBook')}</p>
+            <Button size="xl" className="mt-6" onClick={() => window.location.href = '/'}>🔍 {t('myBookingsPage.findVendors')}</Button>
           </div>
         ) : (
           <div className="space-y-4">
@@ -48,7 +50,7 @@ export default function MyBookings() {
                 <div className="flex justify-between items-center">
                   <p className="text-2xl font-bold text-blue-600">{formatCurrency(b.totalAmount)}</p>
                   {b.status === 'pending' && (
-                    <Button color="failure" size="lg" onClick={() => cancel(b.id)}>❌ Cancel</Button>
+                    <Button color="failure" size="lg" onClick={() => cancel(b.id)}>❌ {t('myBookingsPage.cancel')}</Button>
                   )}
                 </div>
               </div>

@@ -45,6 +45,9 @@ export class InventoryItem {
   condition: string;
 
   @Column({ nullable: true })
+  color: string;
+
+  @Column({ nullable: true })
   pictureUrl: string;
 
   @CreateDateColumn()

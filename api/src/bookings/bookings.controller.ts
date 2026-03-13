@@ -1,4 +1,4 @@
-import { Controller, Get, Post, Patch, Param, Body, UseGuards, Request } from '@nestjs/common';
+import { Controller, Get, Post, Patch, Param, Body, UseGuards, Request, Query } from '@nestjs/common';
 import { ApiTags, ApiBearerAuth } from '@nestjs/swagger';
 import { BookingsService } from './bookings.service';
 import { BookingStatus } from './entities/booking.entity';
@@ -30,6 +30,17 @@ export class BookingsController {
   async getVendorBookings(@Request() req) {
     const vendor = await this.vendorsService.findByUserId(req.user.id);
     return this.service.findByVendor(vendor.id);
+  }
+
+  @UseGuards(JwtAuthGuard)
+  @ApiBearerAuth()
+  @Get('vendor/:vendorId/availability')
+  async checkAvailability(
+    @Param('vendorId') vendorId: string,
+    @Query('startDate') startDate: string,
+    @Query('endDate') endDate: string,
+  ) {
+    return this.service.checkAvailability(vendorId, startDate, endDate);
   }
 
   @UseGuards(JwtAuthGuard)

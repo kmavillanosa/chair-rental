@@ -13,10 +13,12 @@ import VendorBookings from './pages/vendor/VendorBookings'
 import Pricing from './pages/vendor/Pricing'
 import MyShop from './pages/vendor/MyShop'
 import VendorPayments from './pages/vendor/VendorPayments'
-import CustomerHome from './pages/customer/CustomerHome'
+import CustomerHome from './pages/customer/CustomerHome.tsx'
+import CustomerResults from './pages/customer/CustomerResults.tsx'
 import VendorLanding from './pages/customer/VendorLanding'
 import BookingFlow from './pages/customer/BookingFlow'
 import MyBookings from './pages/customer/MyBookings'
+import BecomeVendor from './pages/customer/BecomeVendor'
 
 function ProtectedRoute({ children, role }: { children: React.ReactNode; role?: string }) {
   const { token, user } = useAuthStore()
@@ -46,12 +48,14 @@ export default function App() {
         <Route path="/vendor/shop" element={<ProtectedRoute role="vendor"><MyShop /></ProtectedRoute>} />
         <Route path="/vendor/payments" element={<ProtectedRoute role="vendor"><VendorPayments /></ProtectedRoute>} />
         <Route path="/" element={<CustomerHome />} />
+        <Route path="/results" element={<CustomerResults />} />
         <Route path="/book/:slug" element={<BookingFlow />} />
         <Route path="/my-bookings" element={<ProtectedRoute><MyBookings /></ProtectedRoute>} />
+        <Route path="/become-vendor" element={<ProtectedRoute role="customer"><BecomeVendor /></ProtectedRoute>} />
         <Route path="*" element={
           user?.role === 'admin' ? <Navigate to="/admin" replace /> :
-          user?.role === 'vendor' ? <Navigate to="/vendor" replace /> :
-          <Navigate to="/" replace />
+            user?.role === 'vendor' ? <Navigate to="/vendor" replace /> :
+              <Navigate to="/" replace />
         } />
       </Routes>
     </BrowserRouter>

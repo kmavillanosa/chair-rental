@@ -1,4 +1,4 @@
-# RentEasy - Multi-Tenant Event Equipment Rental
+# RentalBasic - Multi-Tenant Event Equipment Rental
 
 A full-stack multi-tenant rental platform for chairs, tables, videoke, event tents, table cloths, and ornaments.
 
@@ -30,10 +30,11 @@ docker compose up -d
 
 | Service     | URL                            | Description              |
 |-------------|--------------------------------|--------------------------|
-| App (UI)    | http://localhost               | React PWA frontend       |
-| API         | http://localhost:3000          | NestJS REST API          |
-| API Docs    | http://localhost:3000/api/docs | Swagger UI               |
-| phpMyAdmin  | http://localhost:8080          | Database management      |
+| App (Customer) | http://127.0.0.1:43171      | Customer frontend        |
+| App (Staff) | http://127.0.0.1:43172         | Admin/Vendor frontend    |
+| API         | http://127.0.0.1:3000          | NestJS REST API          |
+| API Docs    | http://127.0.0.1:3000/api/docs | Swagger UI               |
+| phpMyAdmin  | http://127.0.0.1:8080          | Database management      |
 
 ## Roles
 
@@ -62,7 +63,8 @@ Key variables:
 - `GOOGLE_CLIENT_ID` / `GOOGLE_CLIENT_SECRET` – from Google Cloud Console
 - `JWT_SECRET` – random secret string (min 32 chars)
 - `MYSQL_ROOT_PASSWORD` / `MYSQL_PASSWORD` / `MYSQL_DATABASE` / `MYSQL_USER`
-- `FRONTEND_URL` – public URL of the app (e.g. `http://yourdomain.com`)
+- `FRONTEND_URL` – customer app URL (e.g. `http://yourdomain.com`)
+- `STAFF_FRONTEND_URL` – admin/vendor app URL (e.g. `http://staff.yourdomain.com`)
 - `GOOGLE_CALLBACK_URL` – e.g. `http://yourdomain.com/auth/google/callback`
 
 ## Development

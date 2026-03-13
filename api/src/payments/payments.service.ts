@@ -1,4 +1,4 @@
-import { Injectable } from '@nestjs/common';
+import { Injectable, NotFoundException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { VendorPayment, PaymentStatus } from './entities/vendor-payment.entity';
@@ -42,7 +42,27 @@ export class PaymentsService {
     return this.deliveryRatesRepo.save(rate);
   }
 
-  async deleteDeliveryRate(id: string) {
-    await this.deliveryRatesRepo.delete(id);
+  async updateDeliveryRate(vendorId: string, id: string, data: Partial<DeliveryRate>) {
+    const existing = await this.deliveryRatesRepo.findOne({ where: { id, vendorId } });
+
+    if (!existing) {
+      throw new NotFoundException('Delivery rate not found');
+    }
+
+    const updated = this.deliveryRatesRepo.merge(existing, {
+      distanceKm: data.distanceKm !== undefined ? Number(data.distanceKm) : existing.distanceKm,
+      chargeAmount: data.chargeAmount !== undefined ? Number(data.chargeAmount) : existing.chargeAmount,
+      helpersCount: data.helpersCount !== undefined ? Number(data.helpersCount) : existing.helpersCount,
+    });
+
+    return this.deliveryRatesRepo.save(updated);
+  }
+
+  async deleteDeliveryRate(vendorId: string, id: string) {
+    const result = await this.deliveryRatesRepo.delete({ id, vendorId });
+
+    if (!result.affected) {
+      throw new NotFoundException('Delivery rate not found');
+    }
   }
 }

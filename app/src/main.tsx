@@ -3,6 +3,7 @@ import ReactDOM from 'react-dom/client'
 import { Toaster } from 'react-hot-toast'
 import 'leaflet/dist/leaflet.css'
 import './index.css'
+import './i18n'
 import App from './App'
 
 ReactDOM.createRoot(document.getElementById('root')!).render(

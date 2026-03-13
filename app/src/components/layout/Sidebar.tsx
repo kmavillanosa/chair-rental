@@ -1,26 +1,29 @@
 import { Link, useLocation } from 'react-router-dom';
 import { useAuthStore } from '../../store/authStore';
+import { useTranslation } from 'react-i18next';
+import LanguageSwitcher from '../common/LanguageSwitcher';
 
 const adminLinks = [
-  { to: '/admin', label: '📊 Overview', exact: true },
-  { to: '/admin/vendors', label: '🏪 Vendors' },
-  { to: '/admin/item-types', label: '📦 Item Types' },
-  { to: '/admin/brands', label: '🏷️ Brands' },
-  { to: '/admin/payments', label: '💰 Payments' },
+  { to: '/admin', labelKey: 'nav.admin.overview', icon: '📊', exact: true },
+  { to: '/admin/vendors', labelKey: 'nav.admin.vendors', icon: '🏪' },
+  { to: '/admin/item-types', labelKey: 'nav.admin.itemTypes', icon: '📦' },
+  { to: '/admin/brands', labelKey: 'nav.admin.brands', icon: '🏷️' },
+  { to: '/admin/payments', labelKey: 'nav.admin.payments', icon: '💰' },
 ];
 
 const vendorLinks = [
-  { to: '/vendor', label: '📊 Overview', exact: true },
-  { to: '/vendor/inventory', label: '📦 My Inventory' },
-  { to: '/vendor/bookings', label: '📅 Bookings' },
-  { to: '/vendor/pricing', label: '💵 Pricing' },
-  { to: '/vendor/shop', label: '🏪 My Shop' },
-  { to: '/vendor/payments', label: '💰 Payments' },
+  { to: '/vendor', labelKey: 'nav.vendor.overview', icon: '📊', exact: true },
+  { to: '/vendor/inventory', labelKey: 'nav.vendor.inventory', icon: '📦' },
+  { to: '/vendor/bookings', labelKey: 'nav.vendor.bookings', icon: '📅' },
+  { to: '/vendor/pricing', labelKey: 'nav.vendor.pricing', icon: '💵' },
+  { to: '/vendor/shop', labelKey: 'nav.vendor.shop', icon: '🏪' },
+  { to: '/vendor/payments', labelKey: 'nav.vendor.payments', icon: '💰' },
 ];
 
 interface Props { role: 'admin' | 'vendor' }
 
 export default function Sidebar({ role }: Props) {
+  const { t } = useTranslation();
   const location = useLocation();
   const { logout, user } = useAuthStore();
   const links = role === 'admin' ? adminLinks : vendorLinks;
@@ -28,21 +31,26 @@ export default function Sidebar({ role }: Props) {
   return (
     <aside className="w-64 min-h-screen bg-blue-700 text-white flex flex-col shadow-lg">
       <div className="p-6 border-b border-blue-600">
-        <h1 className="text-2xl font-bold">🪑 RentEasy</h1>
-        <p className="text-blue-200 text-sm mt-1">{role === 'admin' ? 'Admin Panel' : 'Vendor Panel'}</p>
+        <div className="flex items-start justify-between gap-2">
+          <div>
+            <h1 className="text-2xl font-bold">🪑 {t('common.appName')}</h1>
+            <p className="text-blue-200 text-sm mt-1">{role === 'admin' ? t('nav.adminPanel') : t('nav.vendorPanel')}</p>
+          </div>
+          <LanguageSwitcher compact className="!border-blue-500 !bg-blue-50" />
+        </div>
       </div>
       <nav className="flex-1 p-4 space-y-1">
-        {links.map(({ to, label, exact }) => {
+        {links.map(({ to, labelKey, icon, exact }) => {
           const active = exact ? location.pathname === to : location.pathname.startsWith(to);
           return (
             <Link
               key={to}
               to={to}
-              className={`flex items-center px-4 py-3 rounded-lg text-lg font-medium transition-colors ${
-                active ? 'bg-white text-blue-700' : 'hover:bg-blue-600'
-              }`}
+              className={`flex items-center px-4 py-3 rounded-lg text-lg font-medium transition-colors ${active ? 'bg-white text-blue-700' : 'hover:bg-blue-600'
+                }`}
             >
-              {label}
+              <span className="mr-2">{icon}</span>
+              {t(labelKey)}
             </Link>
           );
         })}
@@ -59,7 +67,7 @@ export default function Sidebar({ role }: Props) {
           onClick={() => { logout(); window.location.href = '/login'; }}
           className="w-full text-left px-4 py-2 rounded-lg hover:bg-blue-600 text-lg"
         >
-          🚪 Sign Out
+          🚪 {t('common.signOut')}
         </button>
       </div>
     </aside>

@@ -1,5 +1,6 @@
 import type { BookingStatus, PaymentStatus } from '../../types';
 import { Badge } from 'flowbite-react';
+import { useTranslation } from 'react-i18next';
 
 const bookingColors: Record<BookingStatus, 'warning' | 'success' | 'failure' | 'indigo'> = {
   pending: 'warning',
@@ -15,9 +16,11 @@ const paymentColors: Record<PaymentStatus, 'warning' | 'success' | 'failure'> = 
 };
 
 export function BookingStatusBadge({ status }: { status: BookingStatus }) {
-  return <Badge color={bookingColors[status]} className="text-base px-3 py-1">{status.toUpperCase()}</Badge>;
+  const { t } = useTranslation();
+  return <Badge color={bookingColors[status]} className="text-base px-3 py-1">{t(`status.booking.${status}`)}</Badge>;
 }
 
 export function PaymentStatusBadge({ status }: { status: PaymentStatus }) {
-  return <Badge color={paymentColors[status]} className="text-base px-3 py-1">{status.toUpperCase()}</Badge>;
+  const { t } = useTranslation();
+  return <Badge color={paymentColors[status]} className="text-base px-3 py-1">{t(`status.payment.${status}`)}</Badge>;
 }

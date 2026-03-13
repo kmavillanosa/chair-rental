@@ -1,5 +1,6 @@
 import { Modal, Button } from 'flowbite-react';
 import { HiExclamationCircle } from 'react-icons/hi';
+import { useTranslation } from 'react-i18next';
 
 interface Props {
   open: boolean;
@@ -11,7 +12,9 @@ interface Props {
   confirmColor?: 'failure' | 'warning' | 'success';
 }
 
-export default function ConfirmDialog({ open, title, message, onConfirm, onCancel, confirmText = 'Confirm', confirmColor = 'failure' }: Props) {
+export default function ConfirmDialog({ open, title, message, onConfirm, onCancel, confirmText, confirmColor = 'failure' }: Props) {
+  const { t } = useTranslation();
+
   return (
     <Modal show={open} size="md" onClose={onCancel} popup>
       <Modal.Header />
@@ -21,8 +24,8 @@ export default function ConfirmDialog({ open, title, message, onConfirm, onCance
           <h3 className="mb-2 text-2xl font-bold text-gray-900">{title}</h3>
           <p className="mb-5 text-xl text-gray-500">{message}</p>
           <div className="flex justify-center gap-4">
-            <Button color={confirmColor} size="xl" onClick={onConfirm}>{confirmText}</Button>
-            <Button color="gray" size="xl" onClick={onCancel}>Cancel</Button>
+            <Button color={confirmColor} size="xl" onClick={onConfirm}>{confirmText || t('confirmDialog.confirm')}</Button>
+            <Button color="gray" size="xl" onClick={onCancel}>{t('confirmDialog.cancel')}</Button>
           </div>
         </div>
       </Modal.Body>

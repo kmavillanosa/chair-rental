@@ -3,8 +3,10 @@ import { useNavigate, useSearchParams } from 'react-router-dom';
 import { useAuthStore } from '../store/authStore';
 import api from '../api/axios';
 import LoadingSpinner from '../components/common/LoadingSpinner';
+import { useTranslation } from 'react-i18next';
 
 export default function AuthCallback() {
+  const { t } = useTranslation();
   const [params] = useSearchParams();
   const navigate = useNavigate();
   const { login } = useAuthStore();
@@ -29,7 +31,7 @@ export default function AuthCallback() {
     <div className="min-h-screen flex items-center justify-center bg-blue-50">
       <div className="text-center">
         <LoadingSpinner size="lg" />
-        <p className="text-2xl text-gray-600 mt-4">Signing you in...</p>
+        <p className="text-2xl text-gray-600 mt-4">{t('authCallback.signingIn')}</p>
       </div>
     </div>
   );

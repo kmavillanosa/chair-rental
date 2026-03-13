@@ -18,15 +18,24 @@ export class BookingsService {
   ) {}
 
   findByVendor(vendorId: string) {
-    return this.bookingsRepo.find({ where: { vendorId }, relations: ['customer', 'items', 'items.inventoryItem'] });
+    return this.bookingsRepo.find({ 
+      where: { vendorId }, 
+      relations: ['customer', 'items', 'items.inventoryItem', 'items.inventoryItem.itemType', 'items.inventoryItem.brand'] 
+    });
   }
 
   findByCustomer(customerId: string) {
-    return this.bookingsRepo.find({ where: { customerId }, relations: ['vendor', 'items', 'items.inventoryItem'] });
+    return this.bookingsRepo.find({ 
+      where: { customerId }, 
+      relations: ['vendor', 'items', 'items.inventoryItem', 'items.inventoryItem.itemType', 'items.inventoryItem.brand'] 
+    });
   }
 
   findById(id: string) {
-    return this.bookingsRepo.findOne({ where: { id }, relations: ['customer', 'vendor', 'items', 'items.inventoryItem'] });
+    return this.bookingsRepo.findOne({ 
+      where: { id }, 
+      relations: ['customer', 'vendor', 'items', 'items.inventoryItem', 'items.inventoryItem.itemType', 'items.inventoryItem.brand'] 
+    });
   }
 
   async create(customerId: string, data: {
@@ -54,6 +63,18 @@ export class BookingsService {
       const endDate = new Date(data.endDate);
       const days = Math.max(1, differenceInDays(endDate, startDate) + 1);
 
+      // Get all active bookings that overlap with requested dates
+      const overlappingBookings = await manager.find(Booking, {
+        where: { vendorId: data.vendorId },
+        relations: ['items'],
+      });
+
+      const activeOverlappingBookings = overlappingBookings.filter(b =>
+        [BookingStatus.PENDING, BookingStatus.CONFIRMED].includes(b.status) &&
+        new Date(b.endDate) >= startDate &&
+        new Date(b.startDate) <= endDate
+      );
+
       let subtotalItems = 0;
       const bookingItems: Partial<BookingItem>[] = [];
 
@@ -62,11 +83,22 @@ export class BookingsService {
           where: { id: item.inventoryItemId },
           lock: { mode: 'pessimistic_write' },
         });
-        if (!invItem || invItem.availableQuantity < item.quantity) {
-          throw new BadRequestException(`Insufficient availability for item ${item.inventoryItemId}`);
+        if (!invItem) {
+          throw new BadRequestException(`Item ${item.inventoryItemId} not found`);
         }
-        invItem.availableQuantity -= item.quantity;
-        await manager.save(invItem);
+
+        // Calculate how much is already booked during overlapping dates
+        const bookedQuantity = activeOverlappingBookings.reduce((sum, booking) => {
+          const bookingItem = booking.items?.find(bi => bi.inventoryItemId === item.inventoryItemId);
+          return sum + (bookingItem?.quantity || 0);
+        }, 0);
+
+        const availableQuantity = Number(invItem.quantity) - bookedQuantity;
+
+        if (availableQuantity < item.quantity) {
+          throw new BadRequestException(`Insufficient availability for item ${item.inventoryItemId}. Only ${availableQuantity} available for the selected dates.`);
+        }
+
         const subtotal = Number(invItem.ratePerDay) * item.quantity * days;
         subtotalItems += subtotal;
         bookingItems.push({ inventoryItemId: item.inventoryItemId, quantity: item.quantity, ratePerDay: invItem.ratePerDay, subtotal });
@@ -108,14 +140,46 @@ export class BookingsService {
     const booking = await this.findById(id);
     if (!booking) throw new BadRequestException('Booking not found');
 
-    if (status === BookingStatus.CANCELLED && booking.status !== BookingStatus.CANCELLED) {
-      // Restore inventory
-      for (const item of booking.items) {
-        await this.inventoryRepo.increment({ id: item.inventoryItemId }, 'availableQuantity', item.quantity);
-      }
-    }
-
     await this.bookingsRepo.update(id, { status });
     return this.findById(id);
+  }
+
+  async checkAvailability(vendorId: string, startDate: string, endDate: string) {
+    const start = new Date(startDate);
+    const end = new Date(endDate);
+
+    // Get all active bookings for this vendor that overlap with the requested date range
+    const overlappingBookings = await this.bookingsRepo.find({
+      where: { vendorId },
+      relations: ['items'],
+    });
+
+    // Filter to only active bookings that overlap with the requested dates
+    const activeOverlappingBookings = overlappingBookings.filter(b =>
+      [BookingStatus.PENDING, BookingStatus.CONFIRMED].includes(b.status) &&
+      new Date(b.endDate) >= start &&
+      new Date(b.startDate) <= end
+    );
+
+    // Get all inventory items for this vendor
+    const inventory = await this.inventoryRepo.find({ where: { vendorId }, relations: ['itemType', 'brand'] });
+
+    // Calculate available quantities for each item considering overlapping bookings
+    const availabilityMap = new Map<string, { inventory: InventoryItem; available: number }>();
+
+    for (const item of inventory) {
+      const bookedQuantity = activeOverlappingBookings.reduce((sum, booking) => {
+        const bookingItem = booking.items?.find(bi => bi.inventoryItemId === item.id);
+        return sum + (bookingItem?.quantity || 0);
+      }, 0);
+
+      availabilityMap.set(item.id, {
+        inventory: item,
+        available: Math.max(0, Number(item.quantity) - bookedQuantity),
+      });
+    }
+
+    // Convert to array format
+    return Array.from(availabilityMap.values());
   }
 }

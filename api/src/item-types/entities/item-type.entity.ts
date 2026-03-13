@@ -20,6 +20,15 @@ export class ItemType {
   @Column({ type: 'decimal', precision: 10, scale: 2, default: 0 })
   defaultRatePerDay: number;
 
+  @Column({ type: 'json', nullable: true })
+  eventTags: string[];
+
+  @Column({ type: 'json', nullable: true })
+  setTags: string[];
+
+  @Column({ default: true })
+  isActive: boolean;
+
   @CreateDateColumn()
   createdAt: Date;
 

@@ -19,6 +19,12 @@ import { Booking } from './bookings/entities/booking.entity';
 import { BookingItem } from './bookings/entities/booking-item.entity';
 import { VendorPayment } from './payments/entities/vendor-payment.entity';
 import { DeliveryRate } from './payments/entities/delivery-rate.entity';
+import { VendorDocument } from './vendors/entities/vendor-document.entity';
+import { VendorVerificationStatusEntry } from './vendors/entities/vendor-verification-status.entity';
+import { VendorItem } from './vendors/entities/vendor-item.entity';
+import { VendorItemPhoto } from './vendors/entities/vendor-item-photo.entity';
+import { VendorPhoneOtpChallenge } from './vendors/entities/vendor-phone-otp-challenge.entity';
+import { SeedsModule } from './seeds/seeds.module';
 
 @Module({
   imports: [
@@ -29,8 +35,26 @@ import { DeliveryRate } from './payments/entities/delivery-rate.entity';
       username: process.env.DB_USER || 'root',
       password: process.env.DB_PASSWORD || '',
       database: process.env.DB_NAME || 'chair_rental',
-      entities: [User, Vendor, ItemType, ProductBrand, InventoryItem, Booking, BookingItem, VendorPayment, DeliveryRate],
-      synchronize: process.env.NODE_ENV !== 'production',
+      entities: [
+        User,
+        Vendor,
+        VendorDocument,
+        VendorVerificationStatusEntry,
+        VendorItem,
+        VendorItemPhoto,
+        VendorPhoneOtpChallenge,
+        ItemType,
+        ProductBrand,
+        InventoryItem,
+        Booking,
+        BookingItem,
+        VendorPayment,
+        DeliveryRate,
+      ],
+      synchronize:
+        typeof process.env.DB_SYNC === 'string'
+          ? ['1', 'true', 'yes'].includes(process.env.DB_SYNC.toLowerCase())
+          : process.env.NODE_ENV !== 'production',
       autoLoadEntities: true,
     }),
     ServeStaticModule.forRoot({
@@ -45,6 +69,7 @@ import { DeliveryRate } from './payments/entities/delivery-rate.entity';
     InventoryModule,
     BookingsModule,
     PaymentsModule,
+    SeedsModule,
   ],
 })
 export class AppModule {}
