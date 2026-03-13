@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { MapContainer, Marker, Popup, TileLayer, useMap, useMapEvents } from 'react-leaflet';
 import { Button, Modal } from 'flowbite-react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import toast from 'react-hot-toast';
 import L from 'leaflet';
 import CustomerLayout from '../../components/layout/CustomerLayout';
@@ -130,6 +130,21 @@ function getRangeDayCount(start: string, end: string) {
     return Math.max(diffDays, 0);
 }
 
+function parsePositiveNumber(value: string | null, fallback: number): number {
+    const parsed = Number(value);
+    return Number.isFinite(parsed) && parsed > 0 ? parsed : fallback;
+}
+
+function parseNonNegativeInteger(value: string | null, fallback: number): number {
+    const parsed = Number(value);
+    return Number.isFinite(parsed) && parsed >= 0 ? Math.trunc(parsed) : fallback;
+}
+
+function parseDateParam(value: string | null): string {
+    const normalized = String(value || '').trim();
+    return /^\d{4}-\d{2}-\d{2}$/.test(normalized) ? normalized : '';
+}
+
 function EventPinSelector({
     position,
     onPositionChange,
@@ -169,6 +184,11 @@ function MapCenterController({ center }: { center: [number, number] }) {
 export default function CustomerHome() {
     const { t } = useTranslation();
     const navigate = useNavigate();
+    const [searchParams, setSearchParams] = useSearchParams();
+    // Capture the URL params that were present when the page first loaded.
+    // Restoration reads from this snapshot so that syncing form state back
+    // to the URL does not re-trigger the restoration on every change.
+    const initialSearchParamsRef = useRef(searchParams);
     const { user } = useAuthStore();
 
     const [itemTypes, setItemTypes] = useState<ItemType[]>([]);
@@ -201,6 +221,25 @@ export default function CustomerHome() {
     const [modalAddressSuggestions, setModalAddressSuggestions] = useState<LocationSuggestion[]>([]);
     const [isModalAddressLoading, setIsModalAddressLoading] = useState(false);
 
+    const hasIncomingSearchState = useMemo(
+        () => [
+            'lat',
+            'lng',
+            'radius',
+            'helpersNeeded',
+            'address',
+            'startDate',
+            'endDate',
+            'itemTypeIds',
+            'eventTag',
+        ].some((key) => initialSearchParamsRef.current.has(key)),
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+        [], // intentionally only checked on mount
+    );
+    // Becomes true once the initial URL state is restored into form fields
+    // (or immediately when there is nothing to restore).
+    const hasRestoredRef = useRef(!hasIncomingSearchState);
+
     useEffect(() => {
         getItemTypes()
             .then(setItemTypes)
@@ -208,6 +247,89 @@ export default function CustomerHome() {
                 toast.error(t('customerHome.toastUnableLoadItemTypes'));
             });
     }, [t]);
+
+    // Restore form state from initial URL params (runs at most once on mount).
+    useEffect(() => {
+        if (!hasIncomingSearchState) return;
+
+        const params = initialSearchParamsRef.current;
+
+        const latParam = Number(params.get('lat'));
+        const lngParam = Number(params.get('lng'));
+
+        if (Number.isFinite(latParam) && Number.isFinite(lngParam)) {
+            setEventPoint([latParam, lngParam]);
+        }
+
+        const addressParam = String(params.get('address') || '').trim();
+        if (addressParam) {
+            setAddressQuery(addressParam);
+            setSelectedAddressLabel(addressParam);
+            setAddressSuggestions([]);
+        }
+
+        setRadiusKm((current) => parsePositiveNumber(params.get('radius'), current));
+        setHelpersNeeded((current) => parseNonNegativeInteger(params.get('helpersNeeded'), current));
+
+        const startDateParam = parseDateParam(params.get('startDate'));
+        const endDateParam = parseDateParam(params.get('endDate'));
+
+        if (startDateParam) {
+            setStartDate(startDateParam);
+            setEndDate(endDateParam || startDateParam);
+        } else if (endDateParam) {
+            setEndDate(endDateParam);
+        }
+
+        const eventTagParam = String(params.get('eventTag') || '').trim().toLowerCase();
+        if (eventTagParam) {
+            setSelectedEventTag(eventTagParam);
+        }
+
+        const itemTypeIdsParam = String(params.get('itemTypeIds') || '').trim();
+        if (itemTypeIdsParam) {
+            setSelectedItemTypeIds(
+                itemTypeIdsParam
+                    .split(',')
+                    .map((value) => value.trim())
+                    .filter(Boolean),
+            );
+        }
+
+        hasRestoredRef.current = true;
+    }, [hasIncomingSearchState]);
+
+    // Mirror form state into the URL as the user fills in the hero search.
+    // Uses replace: true so each keystroke/selection does not pollute history.
+    useEffect(() => {
+        if (!hasRestoredRef.current) return;
+
+        const params = new URLSearchParams();
+        params.set('lat', eventPoint[0].toFixed(6));
+        params.set('lng', eventPoint[1].toFixed(6));
+        params.set('radius', String(radiusKm));
+        params.set('helpersNeeded', String(helpersNeeded));
+
+        const addressLabel = selectedAddressLabel.trim() || addressQuery.trim();
+        if (addressLabel) params.set('address', addressLabel);
+        if (startDate) params.set('startDate', startDate);
+        if (endDate) params.set('endDate', endDate);
+        if (selectedItemTypeIds.length > 0) params.set('itemTypeIds', selectedItemTypeIds.join(','));
+        if (selectedEventTag) params.set('eventTag', selectedEventTag);
+
+        setSearchParams(params, { replace: true });
+    }, [
+        eventPoint,
+        radiusKm,
+        helpersNeeded,
+        selectedAddressLabel,
+        addressQuery,
+        startDate,
+        endDate,
+        selectedItemTypeIds,
+        selectedEventTag,
+        setSearchParams,
+    ]);
 
     useEffect(() => {
         if (!startDate) return;
@@ -217,6 +339,7 @@ export default function CustomerHome() {
     }, [endDate, startDate]);
 
     useEffect(() => {
+        if (hasIncomingSearchState) return;
         if (!navigator.geolocation) return;
 
         let cancelled = false;
@@ -273,7 +396,7 @@ export default function CustomerHome() {
         return () => {
             cancelled = true;
         };
-    }, []);
+    }, [hasIncomingSearchState]);
 
     useEffect(() => {
         const normalizedQuery = addressQuery.trim();
@@ -437,10 +560,11 @@ export default function CustomerHome() {
     );
 
     useEffect(() => {
+        if (!itemTypes.length) return;
         setSelectedItemTypeIds((current) =>
             current.filter((itemTypeId) => itemTypeIdsForEvent.has(itemTypeId)),
         );
-    }, [itemTypeIdsForEvent]);
+    }, [itemTypeIdsForEvent, itemTypes.length]);
 
     useEffect(() => {
         if (!showItemPicker) return;

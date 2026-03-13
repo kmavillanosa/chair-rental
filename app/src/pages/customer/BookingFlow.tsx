@@ -205,7 +205,10 @@ export default function BookingFlow() {
               const itemPictureUrl = item.pictureUrl || item.itemType?.pictureUrl;
 
               return (
-                <div key={item.id} className="bg-white rounded-2xl shadow p-5 flex items-center justify-between">
+                <div
+                  key={item.id}
+                  className={`bg-white rounded-2xl shadow p-5 flex items-center justify-between ${availQty <= 0 ? 'opacity-50 pointer-events-none' : ''}`}
+                >
                   <div className="flex items-center gap-3">
                     {itemPictureUrl && <img src={itemPictureUrl} alt={item.itemType?.name || 'Item'} className="h-16 w-16 rounded-lg object-cover" />}
                     <div>
@@ -216,7 +219,7 @@ export default function BookingFlow() {
                       )}
                     </div>
                   </div>
-                  {availQty > 0 && (
+                  {availQty > 0 ? (
                     <div className="flex items-center gap-3">
                       <button
                         onClick={() => setItemQuantity(item.id, currentQty - 1, availQty)}
@@ -245,6 +248,10 @@ export default function BookingFlow() {
                       >
                         +
                       </button>
+                    </div>
+                  ) : (
+                    <div className="flex items-center gap-3">
+                      <span className="text-gray-400 font-semibold">Unavailable</span>
                     </div>
                   )}
                 </div>

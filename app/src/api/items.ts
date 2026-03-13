@@ -1,3 +1,6 @@
+// Inventory breakdown: total, reserved, available per item for a vendor (optionally for a date)
+export const getInventoryBreakdown = (vendorId: string, date?: string) =>
+  api.get(`/inventory/vendor/${vendorId}/breakdown`, { params: date ? { date } : {} }).then(r => r.data);
 import api from './axios';
 import type { ItemType, ProductBrand, InventoryItem } from '../types';
 import { resolveMediaUrl } from '../utils/media';

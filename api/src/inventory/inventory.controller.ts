@@ -7,6 +7,7 @@ import { RolesGuard } from '../auth/roles.guard';
 import { Roles } from '../auth/roles.decorator';
 import { UserRole } from '../users/entities/user.entity';
 
+
 @ApiTags('inventory')
 @Controller('inventory')
 export class InventoryController {
@@ -14,6 +15,19 @@ export class InventoryController {
     private readonly service: InventoryService,
     private readonly vendorsService: VendorsService,
   ) {}
+
+  /**
+   * Returns inventory breakdown for a vendor: total, reserved (confirmed), and available per item type for a given date (default: today)
+   */
+  @Get('vendor/:vendorId/breakdown')
+  async getVendorInventoryBreakdown(
+    @Param('vendorId') vendorId: string,
+    @Request() req: any
+  ) {
+    // Accept ?date=YYYY-MM-DD, default to today
+    const date = req.query?.date;
+    return this.service.getVendorInventoryBreakdown(vendorId, date);
+  }
 
   @Get('vendor/:vendorId')
   findByVendor(@Param('vendorId') vendorId: string) {

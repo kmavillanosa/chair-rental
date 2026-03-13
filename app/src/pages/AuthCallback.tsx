@@ -20,9 +20,13 @@ export default function AuthCallback() {
     api.get('/users/me', { headers: { Authorization: `Bearer ${token}` } })
       .then(({ data }) => {
         login(token, data);
-        if (data.role === 'admin') navigate('/admin');
-        else if (data.role === 'vendor') navigate('/vendor');
-        else navigate('/');
+        if (data.role === 'admin' || data.role === 'vendor') {
+          // Redirect to staff-app with token in URL
+          const staffUrl = window.location.origin.replace(/\/app$/, '/staff-app');
+          window.location.href = `${staffUrl}/auth-callback?token=${encodeURIComponent(token)}`;
+        } else {
+          navigate('/');
+        }
       })
       .catch(() => navigate('/login'));
   }, []);

@@ -30,3 +30,7 @@ export const getInventory = (vendorId: string) => api.get<InventoryItem[]>(`/inv
 export const createInventoryItem = (data: Partial<InventoryItem>) => api.post<InventoryItem>('/inventory', data).then(r => mapInventoryItem(r.data));
 export const updateInventoryItem = (id: string, data: Partial<InventoryItem>) => api.patch<InventoryItem>(`/inventory/${id}`, data).then(r => mapInventoryItem(r.data));
 export const deleteInventoryItem = (id: string) => api.delete(`/inventory/${id}`);
+
+// Inventory breakdown: total, reserved, available per item for a vendor (optionally for a date)
+export const getInventoryBreakdown = (vendorId: string, date?: string) =>
+  api.get(`/inventory/vendor/${vendorId}/breakdown`, { params: date ? { date } : {} }).then(r => r.data);

@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import { Button } from 'flowbite-react';
 import { Circle, CircleMarker, MapContainer, Marker, Popup, TileLayer, ZoomControl, useMap } from 'react-leaflet';
 import { useNavigate, useSearchParams } from 'react-router-dom';
@@ -122,6 +122,15 @@ export default function CustomerResults() {
     const [vendors, setVendors] = useState<Vendor[]>([]);
     const [loading, setLoading] = useState(true);
     const [requestError, setRequestError] = useState<string | null>(null);
+
+    const modifySearchPath = useMemo(() => {
+        const queryString = searchParams.toString();
+        return queryString ? `/?${queryString}` : '/';
+    }, [searchParams]);
+
+    const goToModifySearch = useCallback(() => {
+        navigate(modifySearchPath);
+    }, [modifySearchPath, navigate]);
 
     const lat = useMemo(() => Number(searchParams.get('lat')), [searchParams]);
     const lng = useMemo(() => Number(searchParams.get('lng')), [searchParams]);
@@ -341,7 +350,7 @@ export default function CustomerResults() {
                     </div>
 
                     <div className="mt-3 flex flex-wrap gap-2">
-                        <Button size="xs" color="light" onClick={() => navigate('/')}>
+                        <Button size="xs" color="light" onClick={goToModifySearch}>
                             {t('customerResults.modifySearch')}
                         </Button>
                         {topVendors[0] && (
@@ -400,7 +409,7 @@ export default function CustomerResults() {
                     <div className="absolute inset-x-4 bottom-6 z-[1100] mx-auto w-[min(92vw,520px)] rounded-2xl border border-red-200 bg-white px-5 py-4 text-center shadow-xl">
                         <p className="text-base font-semibold text-red-700">{t('customerResults.loadFailedTitle')}</p>
                         <p className="mt-1 text-sm text-slate-600">{requestError}</p>
-                        <Button size="sm" className="mt-3" onClick={() => navigate('/')}>
+                        <Button size="sm" className="mt-3" onClick={goToModifySearch}>
                             {t('customerResults.backToSearch')}
                         </Button>
                     </div>
@@ -410,7 +419,7 @@ export default function CustomerResults() {
                     <div className="absolute inset-x-4 bottom-6 z-[1100] mx-auto w-[min(92vw,520px)] rounded-2xl border border-slate-200 bg-white px-5 py-4 text-center shadow-xl">
                         <p className="text-base font-semibold text-slate-900">{t('customerResults.noMatchesTitle')}</p>
                         <p className="mt-1 text-sm text-slate-600">{t('customerResults.noMatchesSubtitle')}</p>
-                        <Button size="sm" color="light" className="mt-3" onClick={() => navigate('/')}>
+                        <Button size="sm" color="light" className="mt-3" onClick={goToModifySearch}>
                             {t('customerResults.modifySearch')}
                         </Button>
                     </div>

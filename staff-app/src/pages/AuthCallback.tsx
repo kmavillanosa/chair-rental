@@ -20,8 +20,9 @@ export default function AuthCallback() {
         if (data.role === 'admin') navigate('/admin');
         else if (data.role === 'vendor') navigate('/vendor');
         else {
-          logout();
-          navigate('/login?staffOnly=1');
+          // Redirect customer to main app with token
+          const appUrl = window.location.origin.replace(/\/staff-app$/, '/app');
+          window.location.href = `${appUrl}/auth-callback?token=${encodeURIComponent(token)}`;
         }
       })
       .catch(() => navigate('/login'));
