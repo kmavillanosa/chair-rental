@@ -12,6 +12,7 @@ import {
   BusinessRegistrationType,
   Vendor,
   VendorKycStatus,
+  VendorPayMongoOnboardingStatus,
   VendorRegistrationStatus,
   VendorType,
   VendorVerificationStatus,
@@ -40,6 +41,9 @@ import { UsersService } from '../users/users.service';
 import { UserRole } from '../users/entities/user.entity';
 import { Booking, BookingStatus } from '../bookings/entities/booking.entity';
 import { EmailService } from '../common/email.service';
+import { SettingsService } from '../settings/settings.service';
+
+type JsonRecord = Record<string, any>;
 
 @Injectable()
 export class VendorsService {
@@ -67,6 +71,7 @@ export class VendorsService {
     private readonly bookingsRepo: Repository<Booking>,
     private readonly usersService: UsersService,
     private readonly emailService: EmailService,
+    private readonly settingsService: SettingsService,
   ) {}
 
   async findAll() {
@@ -95,8 +100,43 @@ export class VendorsService {
     return this.withVerificationBadge(vendor);
   }
 
-  async create(data: Partial<Vendor>) {
+  async create(data: Partial<Vendor> & { userEmail?: string; email?: string }) {
+    const { userEmail, email, ...vendorInput } = data;
+    const requestedUserId = this.normalizeText(vendorInput.userId);
+    const requestedUserEmail = this.normalizeText(userEmail || email);
+
+    let resolvedUserId = requestedUserId;
+    if (!resolvedUserId && requestedUserEmail) {
+      const user = await this.usersService.findByEmail(requestedUserEmail);
+      if (!user) {
+        throw new BadRequestException(
+          `No user account found for ${requestedUserEmail}`,
+        );
+      }
+      resolvedUserId = user.id;
+    }
+
+    if (!resolvedUserId) {
+      throw new BadRequestException('userId or userEmail is required');
+    }
+
+    const ownerUser = await this.usersService.findById(resolvedUserId);
+    if (!ownerUser) {
+      throw new BadRequestException('Selected user does not exist');
+    }
+
+    const existingVendorForUser = await this.vendorsRepo.findOne({
+      where: { userId: resolvedUserId },
+    });
+    if (existingVendorForUser) {
+      throw new BadRequestException('Selected user already has a vendor profile');
+    }
+
     const normalizedVendorType = this.normalizeVendorType(data.vendorType);
+    const normalizedPayMongoMerchantId = this.normalizeText(
+      vendorInput.paymongoMerchantId,
+    );
+    const hasConfiguredPayMongoMerchantId = Boolean(normalizedPayMongoMerchantId);
     const verificationStatus =
       this.normalizeVerificationStatus(data.verificationStatus) ||
       (data.isVerified
@@ -104,27 +144,34 @@ export class VendorsService {
         : VendorVerificationStatus.PENDING_VERIFICATION);
 
     const vendorData: Partial<Vendor> = {
-      ...data,
+      ...vendorInput,
+      userId: resolvedUserId,
       vendorType: normalizedVendorType,
       businessRegistrationType: this.normalizeBusinessRegistrationType(
-        data.businessRegistrationType,
+        vendorInput.businessRegistrationType,
       ),
       businessRegistrationNumber: this.normalizeIdentifier(
-        data.businessRegistrationNumber,
+        vendorInput.businessRegistrationNumber,
       ),
-      birTin: this.normalizeTin(data.birTin),
-      ownerFullName: this.normalizeText(data.ownerFullName),
-      governmentIdNumber: this.normalizeIdentifier(data.governmentIdNumber),
-      phone: this.normalizePhone(data.phone),
-      socialMediaLink: this.normalizeText(data.socialMediaLink),
+      birTin: this.normalizeTin(vendorInput.birTin),
+      ownerFullName: this.normalizeText(vendorInput.ownerFullName),
+      governmentIdNumber: this.normalizeIdentifier(vendorInput.governmentIdNumber),
+      phone: this.normalizePhone(vendorInput.phone),
+      socialMediaLink: this.normalizeText(vendorInput.socialMediaLink),
+      paymongoMerchantId: normalizedPayMongoMerchantId,
+      paymongoOnboardingStatus: hasConfiguredPayMongoMerchantId
+        ? VendorPayMongoOnboardingStatus.PROVISIONED
+        : VendorPayMongoOnboardingStatus.NOT_STARTED,
+      paymongoOnboardingError: null,
+      paymongoOnboardedAt: hasConfiguredPayMongoMerchantId ? new Date() : null,
       registrationStatus:
-        data.registrationStatus || VendorRegistrationStatus.APPROVED,
-      kycStatus: data.kycStatus || VendorKycStatus.APPROVED,
+        vendorInput.registrationStatus || VendorRegistrationStatus.APPROVED,
+      kycStatus: vendorInput.kycStatus || VendorKycStatus.APPROVED,
       verificationStatus,
       verificationBadge: this.getVerificationBadgeLabel(verificationStatus),
-      isVerified: data.isVerified ?? true,
-      isActive: data.isActive ?? true,
-      duplicateRiskScore: Number(data.duplicateRiskScore || 0),
+      isVerified: vendorInput.isVerified ?? true,
+      isActive: vendorInput.isActive ?? true,
+      duplicateRiskScore: Number(vendorInput.duplicateRiskScore || 0),
     };
 
     if (!vendorData.businessName && vendorData.ownerFullName) {
@@ -137,6 +184,11 @@ export class VendorsService {
 
     const vendor = this.vendorsRepo.create(vendorData);
     const saved = await this.vendorsRepo.save(vendor);
+
+    if (vendorData.isVerified) {
+      await this.usersService.updateRole(resolvedUserId, UserRole.VENDOR);
+    }
+
     return this.findById(saved.id, true);
   }
 
@@ -301,14 +353,24 @@ export class VendorsService {
       governmentIdNumber,
     });
 
-    const otpChallenge = await this.getLatestVerifiedOtpChallenge(
-      userId,
-      this.emailOtpChannel,
-    );
-    if (!otpChallenge) {
+    const kycSettings = await this.settingsService.getKycSettings();
+    if (!kycSettings.vendorRegistrationEnabled) {
       throw new BadRequestException(
-        'Email OTP verification is required before vendor registration',
+        'Vendor registration is currently disabled by platform settings',
       );
+    }
+
+    let otpChallenge: VendorPhoneOtpChallenge | null = null;
+    if (kycSettings.requireOtpBeforeVendorRegistration) {
+      otpChallenge = await this.getLatestVerifiedOtpChallenge(
+        userId,
+        this.emailOtpChannel,
+      );
+      if (!otpChallenge) {
+        throw new BadRequestException(
+          'Email OTP verification is required before vendor registration',
+        );
+      }
     }
 
     const candidateGovernmentIdUrl =
@@ -351,6 +413,7 @@ export class VendorsService {
     );
 
     const faceMatch = this.evaluateFaceMatch(candidateGovernmentIdUrl, candidateSelfieUrl);
+    const existingPayMongoMerchantId = this.normalizeText(existing?.paymongoMerchantId);
 
     const payload: Partial<Vendor> = {
       userId,
@@ -367,9 +430,18 @@ export class VendorsService {
       slug,
       description: this.normalizeText(data.description),
       phone,
-      phoneOtpVerifiedAt: otpChallenge.verifiedAt,
+      phoneOtpVerifiedAt:
+        otpChallenge?.verifiedAt || existing?.phoneOtpVerifiedAt || null,
       socialMediaLink: this.normalizeText(data.socialMediaLink),
       logoUrl: this.normalizeText(data.logoUrl),
+      paymongoMerchantId: existingPayMongoMerchantId,
+      paymongoOnboardingStatus: existingPayMongoMerchantId
+        ? VendorPayMongoOnboardingStatus.PROVISIONED
+        : VendorPayMongoOnboardingStatus.NOT_STARTED,
+      paymongoOnboardingError: null,
+      paymongoOnboardedAt: existingPayMongoMerchantId
+        ? existing?.paymongoOnboardedAt || new Date()
+        : null,
       kycDocumentUrl: candidateGovernmentIdUrl,
       kycNotes: this.normalizeText(data.kycNotes),
       rejectionReason: null,
@@ -429,6 +501,14 @@ export class VendorsService {
   }
 
   async update(id: string, data: Partial<Vendor>) {
+    const hasPayMongoMerchantIdField = Object.prototype.hasOwnProperty.call(
+      data,
+      'paymongoMerchantId',
+    );
+    const normalizedPayMongoMerchantId = hasPayMongoMerchantIdField
+      ? this.normalizeText(data.paymongoMerchantId)
+      : undefined;
+
     const payload: Partial<Vendor> = {
       ...data,
       vendorType: this.normalizeVendorType(data.vendorType),
@@ -444,6 +524,15 @@ export class VendorsService {
       phone: this.normalizePhone(data.phone),
       socialMediaLink: this.normalizeText(data.socialMediaLink),
     };
+
+    if (hasPayMongoMerchantIdField) {
+      payload.paymongoMerchantId = normalizedPayMongoMerchantId;
+      payload.paymongoOnboardingStatus = normalizedPayMongoMerchantId
+        ? VendorPayMongoOnboardingStatus.PROVISIONED
+        : VendorPayMongoOnboardingStatus.NOT_STARTED;
+      payload.paymongoOnboardingError = null;
+      payload.paymongoOnboardedAt = normalizedPayMongoMerchantId ? new Date() : null;
+    }
 
     await this.vendorsRepo.update(id, payload);
     return this.findById(id, true);
@@ -522,8 +611,25 @@ export class VendorsService {
       await this.validateVendorForApproval(vendor);
 
       const approvedStatus = this.mapVendorTypeToVerifiedStatus(vendor.vendorType);
+      const provisionedMerchantId = await this.ensureVendorPayMongoMerchantOnApproval(
+        vendor,
+      );
+      const resolvedMerchantId =
+        provisionedMerchantId || this.normalizeText(vendor.paymongoMerchantId);
+      const onboardingCompletedAt = resolvedMerchantId
+        ? vendor.paymongoOnboardedAt || new Date()
+        : null;
 
       await this.vendorsRepo.update(id, {
+        paymongoMerchantId: resolvedMerchantId,
+        paymongoOnboardingStatus: resolvedMerchantId
+          ? VendorPayMongoOnboardingStatus.PROVISIONED
+          : vendor.paymongoOnboardingStatus ||
+            VendorPayMongoOnboardingStatus.NOT_STARTED,
+        paymongoOnboardingError: resolvedMerchantId
+          ? null
+          : vendor.paymongoOnboardingError || null,
+        paymongoOnboardedAt: onboardingCompletedAt,
         registrationStatus: VendorRegistrationStatus.APPROVED,
         kycStatus: VendorKycStatus.APPROVED,
         verificationStatus: approvedStatus,
@@ -1155,7 +1261,25 @@ export class VendorsService {
 
     if (isVerified) {
       const status = this.mapVendorTypeToVerifiedStatus(vendor.vendorType);
+      const provisionedMerchantId = await this.ensureVendorPayMongoMerchantOnApproval(
+        vendor,
+      );
+      const resolvedMerchantId =
+        provisionedMerchantId || this.normalizeText(vendor.paymongoMerchantId);
+      const onboardingCompletedAt = resolvedMerchantId
+        ? vendor.paymongoOnboardedAt || new Date()
+        : null;
+
       await this.vendorsRepo.update(id, {
+        paymongoMerchantId: resolvedMerchantId,
+        paymongoOnboardingStatus: resolvedMerchantId
+          ? VendorPayMongoOnboardingStatus.PROVISIONED
+          : vendor.paymongoOnboardingStatus ||
+            VendorPayMongoOnboardingStatus.NOT_STARTED,
+        paymongoOnboardingError: resolvedMerchantId
+          ? null
+          : vendor.paymongoOnboardingError || null,
+        paymongoOnboardedAt: onboardingCompletedAt,
         isVerified: true,
         isActive: true,
         verificationStatus: status,
@@ -1514,6 +1638,189 @@ export class VendorsService {
     return null;
   }
 
+  private parseBooleanFlag(input: unknown) {
+    const normalized = String(input || '').trim().toLowerCase();
+    return ['1', 'true', 'yes', 'on'].includes(normalized);
+  }
+
+  private isPayMongoVendorOnboardingEnabled() {
+    return this.parseBooleanFlag(process.env.PAYMONGO_VENDOR_ONBOARDING_ENABLED);
+  }
+
+  private getPayMongoApiBaseUrl() {
+    const baseApi = this.normalizeText(process.env.PAYMONGO_API_BASE_URL);
+    return (baseApi || 'https://api.paymongo.com/v1').replace(/\/$/, '');
+  }
+
+  private getPayMongoVendorOnboardingUrl() {
+    const explicitUrl = this.normalizeText(process.env.PAYMONGO_VENDOR_ONBOARDING_URL);
+    if (explicitUrl) {
+      return explicitUrl;
+    }
+    return `${this.getPayMongoApiBaseUrl()}/organizations`;
+  }
+
+  private async ensureVendorPayMongoMerchantOnApproval(vendor: Vendor) {
+    const existingMerchantId = this.normalizeText(vendor.paymongoMerchantId);
+    if (existingMerchantId) {
+      if (vendor.paymongoOnboardingStatus !== VendorPayMongoOnboardingStatus.PROVISIONED) {
+        await this.vendorsRepo.update(vendor.id, {
+          paymongoOnboardingStatus: VendorPayMongoOnboardingStatus.PROVISIONED,
+          paymongoOnboardingError: null,
+          paymongoOnboardedAt: vendor.paymongoOnboardedAt || new Date(),
+        });
+      }
+      return existingMerchantId;
+    }
+
+    if (!this.isPayMongoVendorOnboardingEnabled()) {
+      return null;
+    }
+
+    await this.vendorsRepo.update(vendor.id, {
+      paymongoOnboardingStatus: VendorPayMongoOnboardingStatus.PROCESSING,
+      paymongoOnboardingError: null,
+    });
+
+    try {
+      const merchantId = await this.provisionPayMongoMerchantId(vendor);
+      await this.vendorsRepo.update(vendor.id, {
+        paymongoMerchantId: merchantId,
+        paymongoOnboardingStatus: VendorPayMongoOnboardingStatus.PROVISIONED,
+        paymongoOnboardingError: null,
+        paymongoOnboardedAt: new Date(),
+      });
+      this.logger.log(
+        `Auto-provisioned PayMongo merchant ${merchantId} for vendor ${vendor.id}`,
+      );
+      return merchantId;
+    } catch (error) {
+      const message =
+        this.normalizeText(error instanceof Error ? error.message : String(error)) ||
+        'Unable to auto-provision PayMongo merchant ID';
+
+      await this.vendorsRepo.update(vendor.id, {
+        paymongoOnboardingStatus: VendorPayMongoOnboardingStatus.FAILED,
+        paymongoOnboardingError: message,
+      });
+
+      throw new BadRequestException(message);
+    }
+  }
+
+  private async provisionPayMongoMerchantId(vendor: Vendor) {
+    const secretKey = this.normalizeText(process.env.PAYMONGO_SECRET_KEY);
+    if (!secretKey) {
+      throw new Error(
+        'PAYMONGO_SECRET_KEY is not configured for automatic merchant onboarding',
+      );
+    }
+
+    const onboardingUrl = this.getPayMongoVendorOnboardingUrl();
+    const response = await fetch(onboardingUrl, {
+      method: 'POST',
+      headers: {
+        Authorization: `Basic ${Buffer.from(`${secretKey}:`).toString('base64')}`,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify(this.buildPayMongoVendorOnboardingPayload(vendor)),
+    });
+
+    const responsePayload = await this.parseJsonBody(response);
+    if (!response.ok) {
+      throw new Error(this.extractPayMongoOnboardingErrorMessage(responsePayload));
+    }
+
+    const merchantId = this.extractPayMongoMerchantId(responsePayload);
+    if (!merchantId) {
+      throw new Error('Merchant onboarding succeeded but no merchant ID was returned');
+    }
+
+    return merchantId;
+  }
+
+  private buildPayMongoVendorOnboardingPayload(vendor: Vendor): JsonRecord {
+    return {
+      data: {
+        attributes: {
+          external_reference: vendor.id,
+          business_name: this.normalizeText(vendor.businessName) || vendor.id,
+          business_registration_type: this.normalizeText(
+            vendor.businessRegistrationType,
+          ),
+          business_registration_number: this.normalizeText(
+            vendor.businessRegistrationNumber,
+          ),
+          owner_name: this.normalizeText(vendor.ownerFullName),
+          email: this.normalizeText(vendor.user?.email),
+          phone: this.normalizeText(vendor.phone),
+          address: this.normalizeText(vendor.address),
+          metadata: {
+            vendor_id: vendor.id,
+            vendor_type: this.normalizeText(vendor.vendorType),
+          },
+        },
+      },
+    };
+  }
+
+  private async parseJsonBody(response: { text: () => Promise<string> }) {
+    const raw = await response.text();
+    if (!raw) {
+      return {};
+    }
+
+    try {
+      return JSON.parse(raw) as JsonRecord;
+    } catch {
+      return {
+        message: raw,
+      };
+    }
+  }
+
+  private extractPayMongoMerchantId(payload: JsonRecord) {
+    const candidates = [
+      payload?.data?.attributes?.merchant_id,
+      payload?.data?.attributes?.merchantId,
+      payload?.data?.attributes?.organization_id,
+      payload?.data?.attributes?.organizationId,
+      payload?.data?.id,
+      payload?.merchant_id,
+      payload?.merchantId,
+      payload?.organization_id,
+      payload?.organizationId,
+    ];
+
+    for (const candidate of candidates) {
+      const normalized = this.normalizeText(candidate);
+      if (normalized) {
+        return normalized;
+      }
+    }
+
+    return null;
+  }
+
+  private extractPayMongoOnboardingErrorMessage(payload: JsonRecord) {
+    const firstError = payload?.errors?.[0];
+    const detail = this.normalizeText(
+      firstError?.detail || firstError?.message || firstError?.code,
+    );
+    if (detail) {
+      return detail;
+    }
+
+    const fallback = this.normalizeText(
+      payload?.message || payload?.error || payload?.detail,
+    );
+    if (fallback) {
+      return fallback;
+    }
+
+    return 'Unable to auto-provision PayMongo merchant ID';
+  }
+
   private withVerificationBadge(vendor: Vendor | null) {
     if (!vendor) return null;
 
@@ -1673,7 +1980,8 @@ export class VendorsService {
   }
 
   private async validateVendorForApproval(vendor: Vendor) {
-    if (!vendor.phoneOtpVerifiedAt) {
+    const kycSettings = await this.settingsService.getKycSettings();
+    if (kycSettings.requireOtpBeforeVendorRegistration && !vendor.phoneOtpVerifiedAt) {
       throw new BadRequestException('Vendor email OTP must be verified before approval');
     }
 

@@ -67,6 +67,20 @@ Key variables:
 - `STAFF_FRONTEND_URL` – admin/vendor app URL (e.g. `http://staff.yourdomain.com`)
 - `GOOGLE_CALLBACK_URL` – e.g. `http://yourdomain.com/auth/google/callback`
 
+Split-payment variables (PayMongo):
+- `PAYMONGO_ENABLED` – set `true` to require checkout session creation for new bookings.
+- `PAYMONGO_SECRET_KEY` – PayMongo secret key used by API requests.
+- `PAYMONGO_API_BASE_URL` – defaults to `https://api.paymongo.com/v1`.
+- `PAYMONGO_PLATFORM_MERCHANT_ID` – parent/platform merchant org ID for split recipients.
+- `PAYMONGO_DELIVERY_MERCHANT_ID` – optional merchant org ID that receives fixed delivery split.
+- `PAYMONGO_VENDOR_ONBOARDING_ENABLED` – set `true` to auto-provision vendor merchant IDs during admin approval.
+- `PAYMONGO_VENDOR_ONBOARDING_URL` – optional override URL for merchant onboarding API; defaults to `${PAYMONGO_API_BASE_URL}/organizations`.
+- `PAYMONGO_PAYMENT_METHOD_TYPES` – comma-separated methods for checkout session (default `gcash`).
+- `PAYMONGO_SUCCESS_URL` / `PAYMONGO_CANCEL_URL` – customer redirect URLs after checkout.
+- `PAYMONGO_SPLIT_FEE_BUFFER_BPS` – safety buffer (bps) for fixed splits against net amount (default `300`).
+
+If automatic onboarding is enabled and merchant provisioning fails, vendor approval is rejected so payouts cannot proceed with missing merchant IDs.
+
 ## Development
 
 ```bash

@@ -1,10 +1,25 @@
 import api from './axios';
 import type { Vendor } from '../types';
 
+export type CreateVendorPayload = Partial<Vendor> & {
+  userEmail?: string;
+};
+
+export interface VendorRegistrationPayload extends Partial<Vendor> {
+  deviceFingerprint?: string;
+  governmentIdFile?: File | null;
+  selfieFile?: File | null;
+  mayorsPermitFile?: File | null;
+  barangayPermitFile?: File | null;
+  logoFile?: File | null;
+}
+
 export interface NearbyVendorFilters {
   radius?: number;
   itemTypeIds?: string[];
   helpersNeeded?: number;
+  startDate?: string;
+  endDate?: string;
 }
 
 export const getNearbyVendors = (
@@ -18,6 +33,8 @@ export const getNearbyVendors = (
     radius: filters.radius ?? 50,
     itemTypeIds: filters.itemTypeIds?.join(',') || undefined,
     helpersNeeded: filters.helpersNeeded ?? 0,
+    startDate: filters.startDate || undefined,
+    endDate: filters.endDate || undefined,
   };
   return api.get<Vendor[]>('/vendors/nearby', { params }).then(r => r.data);
 };
@@ -43,11 +60,73 @@ export const warnVendor = (id: string) =>
 export const setVendorActive = (id: string, isActive: boolean) =>
   api.patch(`/vendors/${id}/active`, { isActive }).then(r => r.data);
 
-export const createVendor = (data: Partial<Vendor>) =>
+export const createVendor = (data: CreateVendorPayload) =>
   api.post<Vendor>('/vendors', data).then(r => r.data);
 
-export const submitVendorRegistration = (data: Partial<Vendor>) =>
-  api.post<Vendor>('/vendors/register', data).then(r => r.data);
+export const submitVendorRegistration = (data: VendorRegistrationPayload) => {
+  const formData = new FormData();
+
+  const fileFields: Array<[keyof VendorRegistrationPayload, File | null | undefined]> = [
+    ['governmentIdFile', data.governmentIdFile],
+    ['selfieFile', data.selfieFile],
+    ['mayorsPermitFile', data.mayorsPermitFile],
+    ['barangayPermitFile', data.barangayPermitFile],
+    ['logoFile', data.logoFile],
+  ];
+
+  for (const [field, file] of fileFields) {
+    if (file) {
+      formData.append(field, file);
+    }
+  }
+
+  for (const [key, value] of Object.entries(data)) {
+    if (
+      value === undefined ||
+      value === null ||
+      key.endsWith('File')
+    ) {
+      continue;
+    }
+    formData.append(key, String(value));
+  }
+
+  return api
+    .post<Vendor>('/vendors/register', formData, {
+      headers: { 'Content-Type': 'multipart/form-data' },
+    })
+    .then((r) => r.data);
+};
+
+export const requestVendorEmailOtp = (email: string, deviceFingerprint?: string) =>
+  api.post('/vendors/otp/request', { email, deviceFingerprint }).then((r) => r.data);
+
+export const verifyVendorEmailOtp = (email: string, code: string) =>
+  api.post('/vendors/otp/verify', { email, code }).then((r) => r.data);
+
+// Backward-compatible aliases for older call sites.
+export const requestVendorPhoneOtp = requestVendorEmailOtp;
+export const verifyVendorPhoneOtp = verifyVendorEmailOtp;
+
+export const getMyVendorKycSubmission = () =>
+  api.get<Vendor>('/vendors/my/kyc').then((r) => r.data);
+
+export const uploadMyVendorDocument = (
+  documentType: string,
+  file: File,
+  metadata?: Record<string, unknown>,
+) => {
+  const formData = new FormData();
+  formData.append('documentType', documentType);
+  formData.append('file', file);
+  if (metadata) formData.append('metadata', JSON.stringify(metadata));
+
+  return api
+    .post('/vendors/my/documents', formData, {
+      headers: { 'Content-Type': 'multipart/form-data' },
+    })
+    .then((r) => r.data);
+};
 
 export const getVendorRequests = (status = 'pending') =>
   api.get<Vendor[]>('/vendors/requests', { params: { status } }).then(r => r.data);

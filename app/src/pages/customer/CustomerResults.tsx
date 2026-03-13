@@ -158,8 +158,20 @@ export default function CustomerResults() {
     const getVendorShopUrl = (slug: string) => {
         const url = `/shop/${slug}`;
         const params = new URLSearchParams();
-        if (startDate) params.append('startDate', startDate);
-        if (endDate) params.append('endDate', endDate);
+        [
+            'lat',
+            'lng',
+            'radius',
+            'helpersNeeded',
+            'address',
+            'startDate',
+            'endDate',
+            'itemTypeIds',
+            'eventTag',
+        ].forEach((key) => {
+            const value = searchParams.get(key);
+            if (value) params.set(key, value);
+        });
         return params.toString() ? `${url}?${params}` : url;
     };
 
@@ -386,7 +398,7 @@ export default function CustomerResults() {
                                     <button
                                         type="button"
                                         className="rounded-lg bg-blue-600 px-2.5 py-1 text-xs font-semibold text-white hover:bg-blue-700"
-                                        onClick={() => navigate(`/shop/${vendor.slug}`)}
+                                        onClick={() => navigate(getVendorShopUrl(vendor.slug))}
                                     >
                                         {t('customerResults.cardView')}
                                     </button>

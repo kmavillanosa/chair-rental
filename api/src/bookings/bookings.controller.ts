@@ -52,8 +52,37 @@ export class BookingsController {
 
   @UseGuards(JwtAuthGuard)
   @ApiBearerAuth()
+  @Post(':id/payment/checkout')
+  createPaymentCheckout(@Request() req, @Param('id') id: string) {
+    return this.service.createOrRefreshCheckout(id, req.user.id);
+  }
+
+  @UseGuards(JwtAuthGuard)
+  @ApiBearerAuth()
+  @Post(':id/payment/verify')
+  verifyPayment(
+    @Request() req,
+    @Param('id') id: string,
+    @Body('checkoutSessionId') checkoutSessionId?: string,
+  ) {
+    return this.service.verifyPayMongoCheckout(id, req.user.id, checkoutSessionId);
+  }
+
+  @UseGuards(JwtAuthGuard)
+  @ApiBearerAuth()
+  @Get(':id/cancellation-preview')
+  getCancellationPreview(@Request() req, @Param('id') id: string) {
+    return this.service.getCancellationPreview(id, req.user.id, req.user.role);
+  }
+
+  @UseGuards(JwtAuthGuard)
+  @ApiBearerAuth()
   @Patch(':id/status')
-  updateStatus(@Param('id') id: string, @Body('status') status: BookingStatus) {
-    return this.service.updateStatus(id, status);
+  updateStatus(
+    @Request() req,
+    @Param('id') id: string,
+    @Body('status') status: BookingStatus,
+  ) {
+    return this.service.updateStatus(id, status, req.user.id, req.user.role);
   }
 }

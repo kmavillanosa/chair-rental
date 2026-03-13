@@ -9,6 +9,11 @@ export type VendorVerificationStatus =
   | 'verified_business'
   | 'verified_owner'
   | 'rejected';
+export type VendorPayMongoOnboardingStatus =
+  | 'not_started'
+  | 'processing'
+  | 'provisioned'
+  | 'failed';
 
 export interface VendorDocument {
   id: string;
@@ -76,6 +81,10 @@ export interface Vendor {
   phoneOtpVerifiedAt?: string;
   socialMediaLink?: string;
   logoUrl?: string;
+  paymongoMerchantId?: string;
+  paymongoOnboardingStatus?: VendorPayMongoOnboardingStatus;
+  paymongoOnboardingError?: string;
+  paymongoOnboardedAt?: string;
   registrationStatus?: VendorRegistrationStatus;
   kycStatus?: VendorKycStatus;
   verificationStatus?: VendorVerificationStatus;
@@ -107,6 +116,13 @@ export interface Vendor {
   estimatedDistanceTierKm?: number | null;
   createdAt: string;
 }
+
+export type BookingPaymentStatus =
+  | 'unpaid'
+  | 'checkout_pending'
+  | 'paid'
+  | 'failed'
+  | 'refunded';
 
 export interface ItemType {
   id: string;
@@ -168,9 +184,27 @@ export interface Booking {
   status: BookingStatus;
   totalAmount: number;
   deliveryAddress?: string;
+  deliveryLatitude?: number;
+  deliveryLongitude?: number;
   deliveryCharge: number;
   serviceCharge: number;
   platformFee: number;
+  paymentStatus: BookingPaymentStatus;
+  paymentProvider?: string;
+  paymentReference?: string;
+  paymentCheckoutSessionId?: string;
+  paymentCheckoutUrl?: string;
+  paymentPaidAt?: string;
+  cancelledAt?: string;
+  cancellationRequestedByUserId?: string;
+  cancellationRequestedByRole?: UserRole;
+  cancellationPolicyCode?:
+    | 'full_refund_3_days'
+    | 'half_refund_24_hours'
+    | 'same_day_no_refund'
+    | 'vendor_or_admin_full_refund';
+  cancellationRefundPercent?: number;
+  cancellationRefundAmount?: number;
   notes?: string;
   items?: BookingItem[];
   createdAt: string;
@@ -197,11 +231,4 @@ export interface DeliveryRate {
   distanceKm: number;
   chargeAmount: number;
   helpersCount: number;
-}
-
-export interface AdminStats {
-  totalVendors: number;
-  activeVendors: number;
-  totalBookings: number;
-  pendingPayments: number;
 }

@@ -10,6 +10,7 @@ import {
     submitVendorRegistration,
     verifyVendorEmailOtp,
 } from '../../api/vendors';
+import { getKycSettings, type KycSettings } from '../../api/settings';
 import { useAuthStore } from '../../store/authStore';
 import type {
     BusinessRegistrationType,
@@ -114,6 +115,11 @@ const INITIAL_ATTACHMENTS: AttachmentState = {
     logoFile: null,
 };
 
+const DEFAULT_KYC_SETTINGS: KycSettings = {
+    vendorRegistrationEnabled: true,
+    requireOtpBeforeVendorRegistration: true,
+};
+
 export default function BecomeVendor() {
     const { t } = useTranslation();
     const navigate = useNavigate();
@@ -128,6 +134,8 @@ export default function BecomeVendor() {
     const [otpCode, setOtpCode] = useState('');
     const [otpRequested, setOtpRequested] = useState(false);
     const [otpVerified, setOtpVerified] = useState(false);
+    const [settingsLoading, setSettingsLoading] = useState(true);
+    const [kycSettings, setKycSettings] = useState<KycSettings>(DEFAULT_KYC_SETTINGS);
     const [registration, setRegistration] = useState<Vendor | null>(null);
 
     const deviceFingerprint = useMemo(() => {
@@ -140,6 +148,34 @@ export default function BecomeVendor() {
             navigator.platform,
             timezone,
         ].join('|');
+    }, []);
+
+    useEffect(() => {
+        let active = true;
+
+        getKycSettings()
+            .then((response) => {
+                if (!active) return;
+
+                setKycSettings(response);
+                if (!response.requireOtpBeforeVendorRegistration) {
+                    setOtpRequested(true);
+                    setOtpVerified(true);
+                }
+            })
+            .catch(() => {
+                if (!active) return;
+                setKycSettings(DEFAULT_KYC_SETTINGS);
+            })
+            .finally(() => {
+                if (active) {
+                    setSettingsLoading(false);
+                }
+            });
+
+        return () => {
+            active = false;
+        };
     }, []);
 
     const handleFileChange =
@@ -242,12 +278,17 @@ export default function BecomeVendor() {
     const handleSubmit = async (event: FormEvent) => {
         event.preventDefault();
 
+        if (!kycSettings.vendorRegistrationEnabled) {
+            toast.error('Vendor registration is currently disabled by platform admin.');
+            return;
+        }
+
         if (user?.role !== 'customer') {
             toast.error(t('becomeVendorPage.onlyCustomerAllowed'));
             return;
         }
 
-        if (!otpVerified) {
+        if (kycSettings.requireOtpBeforeVendorRegistration && !otpVerified) {
             toast.error('Email OTP must be verified before submission.');
             return;
         }
@@ -345,6 +386,33 @@ export default function BecomeVendor() {
                         {t('becomeVendorPage.roleAlready', { role: user.role })}
                     </p>
                     <Button className="mt-6" onClick={() => navigate('/')}>{t('becomeVendorPage.backToHome')}</Button>
+                </div>
+            </CustomerLayout>
+        );
+    }
+
+    if (settingsLoading) {
+        return (
+            <CustomerLayout>
+                <div className="max-w-3xl mx-auto px-4 py-10">
+                    <h1 className="text-3xl font-bold text-gray-900">{t('becomeVendorPage.title')}</h1>
+                    <p className="text-gray-600 mt-3">Loading registration settings...</p>
+                </div>
+            </CustomerLayout>
+        );
+    }
+
+    if (!kycSettings.vendorRegistrationEnabled) {
+        return (
+            <CustomerLayout>
+                <div className="max-w-3xl mx-auto px-4 py-10">
+                    <h1 className="text-3xl font-bold text-gray-900">{t('becomeVendorPage.title')}</h1>
+                    <p className="text-gray-600 mt-3">
+                        Vendor registration is temporarily disabled by platform admin.
+                    </p>
+                    <Button className="mt-6" onClick={() => navigate('/')}>
+                        {t('becomeVendorPage.backToHome')}
+                    </Button>
                 </div>
             </CustomerLayout>
         );
@@ -550,49 +618,57 @@ export default function BecomeVendor() {
                         />
                     </div>
 
-                    <div>
-                        <Label value="Email Verification" />
-                        <p className="mt-1 text-sm text-gray-600">
-                            OTP will be sent to <span className="font-semibold text-gray-800">{user.email}</span>.
-                        </p>
-                        <Button
-                            type="button"
-                            color="light"
-                            className="mt-3"
-                            isProcessing={otpBusy}
-                            disabled={otpBusy || !user.email}
-                            onClick={handleRequestOtp}
-                        >
-                            Send Email OTP
-                        </Button>
-                    </div>
+                    {kycSettings.requireOtpBeforeVendorRegistration ? (
+                        <>
+                            <div>
+                                <Label value="Email Verification" />
+                                <p className="mt-1 text-sm text-gray-600">
+                                    OTP will be sent to <span className="font-semibold text-gray-800">{user.email}</span>.
+                                </p>
+                                <Button
+                                    type="button"
+                                    color="light"
+                                    className="mt-3"
+                                    isProcessing={otpBusy}
+                                    disabled={otpBusy || !user.email}
+                                    onClick={handleRequestOtp}
+                                >
+                                    Send Email OTP
+                                </Button>
+                            </div>
 
-                    <div>
-                        <Label htmlFor="otpCode" value="Email OTP Code" />
-                        <div className="flex flex-col sm:flex-row gap-2">
-                            <TextInput
-                                id="otpCode"
-                                value={otpCode}
-                                onChange={(e) => setOtpCode(e.target.value)}
-                                placeholder="6-digit OTP"
-                            />
-                            <Button
-                                type="button"
-                                color={otpVerified ? 'success' : 'light'}
-                                isProcessing={otpBusy}
-                                disabled={otpBusy || !otpCode.trim()}
-                                onClick={handleVerifyOtp}
-                            >
-                                {otpVerified ? 'Verified' : 'Verify OTP'}
-                            </Button>
+                            <div>
+                                <Label htmlFor="otpCode" value="Email OTP Code" />
+                                <div className="flex flex-col sm:flex-row gap-2">
+                                    <TextInput
+                                        id="otpCode"
+                                        value={otpCode}
+                                        onChange={(e) => setOtpCode(e.target.value)}
+                                        placeholder="6-digit OTP"
+                                    />
+                                    <Button
+                                        type="button"
+                                        color={otpVerified ? 'success' : 'light'}
+                                        isProcessing={otpBusy}
+                                        disabled={otpBusy || !otpCode.trim()}
+                                        onClick={handleVerifyOtp}
+                                    >
+                                        {otpVerified ? 'Verified' : 'Verify OTP'}
+                                    </Button>
+                                </div>
+                                {!otpRequested && (
+                                    <p className="text-xs text-gray-500 mt-1">Request email OTP before verification.</p>
+                                )}
+                                {otpVerified && (
+                                    <p className="text-xs text-green-700 mt-1">Email is OTP verified.</p>
+                                )}
+                            </div>
+                        </>
+                    ) : (
+                        <div className="rounded-xl border border-emerald-200 bg-emerald-50 p-4 text-sm text-emerald-800">
+                            Email OTP verification is currently optional. You can submit registration directly.
                         </div>
-                        {!otpRequested && (
-                            <p className="text-xs text-gray-500 mt-1">Request email OTP before verification.</p>
-                        )}
-                        {otpVerified && (
-                            <p className="text-xs text-green-700 mt-1">Email is OTP verified.</p>
-                        )}
-                    </div>
+                    )}
 
                     <div>
                         <Label htmlFor="governmentIdFile" value="Government ID Upload" />
@@ -681,7 +757,14 @@ export default function BecomeVendor() {
                     </div>
 
                     <div className="pt-2 flex flex-wrap gap-3">
-                        <Button type="submit" isProcessing={saving} disabled={saving || !otpVerified}>
+                        <Button
+                            type="submit"
+                            isProcessing={saving}
+                            disabled={
+                                saving ||
+                                (kycSettings.requireOtpBeforeVendorRegistration && !otpVerified)
+                            }
+                        >
                             {t('becomeVendorPage.submitForReview')}
                         </Button>
                         <Button color="light" type="button" onClick={() => navigate('/')}>

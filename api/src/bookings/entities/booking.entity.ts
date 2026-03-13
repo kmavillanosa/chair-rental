@@ -3,7 +3,7 @@ import {
   ManyToOne, JoinColumn, OneToMany,
 } from 'typeorm';
 import { v4 as uuidv4 } from 'uuid';
-import { User } from '../../users/entities/user.entity';
+import { User, UserRole } from '../../users/entities/user.entity';
 import { Vendor } from '../../vendors/entities/vendor.entity';
 import { BookingItem } from './booking-item.entity';
 
@@ -12,6 +12,14 @@ export enum BookingStatus {
   CONFIRMED = 'confirmed',
   CANCELLED = 'cancelled',
   COMPLETED = 'completed',
+}
+
+export enum BookingPaymentStatus {
+  UNPAID = 'unpaid',
+  CHECKOUT_PENDING = 'checkout_pending',
+  PAID = 'paid',
+  FAILED = 'failed',
+  REFUNDED = 'refunded',
 }
 
 @Entity('bookings')
@@ -65,6 +73,46 @@ export class Booking {
 
   @Column({ type: 'text', nullable: true })
   notes: string;
+
+  @Column({
+    type: 'enum',
+    enum: BookingPaymentStatus,
+    default: BookingPaymentStatus.UNPAID,
+  })
+  paymentStatus: BookingPaymentStatus;
+
+  @Column({ nullable: true })
+  paymentProvider: string;
+
+  @Column({ nullable: true })
+  paymentReference: string;
+
+  @Column({ nullable: true })
+  paymentCheckoutSessionId: string;
+
+  @Column({ type: 'text', nullable: true })
+  paymentCheckoutUrl: string;
+
+  @Column({ type: 'datetime', nullable: true })
+  paymentPaidAt: Date;
+
+  @Column({ type: 'datetime', nullable: true })
+  cancelledAt: Date;
+
+  @Column({ type: 'varchar', length: 36, nullable: true })
+  cancellationRequestedByUserId: string;
+
+  @Column({ type: 'enum', enum: UserRole, nullable: true })
+  cancellationRequestedByRole: UserRole;
+
+  @Column({ type: 'varchar', length: 80, nullable: true })
+  cancellationPolicyCode: string;
+
+  @Column({ type: 'decimal', precision: 5, scale: 2, nullable: true })
+  cancellationRefundPercent: number;
+
+  @Column({ type: 'decimal', precision: 12, scale: 2, nullable: true })
+  cancellationRefundAmount: number;
 
   @OneToMany(() => BookingItem, (item) => item.booking, { cascade: true })
   items: BookingItem[];

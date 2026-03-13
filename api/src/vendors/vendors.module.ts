@@ -13,6 +13,7 @@ import { DeliveryRate } from '../payments/entities/delivery-rate.entity';
 import { UsersModule } from '../users/users.module';
 import { Booking } from '../bookings/entities/booking.entity';
 import { EmailService } from '../common/email.service';
+import { SettingsModule } from '../settings/settings.module';
 
 @Module({
   imports: [
@@ -28,6 +29,7 @@ import { EmailService } from '../common/email.service';
       Booking,
     ]),
     UsersModule,
+    SettingsModule,
   ],
   providers: [VendorsService, EmailService],
   controllers: [VendorsController],

@@ -1,6 +1,10 @@
 import api from './axios';
 import type { Vendor } from '../types';
 
+export type CreateVendorPayload = Partial<Vendor> & {
+  userEmail?: string;
+};
+
 export interface VendorRegistrationPayload extends Partial<Vendor> {
   deviceFingerprint?: string;
   governmentIdFile?: File | null;
@@ -56,7 +60,7 @@ export const warnVendor = (id: string) =>
 export const setVendorActive = (id: string, isActive: boolean) =>
   api.patch(`/vendors/${id}/active`, { isActive }).then(r => r.data);
 
-export const createVendor = (data: Partial<Vendor>) =>
+export const createVendor = (data: CreateVendorPayload) =>
   api.post<Vendor>('/vendors', data).then(r => r.data);
 
 export const submitVendorRegistration = (data: VendorRegistrationPayload) => {

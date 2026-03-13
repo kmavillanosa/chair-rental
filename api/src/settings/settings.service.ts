@@ -1,0 +1,280 @@
+import { Injectable } from '@nestjs/common';
+import { InjectRepository } from '@nestjs/typeorm';
+import { In, Repository } from 'typeorm';
+import { PlatformSetting } from './entities/platform-setting.entity';
+import { UpdateKycSettingsDto } from './dto/update-kyc-settings.dto';
+import { UpdateFeatureFlagsSettingsDto } from './dto/update-feature-flags-settings.dto';
+
+export type KycSettingsResponse = {
+  vendorRegistrationEnabled: boolean;
+  requireOtpBeforeVendorRegistration: boolean;
+};
+
+export type FeatureFlagsSettingsResponse = {
+  defaultPlatformCommissionRatePercent: number;
+  launchNoCommissionEnabled: boolean;
+  launchNoCommissionUntil: string | null;
+  cancellationFullRefundMinDays: number;
+  cancellationHalfRefundMinDays: number;
+  cancellationHalfRefundPercent: number;
+};
+
+const KYC_VENDOR_REGISTRATION_ENABLED_KEY =
+  'kyc.vendorRegistrationEnabled';
+const KYC_REQUIRE_OTP_KEY = 'kyc.requireOtpBeforeVendorRegistration';
+const FLAGS_DEFAULT_PLATFORM_COMMISSION_RATE_PERCENT_KEY =
+  'flags.defaultPlatformCommissionRatePercent';
+const FLAGS_LAUNCH_NO_COMMISSION_ENABLED_KEY =
+  'flags.launchNoCommissionEnabled';
+const FLAGS_LAUNCH_NO_COMMISSION_UNTIL_KEY = 'flags.launchNoCommissionUntil';
+const FLAGS_CANCELLATION_FULL_REFUND_MIN_DAYS_KEY =
+  'flags.cancellationFullRefundMinDays';
+const FLAGS_CANCELLATION_HALF_REFUND_MIN_DAYS_KEY =
+  'flags.cancellationHalfRefundMinDays';
+const FLAGS_CANCELLATION_HALF_REFUND_PERCENT_KEY =
+  'flags.cancellationHalfRefundPercent';
+
+@Injectable()
+export class SettingsService {
+  constructor(
+    @InjectRepository(PlatformSetting)
+    private readonly settingsRepo: Repository<PlatformSetting>,
+  ) {}
+
+  async getKycSettings(): Promise<KycSettingsResponse> {
+    const settingsMap = await this.findManyAsMap([
+      KYC_VENDOR_REGISTRATION_ENABLED_KEY,
+      KYC_REQUIRE_OTP_KEY,
+    ]);
+
+    return {
+      vendorRegistrationEnabled: this.parseBooleanSetting(
+        settingsMap.get(KYC_VENDOR_REGISTRATION_ENABLED_KEY),
+        true,
+      ),
+      requireOtpBeforeVendorRegistration: this.parseBooleanSetting(
+        settingsMap.get(KYC_REQUIRE_OTP_KEY),
+        true,
+      ),
+    };
+  }
+
+  async updateKycSettings(
+    payload: UpdateKycSettingsDto,
+  ): Promise<KycSettingsResponse> {
+    const current = await this.getKycSettings();
+
+    const next: KycSettingsResponse = {
+      vendorRegistrationEnabled:
+        payload.vendorRegistrationEnabled ?? current.vendorRegistrationEnabled,
+      requireOtpBeforeVendorRegistration:
+        payload.requireOtpBeforeVendorRegistration ??
+        current.requireOtpBeforeVendorRegistration,
+    };
+
+    await this.upsertSetting(
+      KYC_VENDOR_REGISTRATION_ENABLED_KEY,
+      String(next.vendorRegistrationEnabled),
+    );
+    await this.upsertSetting(
+      KYC_REQUIRE_OTP_KEY,
+      String(next.requireOtpBeforeVendorRegistration),
+    );
+
+    return next;
+  }
+
+  async getFeatureFlagsSettings(): Promise<FeatureFlagsSettingsResponse> {
+    const settingsMap = await this.findManyAsMap([
+      FLAGS_DEFAULT_PLATFORM_COMMISSION_RATE_PERCENT_KEY,
+      FLAGS_LAUNCH_NO_COMMISSION_ENABLED_KEY,
+      FLAGS_LAUNCH_NO_COMMISSION_UNTIL_KEY,
+      FLAGS_CANCELLATION_FULL_REFUND_MIN_DAYS_KEY,
+      FLAGS_CANCELLATION_HALF_REFUND_MIN_DAYS_KEY,
+      FLAGS_CANCELLATION_HALF_REFUND_PERCENT_KEY,
+    ]);
+
+    const fallbackPercent = this.getPlatformCommissionFallbackPercent();
+    const configuredPercent = this.parseNumberSetting(
+      settingsMap.get(FLAGS_DEFAULT_PLATFORM_COMMISSION_RATE_PERCENT_KEY),
+      fallbackPercent,
+    );
+
+    return {
+      defaultPlatformCommissionRatePercent:
+        this.clampCommissionPercent(configuredPercent),
+      launchNoCommissionEnabled: this.parseBooleanSetting(
+        settingsMap.get(FLAGS_LAUNCH_NO_COMMISSION_ENABLED_KEY),
+        false,
+      ),
+      launchNoCommissionUntil: this.parseDateSetting(
+        settingsMap.get(FLAGS_LAUNCH_NO_COMMISSION_UNTIL_KEY),
+      ),
+      cancellationFullRefundMinDays: this.clampPositiveInt(
+        this.parseNumberSetting(
+          settingsMap.get(FLAGS_CANCELLATION_FULL_REFUND_MIN_DAYS_KEY),
+          3,
+        ),
+        0,
+        365,
+      ),
+      cancellationHalfRefundMinDays: this.clampPositiveInt(
+        this.parseNumberSetting(
+          settingsMap.get(FLAGS_CANCELLATION_HALF_REFUND_MIN_DAYS_KEY),
+          1,
+        ),
+        0,
+        365,
+      ),
+      cancellationHalfRefundPercent: this.clampCommissionPercent(
+        this.parseNumberSetting(
+          settingsMap.get(FLAGS_CANCELLATION_HALF_REFUND_PERCENT_KEY),
+          50,
+        ),
+      ),
+    };
+  }
+
+  async updateFeatureFlagsSettings(
+    payload: UpdateFeatureFlagsSettingsDto,
+  ): Promise<FeatureFlagsSettingsResponse> {
+    const current = await this.getFeatureFlagsSettings();
+
+    const next: FeatureFlagsSettingsResponse = {
+      defaultPlatformCommissionRatePercent: this.clampCommissionPercent(
+        payload.defaultPlatformCommissionRatePercent ??
+          current.defaultPlatformCommissionRatePercent,
+      ),
+      launchNoCommissionEnabled:
+        payload.launchNoCommissionEnabled ?? current.launchNoCommissionEnabled,
+      launchNoCommissionUntil:
+        payload.launchNoCommissionUntil !== undefined
+          ? this.parseDateSetting(payload.launchNoCommissionUntil)
+          : current.launchNoCommissionUntil,
+      cancellationFullRefundMinDays: this.clampPositiveInt(
+        payload.cancellationFullRefundMinDays ??
+          current.cancellationFullRefundMinDays,
+        0,
+        365,
+      ),
+      cancellationHalfRefundMinDays: this.clampPositiveInt(
+        payload.cancellationHalfRefundMinDays ??
+          current.cancellationHalfRefundMinDays,
+        0,
+        365,
+      ),
+      cancellationHalfRefundPercent: this.clampCommissionPercent(
+        payload.cancellationHalfRefundPercent ??
+          current.cancellationHalfRefundPercent,
+      ),
+    };
+
+    await this.upsertSetting(
+      FLAGS_DEFAULT_PLATFORM_COMMISSION_RATE_PERCENT_KEY,
+      String(next.defaultPlatformCommissionRatePercent),
+    );
+    await this.upsertSetting(
+      FLAGS_LAUNCH_NO_COMMISSION_ENABLED_KEY,
+      String(next.launchNoCommissionEnabled),
+    );
+    await this.upsertSetting(
+      FLAGS_LAUNCH_NO_COMMISSION_UNTIL_KEY,
+      next.launchNoCommissionUntil || '',
+    );
+    await this.upsertSetting(
+      FLAGS_CANCELLATION_FULL_REFUND_MIN_DAYS_KEY,
+      String(next.cancellationFullRefundMinDays),
+    );
+    await this.upsertSetting(
+      FLAGS_CANCELLATION_HALF_REFUND_MIN_DAYS_KEY,
+      String(next.cancellationHalfRefundMinDays),
+    );
+    await this.upsertSetting(
+      FLAGS_CANCELLATION_HALF_REFUND_PERCENT_KEY,
+      String(next.cancellationHalfRefundPercent),
+    );
+
+    return next;
+  }
+
+  private async findManyAsMap(keys: string[]) {
+    const rows = await this.settingsRepo.find({
+      where: {
+        key: In(keys),
+      },
+    });
+
+    const map = new Map<string, string | null>();
+    for (const row of rows) {
+      map.set(row.key, row.value ?? null);
+    }
+
+    return map;
+  }
+
+  private parseBooleanSetting(value: string | null | undefined, fallback: boolean) {
+    const normalized = String(value || '').trim().toLowerCase();
+    if (['1', 'true', 'yes', 'on'].includes(normalized)) {
+      return true;
+    }
+    if (['0', 'false', 'no', 'off'].includes(normalized)) {
+      return false;
+    }
+    return fallback;
+  }
+
+  private parseNumberSetting(value: string | null | undefined, fallback: number) {
+    const parsed = Number(value);
+    if (!Number.isFinite(parsed)) return fallback;
+    return parsed;
+  }
+
+  private parseDateSetting(value: string | null | undefined) {
+    const normalized = String(value || '').trim();
+    if (!normalized) return null;
+    const timestamp = Date.parse(normalized);
+    if (Number.isNaN(timestamp)) return null;
+    return normalized;
+  }
+
+  private getPlatformCommissionFallbackPercent() {
+    const configured = Number(process.env.PLATFORM_COMMISSION_RATE);
+    if (!Number.isFinite(configured) || configured < 0) {
+      return 10;
+    }
+
+    if (configured <= 1) {
+      return configured * 100;
+    }
+
+    return configured;
+  }
+
+  private clampCommissionPercent(value: number) {
+    const parsed = Number(value);
+    if (!Number.isFinite(parsed) || parsed < 0) return 0;
+    if (parsed > 100) return 100;
+    return Math.round(parsed * 100) / 100;
+  }
+
+  private clampPositiveInt(value: number, min = 0, max = 365) {
+    const parsed = Math.round(Number(value));
+    if (!Number.isFinite(parsed)) return min;
+    return Math.min(Math.max(parsed, min), max);
+  }
+
+  private async upsertSetting(key: string, value: string) {
+    const existing = await this.settingsRepo.findOne({ where: { key } });
+    if (existing) {
+      existing.value = value;
+      return this.settingsRepo.save(existing);
+    }
+
+    return this.settingsRepo.save(
+      this.settingsRepo.create({
+        key,
+        value,
+      }),
+    );
+  }
+}

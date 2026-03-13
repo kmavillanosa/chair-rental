@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { Button, Table, Badge } from 'flowbite-react';
+import { Badge, Button, Modal, Select, Table, TextInput } from 'flowbite-react';
 import toast from 'react-hot-toast';
 import AdminLayout from '../../components/layout/AdminLayout';
 import { getAllVendors, verifyVendor, warnVendor, setVendorActive, createVendor } from '../../api/vendors';
@@ -11,6 +11,17 @@ export default function VendorsList() {
   const { t } = useTranslation();
   const [vendors, setVendors] = useState<Vendor[]>([]);
   const [loading, setLoading] = useState(true);
+  const [showCreateModal, setShowCreateModal] = useState(false);
+  const [submitting, setSubmitting] = useState(false);
+  const [form, setForm] = useState({
+    userEmail: '',
+    businessName: '',
+    ownerFullName: '',
+    address: '',
+    phone: '',
+    paymongoMerchantId: '',
+    vendorType: 'registered_business',
+  });
 
   const load = () => getAllVendors().then(setVendors).finally(() => setLoading(false));
   useEffect(() => { load(); }, []);
@@ -33,11 +44,54 @@ export default function VendorsList() {
     load();
   };
 
+  const handleCreate = async () => {
+    const payload = {
+      userEmail: form.userEmail.trim(),
+      businessName: form.businessName.trim(),
+      ownerFullName: form.ownerFullName.trim() || undefined,
+      address: form.address.trim(),
+      phone: form.phone.trim() || undefined,
+      paymongoMerchantId: form.paymongoMerchantId.trim() || undefined,
+      vendorType: form.vendorType as Vendor['vendorType'],
+      isVerified: true,
+      isActive: true,
+    };
+
+    if (!payload.userEmail || !payload.businessName || !payload.address) {
+      toast.error(t('vendorsList.toastCreateRequiredFields'));
+      return;
+    }
+
+    setSubmitting(true);
+    try {
+      await createVendor(payload);
+      toast.success(t('vendorsList.toastCreated'));
+      setShowCreateModal(false);
+      setForm({
+        userEmail: '',
+        businessName: '',
+        ownerFullName: '',
+        address: '',
+        phone: '',
+        paymongoMerchantId: '',
+        vendorType: 'registered_business',
+      });
+      load();
+    } catch (error: any) {
+      toast.error(error?.response?.data?.message || t('vendorsList.toastCreateFailed'));
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
   if (loading) return <AdminLayout><LoadingSpinner /></AdminLayout>;
 
   return (
     <AdminLayout>
-      <h1 className="text-4xl font-bold text-gray-900 mb-6">🏪 {t('vendorsList.title')}</h1>
+      <div className="mb-6 flex items-center justify-between gap-3">
+        <h1 className="text-4xl font-bold text-gray-900">🏪 {t('vendorsList.title')}</h1>
+        <Button size="xl" onClick={() => setShowCreateModal(true)}>+ {t('vendorsList.addVendor')}</Button>
+      </div>
       <div className="overflow-x-auto rounded-xl shadow">
         <Table striped>
           <Table.Head>
@@ -76,6 +130,63 @@ export default function VendorsList() {
           </Table.Body>
         </Table>
       </div>
+
+      <Modal show={showCreateModal} onClose={() => !submitting && setShowCreateModal(false)}>
+        <Modal.Header>{t('vendorsList.addVendor')}</Modal.Header>
+        <Modal.Body className="space-y-4">
+          <TextInput
+            placeholder={t('vendorsList.userEmailPlaceholder')}
+            value={form.userEmail}
+            onChange={(event) => setForm((current) => ({ ...current, userEmail: event.target.value }))}
+            sizing="lg"
+          />
+          <TextInput
+            placeholder={t('vendorsList.businessNamePlaceholder')}
+            value={form.businessName}
+            onChange={(event) => setForm((current) => ({ ...current, businessName: event.target.value }))}
+            sizing="lg"
+          />
+          <TextInput
+            placeholder={t('vendorsList.ownerNamePlaceholder')}
+            value={form.ownerFullName}
+            onChange={(event) => setForm((current) => ({ ...current, ownerFullName: event.target.value }))}
+            sizing="lg"
+          />
+          <TextInput
+            placeholder={t('vendorsList.addressPlaceholder')}
+            value={form.address}
+            onChange={(event) => setForm((current) => ({ ...current, address: event.target.value }))}
+            sizing="lg"
+          />
+          <TextInput
+            placeholder={t('vendorsList.phonePlaceholder')}
+            value={form.phone}
+            onChange={(event) => setForm((current) => ({ ...current, phone: event.target.value }))}
+            sizing="lg"
+          />
+          <TextInput
+            placeholder="PayMongo Merchant ID (optional)"
+            value={form.paymongoMerchantId}
+            onChange={(event) => setForm((current) => ({ ...current, paymongoMerchantId: event.target.value }))}
+            sizing="lg"
+          />
+          <Select
+            value={form.vendorType}
+            onChange={(event) => setForm((current) => ({ ...current, vendorType: event.target.value }))}
+          >
+            <option value="registered_business">{t('vendorsList.typeRegisteredBusiness')}</option>
+            <option value="individual_owner">{t('vendorsList.typeIndividualOwner')}</option>
+          </Select>
+        </Modal.Body>
+        <Modal.Footer>
+          <Button size="xl" onClick={handleCreate} disabled={submitting} isProcessing={submitting}>
+            {t('common.save')}
+          </Button>
+          <Button color="gray" size="xl" onClick={() => setShowCreateModal(false)} disabled={submitting}>
+            {t('common.cancel')}
+          </Button>
+        </Modal.Footer>
+      </Modal>
     </AdminLayout>
   );
 }

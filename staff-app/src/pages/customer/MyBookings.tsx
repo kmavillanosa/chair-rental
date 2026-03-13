@@ -45,6 +45,25 @@ export default function MyBookings() {
                   </div>
                   <BookingStatusBadge status={b.status} />
                 </div>
+                {Array.isArray(b.items) && b.items.length > 0 && (
+                  <div className="mb-4 rounded-xl border border-slate-200 bg-slate-50 p-3">
+                    <p className="text-sm font-semibold text-slate-700">Items Booked</p>
+                    <div className="mt-2 space-y-1">
+                      {b.items.map((item) => {
+                        const itemLabel =
+                          item.inventoryItem?.itemType?.name ||
+                          item.inventoryItem?.brand?.name ||
+                          'N/A';
+                        return (
+                          <div key={item.id} className="flex items-center justify-between text-sm text-slate-700">
+                            <span>{itemLabel} x {item.quantity}</span>
+                            <span>{formatCurrency(Number(item.subtotal || 0))}</span>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  </div>
+                )}
                 <div className="flex justify-between items-center">
                   <p className="text-2xl font-bold text-blue-600">{formatCurrency(b.totalAmount)}</p>
                   {b.status === 'pending' && (

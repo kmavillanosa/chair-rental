@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { Button, TextInput } from 'flowbite-react';
 import toast from 'react-hot-toast';
@@ -6,6 +6,7 @@ import CustomerLayout from '../../components/layout/CustomerLayout';
 import { getVendorBySlug } from '../../api/vendors';
 import { getInventory } from '../../api/items';
 import { createBooking } from '../../api/bookings';
+import { getFeatureFlagsSettings } from '../../api/settings';
 import type { Vendor, InventoryItem } from '../../types';
 import { formatCurrency, calcDays } from '../../utils/format';
 import LoadingSpinner from '../../components/common/LoadingSpinner';
@@ -15,6 +16,13 @@ const getTodayDateInputValue = () => {
   const now = new Date();
   const localTime = new Date(now.getTime() - now.getTimezoneOffset() * 60000);
   return localTime.toISOString().split('T')[0];
+};
+
+const isNoCommissionWindowActive = (until: string | null) => {
+  if (!until) return true;
+  const timestamp = Date.parse(until);
+  if (Number.isNaN(timestamp)) return true;
+  return Date.now() <= timestamp;
 };
 
 export default function BookingFlow() {
@@ -31,6 +39,9 @@ export default function BookingFlow() {
   const [endDate, setEndDate] = useState('');
   const [deliveryAddress, setDeliveryAddress] = useState('');
   const [notes, setNotes] = useState('');
+  const [platformCommissionRatePercent, setPlatformCommissionRatePercent] = useState(10);
+  const [launchNoCommissionEnabled, setLaunchNoCommissionEnabled] = useState(false);
+  const [launchNoCommissionUntil, setLaunchNoCommissionUntil] = useState<string | null>(null);
 
   const setItemQuantity = (itemId: string, nextQuantity: number, maxAvailable: number) => {
     const safeQuantity = Number.isFinite(nextQuantity)
@@ -49,10 +60,44 @@ export default function BookingFlow() {
     getVendorBySlug(slug).then(v => { setVendor(v); return getInventory(v.id); }).then(setInventory).finally(() => setLoading(false));
   }, [slug]);
 
+  useEffect(() => {
+    getFeatureFlagsSettings()
+      .then((settings) => {
+        const parsedPercent = Number(settings.defaultPlatformCommissionRatePercent);
+        if (Number.isFinite(parsedPercent)) {
+          setPlatformCommissionRatePercent(parsedPercent);
+        }
+        setLaunchNoCommissionEnabled(Boolean(settings.launchNoCommissionEnabled));
+        setLaunchNoCommissionUntil(settings.launchNoCommissionUntil);
+      })
+      .catch(() => {
+        // Keep defaults when feature flag settings are not reachable.
+      });
+  }, []);
+
   const days = startDate && endDate ? calcDays(startDate, endDate) : 1;
   const cartItems = inventory.filter(i => cart[i.id] > 0);
   const itemsTotal = cartItems.reduce((s, i) => s + Number(i.ratePerDay) * (cart[i.id] || 0) * days, 0);
-  const platformFee = itemsTotal * 0.1;
+  const effectiveCommissionRate = useMemo(() => {
+    const parsedPercent = Number(platformCommissionRatePercent);
+    const boundedPercent = Number.isFinite(parsedPercent)
+      ? Math.min(Math.max(parsedPercent, 0), 100)
+      : 10;
+
+    if (
+      launchNoCommissionEnabled &&
+      isNoCommissionWindowActive(launchNoCommissionUntil)
+    ) {
+      return 0;
+    }
+
+    return boundedPercent / 100;
+  }, [
+    platformCommissionRatePercent,
+    launchNoCommissionEnabled,
+    launchNoCommissionUntil,
+  ]);
+  const platformFee = itemsTotal * effectiveCommissionRate;
   const total = itemsTotal;
 
   const handleBook = async () => {

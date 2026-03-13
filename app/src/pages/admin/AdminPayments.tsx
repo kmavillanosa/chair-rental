@@ -1,9 +1,10 @@
 import { useEffect, useState } from 'react';
-import { Button, Table } from 'flowbite-react';
+import { Button, Modal, Select, Table, TextInput } from 'flowbite-react';
 import toast from 'react-hot-toast';
 import AdminLayout from '../../components/layout/AdminLayout';
-import { getAllPayments, markPaid, markOverdue } from '../../api/payments';
-import type { VendorPayment } from '../../types';
+import { createPayment, getAllPayments, markPaid, markOverdue } from '../../api/payments';
+import { getAllVendors } from '../../api/vendors';
+import type { Vendor, VendorPayment } from '../../types';
 import { PaymentStatusBadge } from '../../components/common/StatusBadge';
 import { formatCurrency, formatDate } from '../../utils/format';
 import LoadingSpinner from '../../components/common/LoadingSpinner';
@@ -12,15 +13,57 @@ import { useTranslation } from 'react-i18next';
 export default function AdminPayments() {
   const { t } = useTranslation();
   const [payments, setPayments] = useState<VendorPayment[]>([]);
+  const [vendors, setVendors] = useState<Vendor[]>([]);
   const [loading, setLoading] = useState(true);
-  const load = () => getAllPayments().then(setPayments).finally(() => setLoading(false));
+  const [showCreateModal, setShowCreateModal] = useState(false);
+  const [submitting, setSubmitting] = useState(false);
+  const [form, setForm] = useState({
+    vendorId: '',
+    amount: '',
+    dueDate: '',
+    period: '',
+  });
+
+  const load = () => Promise.all([
+    getAllPayments().then(setPayments),
+    getAllVendors().then(setVendors),
+  ]).finally(() => setLoading(false));
   useEffect(() => { load(); }, []);
+
+  const handleCreatePayment = async () => {
+    const amount = Number(form.amount);
+    if (!form.vendorId || !Number.isFinite(amount) || amount <= 0 || !form.dueDate) {
+      toast.error(t('adminPayments.toastCreateRequiredFields'));
+      return;
+    }
+
+    setSubmitting(true);
+    try {
+      await createPayment({
+        vendorId: form.vendorId,
+        amount,
+        dueDate: form.dueDate,
+        period: form.period.trim() || undefined,
+      });
+      toast.success(t('adminPayments.toastCreated'));
+      setShowCreateModal(false);
+      setForm({ vendorId: '', amount: '', dueDate: '', period: '' });
+      load();
+    } catch (error: any) {
+      toast.error(error?.response?.data?.message || t('adminPayments.toastCreateFailed'));
+    } finally {
+      setSubmitting(false);
+    }
+  };
 
   if (loading) return <AdminLayout><LoadingSpinner /></AdminLayout>;
 
   return (
     <AdminLayout>
-      <h1 className="text-4xl font-bold text-gray-900 mb-6">💰 {t('adminPayments.title')}</h1>
+      <div className="mb-6 flex items-center justify-between gap-3">
+        <h1 className="text-4xl font-bold text-gray-900">💰 {t('adminPayments.title')}</h1>
+        <Button size="xl" onClick={() => setShowCreateModal(true)}>+ {t('adminPayments.addPayment')}</Button>
+      </div>
       <div className="overflow-x-auto rounded-xl shadow">
         <Table striped>
           <Table.Head>
@@ -52,6 +95,52 @@ export default function AdminPayments() {
           </Table.Body>
         </Table>
       </div>
+
+      <Modal show={showCreateModal} onClose={() => !submitting && setShowCreateModal(false)}>
+        <Modal.Header>{t('adminPayments.addPayment')}</Modal.Header>
+        <Modal.Body className="space-y-4">
+          <Select
+            value={form.vendorId}
+            onChange={(event) => setForm((current) => ({ ...current, vendorId: event.target.value }))}
+          >
+            <option value="">{t('adminPayments.selectVendor')}</option>
+            {vendors.map((vendor) => (
+              <option key={vendor.id} value={vendor.id}>
+                {vendor.businessName}
+              </option>
+            ))}
+          </Select>
+          <TextInput
+            type="number"
+            min={0}
+            step="0.01"
+            placeholder={t('adminPayments.amountPlaceholder')}
+            value={form.amount}
+            onChange={(event) => setForm((current) => ({ ...current, amount: event.target.value }))}
+            sizing="lg"
+          />
+          <TextInput
+            type="date"
+            value={form.dueDate}
+            onChange={(event) => setForm((current) => ({ ...current, dueDate: event.target.value }))}
+            sizing="lg"
+          />
+          <TextInput
+            placeholder={t('adminPayments.periodPlaceholder')}
+            value={form.period}
+            onChange={(event) => setForm((current) => ({ ...current, period: event.target.value }))}
+            sizing="lg"
+          />
+        </Modal.Body>
+        <Modal.Footer>
+          <Button size="xl" onClick={handleCreatePayment} disabled={submitting} isProcessing={submitting}>
+            {t('common.save')}
+          </Button>
+          <Button color="gray" size="xl" onClick={() => setShowCreateModal(false)} disabled={submitting}>
+            {t('common.cancel')}
+          </Button>
+        </Modal.Footer>
+      </Modal>
     </AdminLayout>
   );
 }

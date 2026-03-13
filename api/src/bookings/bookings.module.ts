@@ -7,11 +7,20 @@ import { BookingItem } from './entities/booking-item.entity';
 import { InventoryItem } from '../inventory/entities/inventory-item.entity';
 import { VendorPayment } from '../payments/entities/vendor-payment.entity';
 import { VendorsModule } from '../vendors/vendors.module';
+import { Vendor } from '../vendors/entities/vendor.entity';
+import { SettingsModule } from '../settings/settings.module';
 
 @Module({
   imports: [
-    TypeOrmModule.forFeature([Booking, BookingItem, InventoryItem, VendorPayment]),
+    TypeOrmModule.forFeature([
+      Booking,
+      BookingItem,
+      InventoryItem,
+      VendorPayment,
+      Vendor,
+    ]),
     VendorsModule,
+    SettingsModule,
   ],
   providers: [BookingsService],
   controllers: [BookingsController],

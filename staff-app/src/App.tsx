@@ -7,6 +7,7 @@ import VendorsList from './pages/admin/VendorsList'
 import ItemTypesList from './pages/admin/ItemTypesList'
 import BrandsList from './pages/admin/BrandsList'
 import AdminPayments from './pages/admin/AdminPayments'
+import KycSettingsPage from './pages/admin/KycSettings'
 import VendorDashboard from './pages/vendor/VendorDashboard'
 import Inventory from './pages/vendor/Inventory'
 import VendorBookings from './pages/vendor/VendorBookings'
@@ -39,6 +40,8 @@ export default function App() {
         <Route path="/admin/item-types" element={<ProtectedRoute role="admin"><ItemTypesList /></ProtectedRoute>} />
         <Route path="/admin/brands" element={<ProtectedRoute role="admin"><BrandsList /></ProtectedRoute>} />
         <Route path="/admin/payments" element={<ProtectedRoute role="admin"><AdminPayments /></ProtectedRoute>} />
+        <Route path="/admin/settings/feature-flags" element={<ProtectedRoute role="admin"><KycSettingsPage /></ProtectedRoute>} />
+        <Route path="/admin/settings/kyc" element={<ProtectedRoute role="admin"><KycSettingsPage /></ProtectedRoute>} />
         <Route path="/vendor" element={<ProtectedRoute role="vendor"><VendorDashboard /></ProtectedRoute>} />
         <Route path="/vendor/inventory" element={<ProtectedRoute role="vendor"><Inventory /></ProtectedRoute>} />
         <Route path="/vendor/bookings" element={<ProtectedRoute role="vendor"><VendorBookings /></ProtectedRoute>} />

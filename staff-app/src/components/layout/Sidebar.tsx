@@ -7,6 +7,7 @@ const adminLinks = [
   { to: '/admin/item-types', label: 'Item Types' },
   { to: '/admin/brands', label: 'Brands' },
   { to: '/admin/payments', label: 'Payments' },
+  { to: '/admin/settings/feature-flags', label: 'Feature Flags' },
 ];
 
 const vendorLinks = [

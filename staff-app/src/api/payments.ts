@@ -9,6 +9,8 @@ export const markOverdue = (id: string) => api.patch<VendorPayment>(`/payments/$
 export const createPayment = (data: object) => api.post<VendorPayment>('/payments', data).then(r => r.data);
 
 export const getDeliveryRates = () => api.get<DeliveryRate[]>('/payments/delivery-rates').then(r => r.data);
+export const getVendorDeliveryRates = (vendorId: string) =>
+  api.get<DeliveryRate[]>(`/payments/delivery-rates/vendor/${vendorId}`).then((r) => r.data);
 export const addDeliveryRate = (data: object) => api.post<DeliveryRate>('/payments/delivery-rates', data).then(r => r.data);
 export const updateDeliveryRate = (id: string, data: object) =>
   api.patch<DeliveryRate>(`/payments/delivery-rates/${id}`, data).then(r => r.data);

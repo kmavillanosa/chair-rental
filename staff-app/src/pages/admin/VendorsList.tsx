@@ -1,8 +1,9 @@
 import { useEffect, useState } from 'react';
-import { Badge, Button, Table } from 'flowbite-react';
+import { Badge, Button, Modal, Select, Table, TextInput } from 'flowbite-react';
 import toast from 'react-hot-toast';
 import AdminLayout from '../../components/layout/AdminLayout';
 import {
+  createVendor,
   flagVendorSuspicious,
   getAllVendors,
   getVendorRequests,
@@ -19,6 +20,24 @@ export default function VendorsList() {
   const [vendors, setVendors] = useState<Vendor[]>([]);
   const [requests, setRequests] = useState<Vendor[]>([]);
   const [loading, setLoading] = useState(true);
+  const [showCreateModal, setShowCreateModal] = useState(false);
+  const [creatingVendor, setCreatingVendor] = useState(false);
+  const [showSuspendModal, setShowSuspendModal] = useState(false);
+  const [suspendTargetVendor, setSuspendTargetVendor] = useState<Vendor | null>(null);
+  const [suspendingVendor, setSuspendingVendor] = useState(false);
+  const [createForm, setCreateForm] = useState({
+    userEmail: '',
+    businessName: '',
+    ownerFullName: '',
+    address: '',
+    phone: '',
+    paymongoMerchantId: '',
+    vendorType: 'registered_business',
+  });
+  const [suspendForm, setSuspendForm] = useState({
+    reason: '',
+    suspendedUntil: '',
+  });
 
   const load = () =>
     Promise.all([
@@ -48,20 +67,87 @@ export default function VendorsList() {
     load();
   };
 
-  const handleSuspend = async (vendor: Vendor) => {
-    const reason = window.prompt(
-      'Suspension reason (required):',
-      vendor.kycNotes || 'Suspicious behavior under review',
-    ) || '';
+  const handleSuspend = (vendor: Vendor) => {
+    const parsedSuspendDate = vendor.suspendedUntil
+      ? new Date(vendor.suspendedUntil)
+      : null;
+    const suspendUntilValue =
+      parsedSuspendDate && !Number.isNaN(parsedSuspendDate.getTime())
+        ? parsedSuspendDate.toISOString().split('T')[0]
+        : '';
 
-    if (!reason.trim()) {
+    setSuspendTargetVendor(vendor);
+    setSuspendForm({
+      reason: vendor.kycNotes || 'Suspicious behavior under review',
+      suspendedUntil: suspendUntilValue,
+    });
+    setShowSuspendModal(true);
+  };
+
+  const submitSuspend = async () => {
+    if (!suspendTargetVendor) return;
+
+    const reason = suspendForm.reason.trim();
+    if (!reason) {
       toast.error('Suspension reason is required.');
       return;
     }
 
-    await suspendVendor(vendor.id, reason.trim());
-    toast.success(`${vendor.businessName} suspended.`);
-    load();
+    setSuspendingVendor(true);
+    try {
+      await suspendVendor(
+        suspendTargetVendor.id,
+        reason,
+        suspendForm.suspendedUntil || undefined,
+      );
+      toast.success(`${suspendTargetVendor.businessName} suspended.`);
+      setShowSuspendModal(false);
+      setSuspendTargetVendor(null);
+      setSuspendForm({ reason: '', suspendedUntil: '' });
+      load();
+    } finally {
+      setSuspendingVendor(false);
+    }
+  };
+
+  const handleCreateVendor = async () => {
+    const payload = {
+      userEmail: createForm.userEmail.trim(),
+      businessName: createForm.businessName.trim(),
+      ownerFullName: createForm.ownerFullName.trim() || undefined,
+      address: createForm.address.trim(),
+      phone: createForm.phone.trim() || undefined,
+      paymongoMerchantId: createForm.paymongoMerchantId.trim() || undefined,
+      vendorType: createForm.vendorType as Vendor['vendorType'],
+      isVerified: true,
+      isActive: true,
+    };
+
+    if (!payload.userEmail || !payload.businessName || !payload.address) {
+      toast.error('Email, business name, and address are required.');
+      return;
+    }
+
+    setCreatingVendor(true);
+    try {
+      await createVendor(payload);
+      toast.success('Vendor created.');
+      setShowCreateModal(false);
+      setCreateForm({
+        userEmail: '',
+        businessName: '',
+        ownerFullName: '',
+        address: '',
+        phone: '',
+        paymongoMerchantId: '',
+        vendorType: 'registered_business',
+      });
+      load();
+    } catch (error: any) {
+      toast.error(error?.response?.data?.message || 'Failed to create vendor.');
+    } finally {
+      setCreatingVendor(false);
+    }
   };
 
   const handleFlagSuspicious = async (vendor: Vendor) => {
@@ -137,6 +223,11 @@ export default function VendorsList() {
   return (
     <AdminLayout>
       <h1 className="mb-6 text-4xl font-bold text-slate-900">Vendors</h1>
+      <div className="mb-6 flex justify-end">
+        <Button size="lg" className="!bg-slate-800 hover:!bg-slate-900" onClick={() => setShowCreateModal(true)}>
+          + Create Vendor
+        </Button>
+      </div>
 
       <div className="mb-6 rounded-xl border border-slate-200 bg-white p-5 shadow-sm">
         <div className="flex items-center justify-between mb-4">
@@ -329,6 +420,94 @@ export default function VendorsList() {
           </Table.Body>
         </Table>
       </div>
+
+      <Modal show={showCreateModal} onClose={() => !creatingVendor && setShowCreateModal(false)}>
+        <Modal.Header>Create Vendor</Modal.Header>
+        <Modal.Body className="space-y-4">
+          <TextInput
+            placeholder="User Email"
+            value={createForm.userEmail}
+            onChange={(event) => setCreateForm((current) => ({ ...current, userEmail: event.target.value }))}
+            sizing="lg"
+          />
+          <TextInput
+            placeholder="Business Name"
+            value={createForm.businessName}
+            onChange={(event) => setCreateForm((current) => ({ ...current, businessName: event.target.value }))}
+            sizing="lg"
+          />
+          <TextInput
+            placeholder="Owner Full Name (optional)"
+            value={createForm.ownerFullName}
+            onChange={(event) => setCreateForm((current) => ({ ...current, ownerFullName: event.target.value }))}
+            sizing="lg"
+          />
+          <TextInput
+            placeholder="Business Address"
+            value={createForm.address}
+            onChange={(event) => setCreateForm((current) => ({ ...current, address: event.target.value }))}
+            sizing="lg"
+          />
+          <TextInput
+            placeholder="Phone (optional)"
+            value={createForm.phone}
+            onChange={(event) => setCreateForm((current) => ({ ...current, phone: event.target.value }))}
+            sizing="lg"
+          />
+          <TextInput
+            placeholder="PayMongo Merchant ID (optional)"
+            value={createForm.paymongoMerchantId}
+            onChange={(event) => setCreateForm((current) => ({ ...current, paymongoMerchantId: event.target.value }))}
+            sizing="lg"
+          />
+          <Select
+            value={createForm.vendorType}
+            onChange={(event) => setCreateForm((current) => ({ ...current, vendorType: event.target.value }))}
+          >
+            <option value="registered_business">Registered Business</option>
+            <option value="individual_owner">Individual Owner</option>
+          </Select>
+        </Modal.Body>
+        <Modal.Footer>
+          <Button size="lg" onClick={handleCreateVendor} isProcessing={creatingVendor} disabled={creatingVendor}>
+            Save
+          </Button>
+          <Button color="gray" size="lg" onClick={() => setShowCreateModal(false)} disabled={creatingVendor}>
+            Cancel
+          </Button>
+        </Modal.Footer>
+      </Modal>
+
+      <Modal show={showSuspendModal} onClose={() => !suspendingVendor && setShowSuspendModal(false)}>
+        <Modal.Header>
+          Suspend Vendor{suspendTargetVendor ? `: ${suspendTargetVendor.businessName}` : ''}
+        </Modal.Header>
+        <Modal.Body className="space-y-4">
+          <TextInput
+            placeholder="Suspension reason"
+            value={suspendForm.reason}
+            onChange={(event) => setSuspendForm((current) => ({ ...current, reason: event.target.value }))}
+            sizing="lg"
+          />
+          <div>
+            <label className="mb-1 block text-sm font-semibold text-slate-700">Suspend Until (optional)</label>
+            <TextInput
+              type="date"
+              value={suspendForm.suspendedUntil}
+              onChange={(event) => setSuspendForm((current) => ({ ...current, suspendedUntil: event.target.value }))}
+              sizing="lg"
+            />
+          </div>
+        </Modal.Body>
+        <Modal.Footer>
+          <Button size="lg" onClick={submitSuspend} isProcessing={suspendingVendor} disabled={suspendingVendor}>
+            Confirm Suspension
+          </Button>
+          <Button color="gray" size="lg" onClick={() => setShowSuspendModal(false)} disabled={suspendingVendor}>
+            Cancel
+          </Button>
+        </Modal.Footer>
+      </Modal>
     </AdminLayout>
   );
 }

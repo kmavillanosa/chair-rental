@@ -25,6 +25,8 @@ import { VendorItem } from './vendors/entities/vendor-item.entity';
 import { VendorItemPhoto } from './vendors/entities/vendor-item-photo.entity';
 import { VendorPhoneOtpChallenge } from './vendors/entities/vendor-phone-otp-challenge.entity';
 import { SeedsModule } from './seeds/seeds.module';
+import { SettingsModule } from './settings/settings.module';
+import { PlatformSetting } from './settings/entities/platform-setting.entity';
 
 @Module({
   imports: [
@@ -43,6 +45,7 @@ import { SeedsModule } from './seeds/seeds.module';
         VendorItem,
         VendorItemPhoto,
         VendorPhoneOtpChallenge,
+        PlatformSetting,
         ItemType,
         ProductBrand,
         InventoryItem,
@@ -69,6 +72,7 @@ import { SeedsModule } from './seeds/seeds.module';
     InventoryModule,
     BookingsModule,
     PaymentsModule,
+    SettingsModule,
     SeedsModule,
   ],
 })

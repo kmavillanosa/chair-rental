@@ -75,10 +75,24 @@ export default function VendorLanding() {
   }, [inventory]);
 
   const handleBookNow = () => {
-    const startDate = searchParams.get('startDate');
-    const endDate = searchParams.get('endDate');
-    const bookingUrl = startDate && endDate
-      ? `/book/${slug}?startDate=${startDate}&endDate=${endDate}`
+    const params = new URLSearchParams();
+    [
+      'lat',
+      'lng',
+      'radius',
+      'helpersNeeded',
+      'address',
+      'startDate',
+      'endDate',
+      'itemTypeIds',
+      'eventTag',
+    ].forEach((key) => {
+      const value = searchParams.get(key);
+      if (value) params.set(key, value);
+    });
+
+    const bookingUrl = params.toString()
+      ? `/book/${slug}?${params.toString()}`
       : `/book/${slug}`;
     navigate(bookingUrl);
   };

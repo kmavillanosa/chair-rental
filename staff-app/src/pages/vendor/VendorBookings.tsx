@@ -109,6 +109,23 @@ export default function VendorBookings() {
                 <div>
                   <p className="text-sm font-semibold text-gray-600">Delivery Address</p>
                   <p className="text-lg">{selectedBooking.deliveryAddress || 'Not specified'}</p>
+                  {Number.isFinite(Number(selectedBooking.deliveryLatitude)) &&
+                    Number.isFinite(Number(selectedBooking.deliveryLongitude)) ? (
+                    <div className="mt-2">
+                      <p className="text-sm font-semibold text-gray-600">Delivery Coordinates</p>
+                      <p className="font-mono text-sm text-gray-700">
+                        {Number(selectedBooking.deliveryLatitude).toFixed(6)}, {Number(selectedBooking.deliveryLongitude).toFixed(6)}
+                      </p>
+                      <a
+                        href={`https://www.google.com/maps?q=${selectedBooking.deliveryLatitude},${selectedBooking.deliveryLongitude}`}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="text-sm font-semibold text-blue-600 hover:underline"
+                      >
+                        Open in Maps
+                      </a>
+                    </div>
+                  ) : null}
                 </div>
               </div>
 
