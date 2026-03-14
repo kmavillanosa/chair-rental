@@ -38,7 +38,10 @@ export class PaymentsController {
   @ApiBearerAuth()
   @Post()
   createPayment(@Body() body: CreatePaymentDto) {
-    return this.service.createPayment(body);
+    return this.service.createPayment({
+      ...body,
+      dueDate: new Date(body.dueDate),
+    });
   }
 
   @UseGuards(JwtAuthGuard, RolesGuard)

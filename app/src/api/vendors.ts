@@ -42,6 +42,9 @@ export const getNearbyVendors = (
 export const getVendorBySlug = (slug: string) =>
   api.get<Vendor>(`/vendors/slug/${slug}`).then(r => r.data);
 
+export const checkSlugAvailability = (slug: string) =>
+  api.get<{ available: boolean; slug: string }>(`/vendors/slug/check`, { params: { slug } }).then(r => r.data);
+
 export const getAllVendors = () =>
   api.get<Vendor[]>('/vendors').then(r => r.data);
 

@@ -1,4 +1,4 @@
-import { ChangeEvent, FormEvent, useEffect, useMemo, useState } from 'react';
+import { ChangeEvent, FormEvent, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Button, Label, TextInput } from 'flowbite-react';
 import toast from 'react-hot-toast';
 import { useNavigate } from 'react-router-dom';
@@ -9,6 +9,7 @@ import {
     requestVendorEmailOtp,
     submitVendorRegistration,
     verifyVendorEmailOtp,
+    checkSlugAvailability,
 } from '../../api/vendors';
 import { getKycSettings, type KycSettings } from '../../api/settings';
 import { useAuthStore } from '../../store/authStore';
@@ -28,6 +29,10 @@ L.Icon.Default.mergeOptions({
 });
 
 const DEFAULT_VENDOR_LOCATION: [number, number] = [14.5995, 120.9842];
+
+function normalizeSlugInput(value: string) {
+    return value.trim().toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)/g, '');
+}
 
 function formatCoordinates(point: [number, number]) {
     return `${point[0].toFixed(6)}, ${point[1].toFixed(6)}`;
@@ -82,6 +87,7 @@ interface FormState {
     phone: string;
     socialMediaLink: string;
     description: string;
+    subdomainSlug: string;
 }
 
 interface AttachmentState {
@@ -106,6 +112,7 @@ const INITIAL_FORM: FormState = {
     phone: '',
     socialMediaLink: '',
     description: '',
+    subdomainSlug: '',
 };
 
 const INITIAL_ATTACHMENTS: AttachmentState = {
@@ -126,6 +133,55 @@ export default function BecomeVendor() {
     const navigate = useNavigate();
     const { user } = useAuthStore();
     const [form, setForm] = useState<FormState>(INITIAL_FORM);
+    const [slugStatus, setSlugStatus] = useState<'idle' | 'checking' | 'available' | 'taken'>('idle');
+    const [slugTouched, setSlugTouched] = useState(false);
+    const slugCheckTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+    const VENDOR_DOMAIN = import.meta.env.VITE_VENDOR_DOMAIN || 'rentalbasic.com';
+
+    const scheduleSlugCheck = useCallback((slug: string) => {
+        if (slugCheckTimer.current) clearTimeout(slugCheckTimer.current);
+        const normalized = normalizeSlugInput(slug);
+        if (!normalized) { setSlugStatus('idle'); return; }
+        setSlugStatus('checking');
+        slugCheckTimer.current = setTimeout(async () => {
+            try {
+                const result = await checkSlugAvailability(normalized);
+                setSlugStatus(result.available ? 'available' : 'taken');
+                setForm((prev) => ({ ...prev, subdomainSlug: result.slug }));
+            } catch {
+                setSlugStatus('idle');
+            }
+        }, 500);
+    }, []);
+
+    useEffect(() => {
+        return () => {
+            if (slugCheckTimer.current) clearTimeout(slugCheckTimer.current);
+        };
+    }, []);
+
+    const handleBusinessNameChange = (value: string) => {
+        setForm((prev) => {
+            if (slugTouched) {
+                return { ...prev, businessName: value };
+            }
+            const autoSlug = normalizeSlugInput(value || prev.ownerFullName);
+            scheduleSlugCheck(autoSlug);
+            return { ...prev, businessName: value, subdomainSlug: autoSlug };
+        });
+    };
+
+    const handleOwnerFullNameChange = (value: string) => {
+        setForm((prev) => {
+            if (slugTouched) {
+                return { ...prev, ownerFullName: value };
+            }
+            const source = prev.businessName || value;
+            const autoSlug = normalizeSlugInput(source);
+            scheduleSlugCheck(autoSlug);
+            return { ...prev, ownerFullName: value, subdomainSlug: autoSlug };
+        });
+    };
     const [attachments, setAttachments] = useState<AttachmentState>(INITIAL_ATTACHMENTS);
     const [selectedLocation, setSelectedLocation] = useState<[number, number]>(DEFAULT_VENDOR_LOCATION);
     const [mapCenter, setMapCenter] = useState<[number, number]>(DEFAULT_VENDOR_LOCATION);
@@ -325,8 +381,27 @@ export default function BecomeVendor() {
             return;
         }
 
+        const requestedSlug = normalizeSlugInput(
+            form.subdomainSlug ||
+            (form.vendorType === 'registered_business'
+                ? form.businessName
+                : form.ownerFullName),
+        );
+        if (!requestedSlug) {
+            toast.error('Store web address is required.');
+            return;
+        }
+
         setSaving(true);
         try {
+            const slugAvailability = await checkSlugAvailability(requestedSlug);
+            if (!slugAvailability.available) {
+                setSlugStatus('taken');
+                toast.error(`${slugAvailability.slug}.${VENDOR_DOMAIN} is already taken.`);
+                return;
+            }
+            setSlugStatus('available');
+
             const result = await submitVendorRegistration({
                 vendorType: form.vendorType,
                 businessName:
@@ -350,6 +425,7 @@ export default function BecomeVendor() {
                 phone: form.phone.trim(),
                 socialMediaLink: form.socialMediaLink.trim() || undefined,
                 description: form.description.trim() || undefined,
+                slug: slugAvailability.slug,
                 governmentIdFile: attachments.governmentIdFile,
                 selfieFile: attachments.selfieFile,
                 mayorsPermitFile: attachments.mayorsPermitFile,
@@ -482,7 +558,7 @@ export default function BecomeVendor() {
                                     id="businessName"
                                     required={form.vendorType === 'registered_business'}
                                     value={form.businessName}
-                                    onChange={(e) => setForm((prev) => ({ ...prev, businessName: e.target.value }))}
+                                    onChange={(e) => handleBusinessNameChange(e.target.value)}
                                     placeholder={t('becomeVendorPage.businessNamePlaceholder')}
                                 />
                             </div>
@@ -537,7 +613,7 @@ export default function BecomeVendor() {
                             id="ownerFullName"
                             required
                             value={form.ownerFullName}
-                            onChange={(e) => setForm((prev) => ({ ...prev, ownerFullName: e.target.value }))}
+                            onChange={(e) => handleOwnerFullNameChange(e.target.value)}
                             placeholder="Juan Dela Cruz"
                         />
                     </div>
@@ -553,6 +629,45 @@ export default function BecomeVendor() {
                             }
                             placeholder="ID Number"
                         />
+                    </div>
+
+                    <div>
+                        <Label htmlFor="subdomainSlug" value="Your Store Web Address" />
+                        <div className="flex items-center gap-0 mt-1 rounded-lg border border-gray-300 overflow-hidden focus-within:ring-2 focus-within:ring-blue-400 focus-within:border-blue-500">
+                            <span className="px-3 py-2.5 bg-gray-50 text-gray-500 text-sm border-r border-gray-300 whitespace-nowrap select-none">
+                                https://
+                            </span>
+                            <input
+                                id="subdomainSlug"
+                                type="text"
+                                value={form.subdomainSlug}
+                                onChange={(e) => {
+                                    setSlugTouched(true);
+                                    const val = normalizeSlugInput(e.target.value);
+                                    setForm((prev) => ({ ...prev, subdomainSlug: val }));
+                                    scheduleSlugCheck(val);
+                                }}
+                                placeholder="your-store-name"
+                                className="flex-1 px-3 py-2.5 text-sm outline-none bg-white"
+                                spellCheck={false}
+                                autoComplete="off"
+                            />
+                            <span className="px-3 py-2.5 bg-gray-50 text-gray-500 text-sm border-l border-gray-300 whitespace-nowrap select-none">
+                                .{VENDOR_DOMAIN}
+                            </span>
+                        </div>
+                        {form.subdomainSlug && (
+                            <p className={`mt-1 text-xs font-medium ${slugStatus === 'available' ? 'text-green-600' :
+                                    slugStatus === 'taken' ? 'text-red-600' : 'text-gray-400'
+                                }`}>
+                                {slugStatus === 'available' && `${form.subdomainSlug}.${VENDOR_DOMAIN} is available`}
+                                {slugStatus === 'taken' && `${form.subdomainSlug}.${VENDOR_DOMAIN} is already taken`}
+                                {slugStatus === 'checking' && 'Checking availability...'}
+                            </p>
+                        )}
+                        <p className="mt-1 text-xs text-gray-500">
+                            This will be your store's web address. Only letters, numbers, and hyphens are allowed.
+                        </p>
                     </div>
 
                     <div>

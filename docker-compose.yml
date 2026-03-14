@@ -84,6 +84,9 @@ services:
     build:
       context: ./app
       dockerfile: Dockerfile
+      args:
+        VITE_VENDOR_DOMAIN: ${VENDOR_DOMAIN:-rentalbasic.com}
+        VITE_API_URL: ${VITE_API_URL:-}
     container_name: chair_rental_app
     restart: unless-stopped
     ports:
@@ -97,6 +100,9 @@ services:
     build:
       context: ./staff-app
       dockerfile: Dockerfile
+      args:
+        VITE_VENDOR_DOMAIN: ${VENDOR_DOMAIN:-rentalbasic.com}
+        VITE_API_URL: ${VITE_API_URL:-}
     container_name: chair_rental_staff_app
     restart: unless-stopped
     ports:
@@ -105,6 +111,36 @@ services:
       - rental_network
     depends_on:
       - api
+
+  nginx_proxy:
+    image: nginx:alpine
+    container_name: chair_rental_proxy
+    restart: unless-stopped
+    ports:
+      - "${PROXY_PORT:-80}:80"
+      - "443:443"
+    volumes:
+      - ./nginx/nginx.conf:/etc/nginx/conf.d/default.conf:ro
+      - ./nginx/certbot/conf:/etc/letsencrypt:ro
+      - ./nginx/certbot/www:/var/www/certbot:ro
+    networks:
+      - rental_network
+    depends_on:
+      - app
+      - staff_app
+      - api
+
+  certbot:
+    image: certbot/certbot
+    container_name: chair_rental_certbot
+    restart: unless-stopped
+    volumes:
+      - ./nginx/certbot/conf:/etc/letsencrypt
+      - ./nginx/certbot/www:/var/www/certbot
+    # Renew every 12 hours; Let's Encrypt certs renew when <30 days remain.
+    entrypoint: "/bin/sh -c 'trap exit TERM; while :; do certbot renew --quiet; sleep 12h & wait $${!}; done;'"
+    networks:
+      - rental_network
 
 networks:
   rental_network:

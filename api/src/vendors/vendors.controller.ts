@@ -322,6 +322,11 @@ export class VendorsController {
     );
   }
 
+  @Get('slug/check')
+  checkSlugAvailability(@Query('slug') slug: string) {
+    return this.vendorsService.isSlugAvailable(slug);
+  }
+
   @Get('slug/:slug')
   findBySlug(@Param('slug') slug: string) {
     return this.vendorsService.findBySlug(slug);

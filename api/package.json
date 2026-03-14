@@ -7,11 +7,11 @@
   "license": "MIT",
   "scripts": {
     "build": "nest build",
-    "start": "node dist/main",
+    "start": "node dist/src/main.js",
     "start:dev": "nest start --watch",
-    "start:prod": "node dist/main",
-    "seed:catalog": "node dist/scripts/seed-catalog.js",
-    "seed:vendors": "node dist/scripts/seed-vendor-distance.js",
+    "start:prod": "node dist/src/main.js",
+    "seed:catalog": "node dist/src/scripts/seed-catalog.js",
+    "seed:vendors": "node dist/src/scripts/seed-vendor-distance.js",
     "test": "vitest run",
     "test:watch": "vitest",
     "test:coverage": "vitest run --coverage"

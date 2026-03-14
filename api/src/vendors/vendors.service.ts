@@ -95,6 +95,14 @@ export class VendorsService {
     return this.withVerificationBadge(vendor);
   }
 
+  async isSlugAvailable(slug: string, excludeId?: string) {
+    const normalized = this.normalizeSlug(String(slug || ''));
+    if (!normalized) return { available: false, slug: normalized };
+    const existing = await this.vendorsRepo.findOne({ where: { slug: normalized } });
+    const available = !existing || (!!excludeId && existing.id === excludeId);
+    return { available, slug: normalized };
+  }
+
   async findByUserId(userId: string, withKycDetails = false) {
     const vendor = await this.findByUserIdRaw(userId, withKycDetails);
     return this.withVerificationBadge(vendor);
@@ -394,8 +402,27 @@ export class VendorsService {
       throw new BadRequestException('Selfie verification upload is required');
     }
 
-    const slugSeed = businessName || data.slug || `vendor-${userId.slice(0, 8)}`;
-    const slug = await this.ensureSlugAvailable(slugSeed, existing?.id);
+    const explicitSlug = this.normalizeText(data.slug);
+    let slug: string;
+    if (explicitSlug) {
+      const normalizedExplicitSlug = this.normalizeSlug(explicitSlug);
+      if (!normalizedExplicitSlug) {
+        throw new BadRequestException('Store web address is invalid');
+      }
+
+      const availability = await this.isSlugAvailable(
+        normalizedExplicitSlug,
+        existing?.id,
+      );
+      if (!availability.available) {
+        throw new BadRequestException('Store web address is already taken');
+      }
+
+      slug = availability.slug;
+    } else {
+      const slugSeed = businessName || `vendor-${userId.slice(0, 8)}`;
+      slug = await this.ensureSlugAvailable(slugSeed, existing?.id);
+    }
 
     const deviceFingerprintHash = this.hashValue(
       data.deviceFingerprint || data.deviceId || null,
