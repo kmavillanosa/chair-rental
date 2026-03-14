@@ -7,6 +7,9 @@ import { RolesGuard } from '../auth/roles.guard';
 import { Roles } from '../auth/roles.decorator';
 import { UserRole } from '../users/entities/user.entity';
 import { VendorsService } from '../vendors/vendors.service';
+import { CreateBookingDto } from './dto/create-booking.dto';
+import { VerifyPaymentDto } from './dto/verify-payment.dto';
+import { UpdateBookingStatusDto } from './dto/update-booking-status.dto';
 
 @ApiTags('bookings')
 @Controller('bookings')
@@ -46,7 +49,7 @@ export class BookingsController {
   @UseGuards(JwtAuthGuard)
   @ApiBearerAuth()
   @Post()
-  async create(@Request() req, @Body() body: any) {
+  async create(@Request() req, @Body() body: CreateBookingDto) {
     return this.service.create(req.user.id, body);
   }
 
@@ -63,9 +66,13 @@ export class BookingsController {
   verifyPayment(
     @Request() req,
     @Param('id') id: string,
-    @Body('checkoutSessionId') checkoutSessionId?: string,
+    @Body() body: VerifyPaymentDto,
   ) {
-    return this.service.verifyPayMongoCheckout(id, req.user.id, checkoutSessionId);
+    return this.service.verifyPayMongoCheckout(
+      id,
+      req.user.id,
+      body.checkoutSessionId,
+    );
   }
 
   @UseGuards(JwtAuthGuard)
@@ -81,8 +88,13 @@ export class BookingsController {
   updateStatus(
     @Request() req,
     @Param('id') id: string,
-    @Body('status') status: BookingStatus,
+    @Body() body: UpdateBookingStatusDto,
   ) {
-    return this.service.updateStatus(id, status, req.user.id, req.user.role);
+    return this.service.updateStatus(
+      id,
+      body.status as BookingStatus,
+      req.user.id,
+      req.user.role,
+    );
   }
 }

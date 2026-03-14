@@ -1,22 +1,32 @@
 import { loginWithGoogle } from '../api/auth';
+import { HiArrowLeft } from 'react-icons/hi';
+import { useMemo } from 'react';
+import { useSearchParams } from 'react-router-dom';
 
 export default function Login() {
+  const [searchParams] = useSearchParams();
   const customerAppUrl = (import.meta.env.VITE_CUSTOMER_APP_URL || 'http://127.0.0.1:43171').replace(/\/$/, '');
+  const authError = useMemo(() => searchParams.get('error')?.trim() || '', [searchParams]);
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-blue-600 to-blue-800 flex flex-col items-center justify-center p-6">
       <a
         href={customerAppUrl}
         aria-label="Back to Home"
-        className="absolute top-6 left-6 inline-flex h-11 w-11 items-center justify-center rounded-full border border-white/40 bg-white/20 text-2xl font-semibold text-white backdrop-blur-sm hover:bg-white/30"
+        className="group absolute top-6 left-6 inline-flex h-12 w-12 items-center justify-center rounded-full border border-white/40 bg-white/20 text-white backdrop-blur-sm transition-colors hover:bg-white/30"
       >
-        ←
+        <HiArrowLeft className="h-5 w-5 transition-transform group-hover:-translate-x-0.5" aria-hidden="true" />
       </a>
       <div className="bg-white rounded-3xl shadow-2xl p-10 max-w-md w-full text-center">
         <div className="text-7xl mb-4">🪑</div>
-        <h1 className="text-4xl font-bold text-gray-900 mb-2">RentalBasic Staff</h1>
-        <p className="text-xl text-gray-500 mb-2">Admin and Vendor Portal</p>
+        <h1 className="text-4xl font-bold text-gray-900 mb-2">RentalBasic for Vendors</h1>
+        <p className="text-xl text-gray-500 mb-2">Vendor Portal</p>
         <p className="text-lg text-gray-400 mb-8">Use your Google account to manage operations</p>
+        {authError && (
+          <div className="mb-6 rounded-2xl border border-rose-200 bg-rose-50 px-4 py-3 text-left text-sm font-medium text-rose-700">
+            {authError}
+          </div>
+        )}
         <button
           onClick={loginWithGoogle}
           className="w-full flex items-center justify-center gap-4 bg-white border-2 border-gray-300 rounded-2xl px-6 py-5 text-2xl font-semibold text-gray-700 hover:bg-gray-50 hover:border-blue-400 transition-all shadow-md hover:shadow-lg"
@@ -29,7 +39,7 @@ export default function Login() {
           </svg>
           Continue with Google
         </button>
-        <p className="mt-6 text-gray-400 text-lg">Staff access only</p>
+        <p className="mt-6 text-gray-400 text-lg">Secure access only</p>
       </div>
     </div>
   );

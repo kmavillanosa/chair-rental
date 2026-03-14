@@ -6,6 +6,7 @@ export type KycSettings = {
 };
 
 export type FeatureFlagsSettings = {
+  allowKycWithoutMerchantId: boolean;
   defaultPlatformCommissionRatePercent: number;
   launchNoCommissionEnabled: boolean;
   launchNoCommissionUntil: string | null;

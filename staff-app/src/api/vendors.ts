@@ -1,5 +1,24 @@
 import api from './axios';
-import type { Vendor } from '../types';
+import type { Vendor, VendorDocument } from '../types';
+import { resolveMediaUrl } from '../utils/media';
+
+const mapVendorDocument = (document: VendorDocument): VendorDocument => ({
+  ...document,
+  fileUrl: resolveMediaUrl(document.fileUrl),
+});
+
+const mapVendor = (vendor: Vendor): Vendor => ({
+  ...vendor,
+  logoUrl: resolveMediaUrl(vendor.logoUrl),
+  kycDocumentUrl: resolveMediaUrl(vendor.kycDocumentUrl),
+  user: vendor.user
+    ? {
+        ...vendor.user,
+        avatar: resolveMediaUrl(vendor.user.avatar),
+      }
+    : vendor.user,
+  documents: vendor.documents?.map(mapVendorDocument),
+});
 
 export type CreateVendorPayload = Partial<Vendor> & {
   userEmail?: string;
@@ -36,32 +55,38 @@ export const getNearbyVendors = (
     startDate: filters.startDate || undefined,
     endDate: filters.endDate || undefined,
   };
-  return api.get<Vendor[]>('/vendors/nearby', { params }).then(r => r.data);
+  return api.get<Vendor[]>('/vendors/nearby', { params }).then(r => r.data.map(mapVendor));
 };
 
 export const getVendorBySlug = (slug: string) =>
-  api.get<Vendor>(`/vendors/slug/${slug}`).then(r => r.data);
+  api.get<Vendor>(`/vendors/slug/${slug}`).then(r => mapVendor(r.data));
 
 export const getAllVendors = () =>
-  api.get<Vendor[]>('/vendors').then(r => r.data);
+  api.get<Vendor[]>('/vendors').then(r => r.data.map(mapVendor));
 
 export const getMyVendor = () =>
-  api.get<Vendor>('/vendors/my').then(r => r.data);
+  api.get<Vendor>('/vendors/my').then(r => mapVendor(r.data));
 
 export const updateMyVendor = (data: Partial<Vendor>) =>
-  api.patch<Vendor>('/vendors/my', data).then(r => r.data);
+  api.patch<Vendor>('/vendors/my', data).then(r => mapVendor(r.data));
 
 export const verifyVendor = (id: string, isVerified: boolean) =>
-  api.patch(`/vendors/${id}/verify`, { isVerified }).then(r => r.data);
+  api.patch<Vendor>(`/vendors/${id}/verify`, { isVerified }).then(r => mapVendor(r.data));
+
+export const provisionVendorMerchantId = (id: string) =>
+  api.patch<Vendor>(`/vendors/${id}/provision-merchant`).then(r => mapVendor(r.data));
 
 export const warnVendor = (id: string) =>
-  api.patch(`/vendors/${id}/warn`).then(r => r.data);
+  api.patch<Vendor>(`/vendors/${id}/warn`).then(r => mapVendor(r.data));
+
+export const clearVendorWarnings = (id: string) =>
+  api.patch<Vendor>(`/vendors/${id}/warnings/reset`).then((r) => mapVendor(r.data));
 
 export const setVendorActive = (id: string, isActive: boolean) =>
-  api.patch(`/vendors/${id}/active`, { isActive }).then(r => r.data);
+  api.patch<Vendor>(`/vendors/${id}/active`, { isActive }).then(r => mapVendor(r.data));
 
 export const createVendor = (data: CreateVendorPayload) =>
-  api.post<Vendor>('/vendors', data).then(r => r.data);
+  api.post<Vendor>('/vendors', data).then(r => mapVendor(r.data));
 
 export const submitVendorRegistration = (data: VendorRegistrationPayload) => {
   const formData = new FormData();
@@ -95,7 +120,7 @@ export const submitVendorRegistration = (data: VendorRegistrationPayload) => {
     .post<Vendor>('/vendors/register', formData, {
       headers: { 'Content-Type': 'multipart/form-data' },
     })
-    .then((r) => r.data);
+    .then((r) => mapVendor(r.data));
 };
 
 export const requestVendorEmailOtp = (email: string, deviceFingerprint?: string) =>
@@ -109,7 +134,7 @@ export const requestVendorPhoneOtp = requestVendorEmailOtp;
 export const verifyVendorPhoneOtp = verifyVendorEmailOtp;
 
 export const getMyVendorKycSubmission = () =>
-  api.get<Vendor>('/vendors/my/kyc').then((r) => r.data);
+  api.get<Vendor>('/vendors/my/kyc').then((r) => mapVendor(r.data));
 
 export const uploadMyVendorDocument = (
   documentType: string,
@@ -129,16 +154,16 @@ export const uploadMyVendorDocument = (
 };
 
 export const getVendorRequests = (status = 'pending') =>
-  api.get<Vendor[]>('/vendors/requests', { params: { status } }).then(r => r.data);
+  api.get<Vendor[]>('/vendors/requests', { params: { status } }).then(r => r.data.map(mapVendor));
 
 export const reviewVendorRegistration = (
   id: string,
   decision: 'approve' | 'reject',
   notes?: string,
-) => api.patch<Vendor>(`/vendors/${id}/review`, { decision, notes }).then(r => r.data);
+) => api.patch<Vendor>(`/vendors/${id}/review`, { decision, notes }).then(r => mapVendor(r.data));
 
 export const getVendorKycSubmission = (id: string) =>
-  api.get<Vendor>(`/vendors/${id}/kyc`).then((r) => r.data);
+  api.get<Vendor>(`/vendors/${id}/kyc`).then((r) => mapVendor(r.data));
 
 export const getVendorDocuments = (id: string) =>
   api.get(`/vendors/${id}/documents`).then((r) => r.data);
@@ -150,10 +175,10 @@ export const flagVendorSuspicious = (
   id: string,
   flagged = true,
   reason?: string,
-) => api.patch<Vendor>(`/vendors/${id}/flag-suspicious`, { flagged, reason }).then((r) => r.data);
+) => api.patch<Vendor>(`/vendors/${id}/flag-suspicious`, { flagged, reason }).then((r) => mapVendor(r.data));
 
 export const suspendVendor = (
   id: string,
   reason: string,
   suspendedUntil?: string,
-) => api.patch<Vendor>(`/vendors/${id}/suspend`, { reason, suspendedUntil }).then((r) => r.data);
+) => api.patch<Vendor>(`/vendors/${id}/suspend`, { reason, suspendedUntil }).then((r) => mapVendor(r.data));

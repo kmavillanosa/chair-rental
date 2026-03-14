@@ -4,6 +4,7 @@ import { useAuthStore } from '../store/authStore';
 import api from '../api/axios';
 import LoadingSpinner from '../components/common/LoadingSpinner';
 import { useTranslation } from 'react-i18next';
+import { consumePostLoginRedirect, clearPostLoginRedirect } from '../utils/postLoginRedirect';
 
 export default function AuthCallback() {
   const { t } = useTranslation();
@@ -13,7 +14,6 @@ export default function AuthCallback() {
 
   useEffect(() => {
     const token = params.get('token');
-    const role = params.get('role');
     if (!token) { navigate('/login'); return; }
 
     // Fetch user info
@@ -21,14 +21,19 @@ export default function AuthCallback() {
       .then(({ data }) => {
         login(token, data);
         if (data.role === 'admin' || data.role === 'vendor') {
+          clearPostLoginRedirect();
           // Redirect to staff-app with token in URL
           const staffUrl = window.location.origin.replace(/\/app$/, '/staff-app');
           window.location.href = `${staffUrl}/auth-callback?token=${encodeURIComponent(token)}`;
         } else {
-          navigate('/');
+          const nextPath = consumePostLoginRedirect();
+          navigate(nextPath || '/', { replace: true });
         }
       })
-      .catch(() => navigate('/login'));
+      .catch(() => {
+        clearPostLoginRedirect();
+        navigate('/login');
+      });
   }, []);
 
   return (

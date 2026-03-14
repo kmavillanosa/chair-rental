@@ -15,14 +15,32 @@ export class AuthController {
   @Get('google/callback')
   @UseGuards(AuthGuard('google'))
   async googleCallback(@Req() req, @Res() res) {
-    const { access_token, user } = this.authService.login(req.user);
     const customerFrontendUrl = process.env.FRONTEND_URL || 'http://localhost:5173';
     const staffFrontendUrl = process.env.STAFF_FRONTEND_URL || 'http://localhost:5174';
-    const frontendUrl = user.role === 'admin' || user.role === 'vendor'
-      ? staffFrontendUrl
-      : customerFrontendUrl;
-    return res.redirect(
-      `${frontendUrl}/auth/callback?token=${access_token}&role=${user.role}`,
-    );
+
+    try {
+      const { access_token, user } = await this.authService.login(req.user);
+      const frontendUrl = user.role === 'admin' || user.role === 'vendor'
+        ? staffFrontendUrl
+        : customerFrontendUrl;
+
+      return res.redirect(
+        `${frontendUrl}/auth/callback?token=${access_token}&role=${user.role}`,
+      );
+    } catch (error) {
+      const role = req.user?.role;
+      const loginUrl =
+        role === 'admin' || role === 'vendor'
+          ? `${staffFrontendUrl}/login`
+          : `${customerFrontendUrl}/login`;
+      const message =
+        error instanceof Error
+          ? error.message
+          : 'Unable to sign in right now.';
+
+      return res.redirect(
+        `${loginUrl}?error=${encodeURIComponent(message)}`,
+      );
+    }
   }
 }

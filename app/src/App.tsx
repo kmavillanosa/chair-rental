@@ -1,4 +1,4 @@
-import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom'
+import { BrowserRouter, Routes, Route, Navigate, useLocation } from 'react-router-dom'
 import { useAuthStore } from './store/authStore'
 import Login from './pages/Login'
 import AuthCallback from './pages/AuthCallback'
@@ -19,10 +19,15 @@ import VendorLanding from './pages/customer/VendorLanding'
 import BookingFlow from './pages/customer/BookingFlow'
 import MyBookings from './pages/customer/MyBookings'
 import BecomeVendor from './pages/customer/BecomeVendor'
+import { savePostLoginRedirect } from './utils/postLoginRedirect'
 
 function ProtectedRoute({ children, role }: { children: React.ReactNode; role?: string }) {
+  const location = useLocation()
   const { token, user } = useAuthStore()
-  if (!token) return <Navigate to="/login" replace />
+  if (!token) {
+    savePostLoginRedirect(`${location.pathname}${location.search}${location.hash}`)
+    return <Navigate to="/login" replace />
+  }
   if (role && user?.role !== role) return <Navigate to="/" replace />
   return <>{children}</>
 }

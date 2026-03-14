@@ -1,7 +1,9 @@
-import { Link } from 'react-router-dom';
+import { useEffect, useState } from 'react';
+import { Link, useLocation } from 'react-router-dom';
 import { useAuthStore } from '../../store/authStore';
 import { useTranslation } from 'react-i18next';
 import LanguageSwitcher from '../common/LanguageSwitcher';
+import { clearPostLoginRedirect, getCurrentAppPath, savePostLoginRedirect } from '../../utils/postLoginRedirect';
 
 interface CustomerLayoutProps {
   children?: React.ReactNode;
@@ -11,31 +13,130 @@ interface CustomerLayoutProps {
 export default function CustomerLayout({ children, hideHeaderBackground = false }: CustomerLayoutProps) {
   const { t } = useTranslation();
   const { user, logout } = useAuthStore();
+  const location = useLocation();
+  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
 
   const headerClassName = hideHeaderBackground
-    ? 'absolute inset-x-0 top-0 z-[1100] bg-transparent text-white'
+    ? 'absolute inset-x-0 top-0 z-[1100] bg-gradient-to-b from-[#082b57]/95 via-[#082b57]/70 to-transparent text-white'
     : 'bg-blue-700 text-white shadow-md';
+
+  const navPillClass = (isActive: boolean) =>
+    `inline-flex items-center rounded-md px-3 py-2 text-sm font-medium transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/70 ${isActive
+      ? 'bg-white/20 text-white'
+      : 'text-blue-50 hover:bg-white/10 hover:text-white'
+    }`;
+
+  const secondaryActionClass =
+    'inline-flex items-center rounded-md px-3 py-2 text-sm font-medium text-blue-50 transition hover:bg-white/10 hover:text-white';
+
+  useEffect(() => {
+    setMobileMenuOpen(false);
+  }, [location.pathname]);
+
+  const handleSignOut = () => {
+    clearPostLoginRedirect();
+    logout();
+    window.location.href = '/login';
+  };
+
+  const navLinks = [
+    ...(user
+      ? [
+        {
+          to: '/my-bookings',
+          label: t('nav.myBookings'),
+          active: location.pathname.startsWith('/my-bookings'),
+        },
+      ]
+      : []),
+    ...(user?.role === 'customer'
+      ? [
+        {
+          to: '/become-vendor',
+          label: t('nav.becomeVendor'),
+          active: location.pathname.startsWith('/become-vendor'),
+        },
+      ]
+      : []),
+  ];
 
   return (
     <div className={`min-h-screen bg-gray-50 ${hideHeaderBackground ? 'relative' : ''}`}>
       <header className={headerClassName}>
-        <div className="max-w-7xl mx-auto px-4 py-4 flex items-center justify-between">
-          <Link to="/" className="text-2xl font-bold">🪑 {t('common.appName')}</Link>
-          <nav className="flex items-center gap-4">
-            <LanguageSwitcher compact />
-            <Link to="/" className="text-lg hover:text-blue-200">🔍 {t('nav.findRentals')}</Link>
-            {user ? (
-              <>
-                <Link to="/my-bookings" className="text-lg hover:text-blue-200">📅 {t('nav.myBookings')}</Link>
-                {user.role === 'customer' && (
-                  <Link to="/become-vendor" className="text-lg hover:text-blue-200">🏪 {t('nav.becomeVendor')}</Link>
+        <div className="mx-auto max-w-7xl px-3 py-2 sm:px-4 sm:py-3">
+          <div className="flex items-center justify-between gap-2">
+            <Link to="/" className="inline-flex min-w-0 items-center gap-2 text-lg font-bold sm:text-2xl">
+              <span aria-hidden="true">🪑</span>
+              <span className="truncate">{t('common.appName')}</span>
+            </Link>
+
+            <div className="flex items-center gap-2">
+              <LanguageSwitcher compact />
+              <button
+                type="button"
+                aria-label="Toggle navigation menu"
+                aria-expanded={mobileMenuOpen}
+                aria-controls="customer-mobile-menu"
+                onClick={() => setMobileMenuOpen((current) => !current)}
+                className="inline-flex h-9 items-center justify-center rounded-md border border-white/40 px-2.5 text-sm font-semibold text-white transition hover:bg-white/10 md:hidden"
+              >
+                {mobileMenuOpen ? 'Close' : 'Menu'}
+              </button>
+
+              <div className="hidden items-center gap-2 md:flex">
+                {user ? (
+                  <button onClick={handleSignOut} className={secondaryActionClass}>
+                    {t('common.signOut')}
+                  </button>
+                ) : (
+                  <Link
+                    to="/login"
+                    onClick={() => savePostLoginRedirect(getCurrentAppPath())}
+                    className="inline-flex items-center rounded-md bg-white px-3 py-2 text-sm font-semibold text-blue-700 transition hover:bg-blue-50"
+                  >
+                    {t('common.signIn')}
+                  </Link>
                 )}
-                <button onClick={() => { logout(); window.location.href = '/login'; }} className="text-lg hover:text-blue-200">🚪 {t('common.signOut')}</button>
-              </>
-            ) : (
-              <Link to="/login" className="bg-white text-blue-700 px-4 py-2 rounded-lg font-semibold text-lg hover:bg-blue-50">{t('common.signIn')}</Link>
-            )}
+              </div>
+            </div>
+          </div>
+
+          <nav className="mt-2 hidden flex-wrap items-center gap-1 md:flex">
+            {navLinks.map((link) => (
+              <Link key={link.to} to={link.to} className={navPillClass(link.active)}>
+                {link.label}
+              </Link>
+            ))}
           </nav>
+
+          {mobileMenuOpen && (
+            <nav
+              id="customer-mobile-menu"
+              className="mt-2 rounded-xl border border-white/25 bg-[#072448]/85 p-2 backdrop-blur md:hidden"
+            >
+              <div className="flex flex-col gap-1">
+                {navLinks.map((link) => (
+                  <Link key={link.to} to={link.to} className={navPillClass(link.active)}>
+                    {link.label}
+                  </Link>
+                ))}
+
+                {user ? (
+                  <button onClick={handleSignOut} className={`${secondaryActionClass} justify-start`}>
+                    {t('common.signOut')}
+                  </button>
+                ) : (
+                  <Link
+                    to="/login"
+                    onClick={() => savePostLoginRedirect(getCurrentAppPath())}
+                    className="inline-flex items-center rounded-md bg-white px-3 py-2 text-sm font-semibold text-blue-700 transition hover:bg-blue-50"
+                  >
+                    {t('common.signIn')}
+                  </Link>
+                )}
+              </div>
+            </nav>
+          )}
         </div>
       </header>
       <main>{children}</main>

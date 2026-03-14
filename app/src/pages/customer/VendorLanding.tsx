@@ -110,12 +110,17 @@ export default function VendorLanding() {
           {vendor.phone && <p className="text-sm text-slate-400 mt-0.5">{vendor.phone}</p>}
           {vendor.description && <p className="text-sm text-slate-300 mt-3">{vendor.description}</p>}
           {(vendor.verificationBadge || vendor.isVerified) && (
-            <span className="inline-flex items-center gap-1 mt-4 bg-emerald-500/15 border border-emerald-500/30 text-emerald-300 px-3 py-0.5 rounded-full text-xs font-medium">
+            <span className="self-start inline-flex items-center gap-1 mt-3 rounded-full border border-emerald-500/30 bg-emerald-500/15 px-2.5 py-0.5 text-[11px] font-semibold leading-none text-emerald-300">
               ✓ {vendor.verificationBadge || t('vendorLandingPage.verifiedVendor')}
             </span>
           )}
-          <div className="mt-4">
-            <Button onClick={handleBookNow} color="dark" size="sm">
+          <div className="mt-4 self-start">
+            <Button
+              onClick={handleBookNow}
+              color="dark"
+              size="lg"
+              className="!rounded-xl !px-7 !py-2.5 !text-base !font-bold"
+            >
               {t('vendorLandingPage.bookNow')}
             </Button>
           </div>

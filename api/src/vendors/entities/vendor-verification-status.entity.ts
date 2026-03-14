@@ -19,6 +19,7 @@ export enum VendorVerificationAction {
   DUPLICATE_SIGNAL = 'duplicate_signal',
   APPROVED = 'approved',
   REJECTED = 'rejected',
+  WARNING_RESET = 'warning_reset',
   FLAGGED = 'flagged',
   SUSPENDED = 'suspended',
   REACTIVATED = 'reactivated',

@@ -11,6 +11,7 @@ export type KycSettingsResponse = {
 };
 
 export type FeatureFlagsSettingsResponse = {
+  allowKycWithoutMerchantId: boolean;
   defaultPlatformCommissionRatePercent: number;
   launchNoCommissionEnabled: boolean;
   launchNoCommissionUntil: string | null;
@@ -24,6 +25,8 @@ const KYC_VENDOR_REGISTRATION_ENABLED_KEY =
 const KYC_REQUIRE_OTP_KEY = 'kyc.requireOtpBeforeVendorRegistration';
 const FLAGS_DEFAULT_PLATFORM_COMMISSION_RATE_PERCENT_KEY =
   'flags.defaultPlatformCommissionRatePercent';
+const FLAGS_ALLOW_KYC_WITHOUT_MERCHANT_ID_KEY =
+  'flags.allowKycWithoutMerchantId';
 const FLAGS_LAUNCH_NO_COMMISSION_ENABLED_KEY =
   'flags.launchNoCommissionEnabled';
 const FLAGS_LAUNCH_NO_COMMISSION_UNTIL_KEY = 'flags.launchNoCommissionUntil';
@@ -86,6 +89,7 @@ export class SettingsService {
 
   async getFeatureFlagsSettings(): Promise<FeatureFlagsSettingsResponse> {
     const settingsMap = await this.findManyAsMap([
+      FLAGS_ALLOW_KYC_WITHOUT_MERCHANT_ID_KEY,
       FLAGS_DEFAULT_PLATFORM_COMMISSION_RATE_PERCENT_KEY,
       FLAGS_LAUNCH_NO_COMMISSION_ENABLED_KEY,
       FLAGS_LAUNCH_NO_COMMISSION_UNTIL_KEY,
@@ -101,6 +105,10 @@ export class SettingsService {
     );
 
     return {
+      allowKycWithoutMerchantId: this.parseBooleanSetting(
+        settingsMap.get(FLAGS_ALLOW_KYC_WITHOUT_MERCHANT_ID_KEY),
+        this.getAllowKycWithoutMerchantIdFallback(),
+      ),
       defaultPlatformCommissionRatePercent:
         this.clampCommissionPercent(configuredPercent),
       launchNoCommissionEnabled: this.parseBooleanSetting(
@@ -141,6 +149,8 @@ export class SettingsService {
     const current = await this.getFeatureFlagsSettings();
 
     const next: FeatureFlagsSettingsResponse = {
+      allowKycWithoutMerchantId:
+        payload.allowKycWithoutMerchantId ?? current.allowKycWithoutMerchantId,
       defaultPlatformCommissionRatePercent: this.clampCommissionPercent(
         payload.defaultPlatformCommissionRatePercent ??
           current.defaultPlatformCommissionRatePercent,
@@ -169,6 +179,10 @@ export class SettingsService {
       ),
     };
 
+    await this.upsertSetting(
+      FLAGS_ALLOW_KYC_WITHOUT_MERCHANT_ID_KEY,
+      String(next.allowKycWithoutMerchantId),
+    );
     await this.upsertSetting(
       FLAGS_DEFAULT_PLATFORM_COMMISSION_RATE_PERCENT_KEY,
       String(next.defaultPlatformCommissionRatePercent),
@@ -248,6 +262,14 @@ export class SettingsService {
     }
 
     return configured;
+  }
+
+  private getAllowKycWithoutMerchantIdFallback() {
+    const onboardingRequired = this.parseBooleanSetting(
+      process.env.PAYMONGO_VENDOR_ONBOARDING_REQUIRED,
+      false,
+    );
+    return !onboardingRequired;
   }
 
   private clampCommissionPercent(value: number) {

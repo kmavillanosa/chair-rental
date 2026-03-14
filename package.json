@@ -1,0 +1,19 @@
+{
+  "name": "chair-rental-repo-tools",
+  "private": true,
+  "version": "1.0.0",
+  "scripts": {
+    "prepare": "husky install",
+    "validate:app": "npm --prefix app run test",
+    "validate:staff-app": "npm --prefix staff-app run test",
+    "validate:api": "npm --prefix api run test",
+    "validate:tests": "npm run validate:app && npm run validate:staff-app && npm run validate:api",
+    "validate:app:coverage": "npm --prefix app run test:coverage",
+    "validate:staff-app:coverage": "npm --prefix staff-app run test:coverage",
+    "validate:api:coverage": "npm --prefix api run test:coverage",
+    "validate:coverage": "npm run validate:app:coverage && npm run validate:staff-app:coverage && npm run validate:api:coverage"
+  },
+  "devDependencies": {
+    "husky": "^8.0.3"
+  }
+}

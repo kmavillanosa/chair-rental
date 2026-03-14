@@ -12,3 +12,16 @@ body {
   height: 100%;
   border-radius: 0.5rem;
 }
+
+.vendor-result-popup .leaflet-popup-content-wrapper {
+  border-radius: 0.75rem;
+}
+
+.vendor-result-popup .leaflet-popup-content {
+  margin: 0.5rem 0.625rem;
+  line-height: 1.2;
+}
+
+.vendor-result-popup .leaflet-popup-content p {
+  margin: 0;
+}

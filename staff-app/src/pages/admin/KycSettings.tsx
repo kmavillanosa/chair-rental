@@ -18,6 +18,7 @@ const DEFAULT_SETTINGS: KycSettings = {
 };
 
 const DEFAULT_FEATURE_FLAGS: FeatureFlagsSettings = {
+    allowKycWithoutMerchantId: true,
     defaultPlatformCommissionRatePercent: 10,
     launchNoCommissionEnabled: false,
     launchNoCommissionUntil: null,
@@ -88,6 +89,7 @@ export default function KycSettingsPage() {
         setSavingFeatureFlags(true);
         try {
             const updated = await updateFeatureFlagsSettings({
+                allowKycWithoutMerchantId: featureFlags.allowKycWithoutMerchantId,
                 defaultPlatformCommissionRatePercent: Number(
                     parsedCommissionPercent.toFixed(2),
                 ),
@@ -154,6 +156,31 @@ export default function KycSettingsPage() {
                                         setFeatureFlags((current) => ({
                                             ...current,
                                             launchNoCommissionEnabled: event.target.checked,
+                                        }))
+                                    }
+                                />
+                                Enabled
+                            </label>
+                        </div>
+                    </div>
+
+                    <div className="rounded-xl border border-slate-200 p-4">
+                        <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+                            <div>
+                                <p className="text-lg font-semibold text-slate-900">Allow KYC Approval Without Merchant ID</p>
+                                <p className="text-sm text-slate-600">
+                                    When enabled, admin can approve KYC even if PayMongo merchant provisioning fails. Merchant ID can be provisioned later from Vendors.
+                                </p>
+                            </div>
+                            <label className="inline-flex items-center gap-2 text-sm font-medium text-slate-800">
+                                <input
+                                    type="checkbox"
+                                    className="h-5 w-5 rounded border-slate-300 text-slate-900 focus:ring-slate-500"
+                                    checked={featureFlags.allowKycWithoutMerchantId}
+                                    onChange={(event) =>
+                                        setFeatureFlags((current) => ({
+                                            ...current,
+                                            allowKycWithoutMerchantId: event.target.checked,
                                         }))
                                     }
                                 />

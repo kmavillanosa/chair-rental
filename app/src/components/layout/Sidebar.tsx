@@ -2,6 +2,7 @@ import { Link, useLocation } from 'react-router-dom';
 import { useAuthStore } from '../../store/authStore';
 import { useTranslation } from 'react-i18next';
 import LanguageSwitcher from '../common/LanguageSwitcher';
+import { clearPostLoginRedirect } from '../../utils/postLoginRedirect';
 
 const adminLinks = [
   { to: '/admin', labelKey: 'nav.admin.overview', icon: '📊', exact: true },
@@ -20,16 +21,20 @@ const vendorLinks = [
   { to: '/vendor/payments', labelKey: 'nav.vendor.payments', icon: '💰' },
 ];
 
-interface Props { role: 'admin' | 'vendor' }
+interface Props {
+  role: 'admin' | 'vendor';
+  className?: string;
+  onNavigate?: () => void;
+}
 
-export default function Sidebar({ role }: Props) {
+export default function Sidebar({ role, className = '', onNavigate }: Props) {
   const { t } = useTranslation();
   const location = useLocation();
   const { logout, user } = useAuthStore();
   const links = role === 'admin' ? adminLinks : vendorLinks;
 
   return (
-    <aside className="w-64 min-h-screen bg-blue-700 text-white flex flex-col shadow-lg">
+    <aside className={`flex min-h-screen w-64 shrink-0 flex-col bg-blue-700 text-white shadow-lg ${className}`.trim()}>
       <div className="p-6 border-b border-blue-600">
         <div className="flex items-start justify-between gap-2">
           <div>
@@ -46,6 +51,7 @@ export default function Sidebar({ role }: Props) {
             <Link
               key={to}
               to={to}
+              onClick={() => onNavigate?.()}
               className={`flex items-center px-4 py-3 rounded-lg text-lg font-medium transition-colors ${active ? 'bg-white text-blue-700' : 'hover:bg-blue-600'
                 }`}
             >
@@ -56,15 +62,20 @@ export default function Sidebar({ role }: Props) {
         })}
       </nav>
       <div className="p-4 border-t border-blue-600">
-        <div className="flex items-center gap-3 mb-3">
-          {user?.avatar && <img src={user.avatar} className="w-10 h-10 rounded-full" alt="" />}
-          <div>
-            <p className="font-semibold text-sm">{user?.name}</p>
-            <p className="text-blue-200 text-xs">{user?.email}</p>
+        <div className="mb-3 flex items-start gap-3">
+          {user?.avatar && <img src={user.avatar} className="h-10 w-10 shrink-0 rounded-full" alt="" />}
+          <div className="min-w-0">
+            <p className="truncate text-sm font-semibold">{user?.name}</p>
+            <p className="mt-0.5 break-all text-xs leading-tight text-blue-200">{user?.email}</p>
           </div>
         </div>
         <button
-          onClick={() => { logout(); window.location.href = '/login'; }}
+          onClick={() => {
+            onNavigate?.();
+            clearPostLoginRedirect();
+            logout();
+            window.location.href = '/login';
+          }}
           className="w-full text-left px-4 py-2 rounded-lg hover:bg-blue-600 text-lg"
         >
           🚪 {t('common.signOut')}

@@ -4,6 +4,7 @@ import Login from './pages/Login'
 import AuthCallback from './pages/AuthCallback'
 import AdminDashboard from './pages/admin/AdminDashboard'
 import VendorsList from './pages/admin/VendorsList'
+import VendorApplicantReview from './pages/admin/VendorApplicantReview'
 import ItemTypesList from './pages/admin/ItemTypesList'
 import BrandsList from './pages/admin/BrandsList'
 import AdminPayments from './pages/admin/AdminPayments'
@@ -18,7 +19,7 @@ import VendorPayments from './pages/vendor/VendorPayments'
 function ProtectedRoute({ children, role }: { children: React.ReactNode; role?: string }) {
   const { token, user } = useAuthStore()
   if (!token) return <Navigate to="/login" replace />
-  if (role && user?.role !== role) return <Navigate to="/login?staffOnly=1" replace />
+  if (role && user?.role !== role) return <Navigate to="/login" replace />
   return <>{children}</>
 }
 
@@ -26,7 +27,7 @@ function StaffHome() {
   const { user } = useAuthStore()
   if (user?.role === 'admin') return <Navigate to="/admin" replace />
   if (user?.role === 'vendor') return <Navigate to="/vendor" replace />
-  return <Navigate to="/login?staffOnly=1" replace />
+  return <Navigate to="/login" replace />
 }
 
 export default function App() {
@@ -37,6 +38,7 @@ export default function App() {
         <Route path="/auth/callback" element={<AuthCallback />} />
         <Route path="/admin" element={<ProtectedRoute role="admin"><AdminDashboard /></ProtectedRoute>} />
         <Route path="/admin/vendors" element={<ProtectedRoute role="admin"><VendorsList /></ProtectedRoute>} />
+        <Route path="/admin/vendors/applicants/:vendorId" element={<ProtectedRoute role="admin"><VendorApplicantReview /></ProtectedRoute>} />
         <Route path="/admin/item-types" element={<ProtectedRoute role="admin"><ItemTypesList /></ProtectedRoute>} />
         <Route path="/admin/brands" element={<ProtectedRoute role="admin"><BrandsList /></ProtectedRoute>} />
         <Route path="/admin/payments" element={<ProtectedRoute role="admin"><AdminPayments /></ProtectedRoute>} />

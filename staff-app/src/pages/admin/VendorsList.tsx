@@ -1,13 +1,15 @@
 import { useEffect, useState } from 'react';
 import { Badge, Button, Modal, Select, Table, TextInput } from 'flowbite-react';
 import toast from 'react-hot-toast';
+import { useNavigate } from 'react-router-dom';
 import AdminLayout from '../../components/layout/AdminLayout';
 import {
+  clearVendorWarnings,
   createVendor,
   flagVendorSuspicious,
   getAllVendors,
   getVendorRequests,
-  reviewVendorRegistration,
+  provisionVendorMerchantId,
   setVendorActive,
   suspendVendor,
   verifyVendor,
@@ -19,12 +21,14 @@ import LoadingSpinner from '../../components/common/LoadingSpinner';
 export default function VendorsList() {
   const [vendors, setVendors] = useState<Vendor[]>([]);
   const [requests, setRequests] = useState<Vendor[]>([]);
+  const navigate = useNavigate();
   const [loading, setLoading] = useState(true);
   const [showCreateModal, setShowCreateModal] = useState(false);
   const [creatingVendor, setCreatingVendor] = useState(false);
   const [showSuspendModal, setShowSuspendModal] = useState(false);
   const [suspendTargetVendor, setSuspendTargetVendor] = useState<Vendor | null>(null);
   const [suspendingVendor, setSuspendingVendor] = useState(false);
+  const [provisioningVendorId, setProvisioningVendorId] = useState<string | null>(null);
   const [createForm, setCreateForm] = useState({
     userEmail: '',
     businessName: '',
@@ -61,10 +65,47 @@ export default function VendorsList() {
     load();
   };
 
+  const handleClearWarnings = async (vendor: Vendor) => {
+    if (vendor.warningCount <= 0) {
+      toast('This vendor has no warnings to clear.');
+      return;
+    }
+
+    const confirmed = window.confirm(
+      `Clear all warnings for ${vendor.businessName}?`,
+    );
+    if (!confirmed) return;
+
+    await clearVendorWarnings(vendor.id);
+    toast.success(`Warnings cleared for ${vendor.businessName}.`);
+    load();
+  };
+
   const handleToggleActive = async (vendor: Vendor) => {
     await setVendorActive(vendor.id, !vendor.isActive);
     toast.success(`Vendor ${vendor.isActive ? 'suspended' : 'activated'}!`);
     load();
+  };
+
+  const handleProvisionMerchant = async (vendor: Vendor) => {
+    if (vendor.paymongoMerchantId) {
+      toast.success(`${vendor.businessName} already has a Merchant ID.`);
+      return;
+    }
+
+    setProvisioningVendorId(vendor.id);
+    try {
+      await provisionVendorMerchantId(vendor.id);
+      toast.success(`Merchant ID provisioned for ${vendor.businessName}.`);
+      load();
+    } catch (error: any) {
+      toast.error(
+        error?.response?.data?.message ||
+        `Failed to provision Merchant ID for ${vendor.businessName}.`,
+      );
+    } finally {
+      setProvisioningVendorId(null);
+    }
   };
 
   const handleSuspend = (vendor: Vendor) => {
@@ -173,32 +214,17 @@ export default function VendorsList() {
     load();
   };
 
-  const handleReviewRequest = async (
-    vendor: Vendor,
-    decision: 'approve' | 'reject',
-  ) => {
-    const notes =
-      window.prompt(
-        decision === 'approve'
-          ? 'Optional admin notes for approval:'
-          : 'Reason for rejection (required):',
-        vendor.kycNotes || '',
-      ) || '';
-
-    if (decision === 'reject' && !notes.trim()) {
-      toast.error('Please provide rejection notes before rejecting a KYC request.');
-      return;
-    }
-
-    await reviewVendorRegistration(vendor.id, decision, notes.trim() || undefined);
-    toast.success(
-      `Vendor request ${decision === 'approve' ? 'approved' : 'rejected'}.`,
-    );
-    load();
-  };
+  const neutralActionClass =
+    '!border-slate-200 !bg-white !text-slate-700 hover:!bg-slate-100';
+  const mutedActionClass =
+    '!border-slate-300 !bg-slate-100 !text-slate-700 hover:!bg-slate-200';
+  const successActionClass =
+    '!border-emerald-200 !bg-emerald-50 !text-emerald-800 hover:!bg-emerald-100';
+  const dangerActionClass =
+    '!border-rose-200 !bg-rose-50 !text-rose-700 hover:!bg-rose-100';
 
   const getStatusColor = (status?: string) => {
-    if (!status) return 'warning';
+    if (!status) return 'gray';
 
     if (
       status === 'approved' ||
@@ -208,7 +234,7 @@ export default function VendorsList() {
       return 'success';
     }
     if (status === 'rejected') return 'failure';
-    if (status === 'pending' || status === 'pending_verification') return 'warning';
+    if (status === 'pending' || status === 'pending_verification') return 'gray';
     return 'gray';
   };
 
@@ -222,203 +248,183 @@ export default function VendorsList() {
 
   return (
     <AdminLayout>
-      <h1 className="mb-6 text-4xl font-bold text-slate-900">Vendors</h1>
-      <div className="mb-6 flex justify-end">
-        <Button size="lg" className="!bg-slate-800 hover:!bg-slate-900" onClick={() => setShowCreateModal(true)}>
-          + Create Vendor
-        </Button>
-      </div>
-
-      <div className="mb-6 rounded-xl border border-slate-200 bg-white p-5 shadow-sm">
-        <div className="flex items-center justify-between mb-4">
-          <h2 className="text-2xl font-bold text-gray-900">KYC Registration Requests</h2>
-          <Badge color="info">{requests.length} pending</Badge>
+      <div className="mx-auto w-full max-w-[1240px]">
+        <h1 className="mb-5 text-3xl font-bold text-slate-900">Vendors</h1>
+        <div className="mb-5 flex justify-end">
+          <Button
+            size="md"
+            className="!bg-slate-800 !px-4 !py-2 text-sm hover:!bg-slate-900"
+            onClick={() => setShowCreateModal(true)}
+          >
+            + Create Vendor
+          </Button>
         </div>
 
-        {requests.length === 0 ? (
-          <p className="text-slate-500">No pending vendor registrations right now.</p>
-        ) : (
-          <div className="space-y-4">
-            {requests.map((request) => (
-              <div key={request.id} className="rounded-lg border border-slate-200 p-4">
-                <div className="flex flex-wrap gap-2 items-center justify-between">
-                  <div>
-                    <p className="text-lg font-semibold text-slate-900">{request.businessName}</p>
-                    <p className="text-sm text-slate-600">
-                      {request.ownerFullName || request.user?.name} • {request.user?.email}
-                    </p>
-                    <p className="text-sm text-slate-600">{request.address}</p>
-                    <p className="text-sm text-slate-600 capitalize">
-                      Type: {(request.vendorType || 'registered_business').replace('_', ' ')}
-                    </p>
-                  </div>
-                  <div className="flex gap-2 items-center flex-wrap justify-end">
-                    <Badge color={getStatusColor(request.verificationStatus)}>
-                      Verification: {request.verificationStatus || 'pending_verification'}
-                    </Badge>
-                    <Badge color={getStatusColor(request.registrationStatus)}>
-                      Registration: {request.registrationStatus || 'pending'}
-                    </Badge>
-                    <Badge color={getStatusColor(request.kycStatus)}>
-                      KYC: {request.kycStatus || 'pending'}
-                    </Badge>
-                  </div>
-                </div>
-
-                {request.kycDocumentUrl && (
-                  <p className="text-sm mt-2">
-                    Gov ID Doc:{' '}
-                    <a
-                      href={request.kycDocumentUrl}
-                      className="text-slate-700 underline"
-                      target="_blank"
-                      rel="noreferrer"
-                    >
-                      {request.kycDocumentUrl}
-                    </a>
-                  </p>
-                )}
-
-                {request.documents && request.documents.length > 0 && (
-                  <div className="text-sm mt-2 space-y-1">
-                    {request.documents.map((document) => (
-                      <p key={document.id}>
-                        {document.documentType}:{' '}
-                        <a
-                          href={document.fileUrl}
-                          className="text-slate-700 underline"
-                          target="_blank"
-                          rel="noreferrer"
-                        >
-                          {document.fileUrl}
-                        </a>
-                      </p>
-                    ))}
-                  </div>
-                )}
-
-                {request.duplicateRiskScore != null && request.duplicateRiskScore > 0 && (
-                  <p className="text-sm text-amber-700 mt-1">
-                    Duplicate risk score: {request.duplicateRiskScore}
-                  </p>
-                )}
-
-                {request.rejectionReason && (
-                  <p className="text-sm text-red-700 mt-1">
-                    Rejection reason: {request.rejectionReason}
-                  </p>
-                )}
-
-                {request.kycNotes && (
-                  <p className="mt-1 text-sm text-slate-600">Notes: {request.kycNotes}</p>
-                )}
-
-                <div className="mt-3 flex gap-2">
-                  <Button
-                    size="sm"
-                    color="light"
-                    className="!border-emerald-200 !bg-emerald-50 !text-emerald-800 hover:!bg-emerald-100"
-                    onClick={() => handleReviewRequest(request, 'approve')}
-                  >
-                    Approve KYC
-                  </Button>
-                  <Button
-                    size="sm"
-                    color="light"
-                    className="!border-rose-200 !bg-rose-50 !text-rose-700 hover:!bg-rose-100"
-                    onClick={() => handleReviewRequest(request, 'reject')}
-                  >
-                    Reject KYC
-                  </Button>
-                </div>
-              </div>
-            ))}
+        <div className="mb-5 rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
+          <div className="mb-3 flex items-center justify-between">
+            <h2 className="text-xl font-semibold text-gray-900">Vendor Applicants</h2>
+            <Badge color="gray">{requests.length} pending</Badge>
           </div>
-        )}
-      </div>
 
-      <div className="overflow-x-auto rounded-xl shadow">
-        <Table striped>
-          <Table.Head>
-            <Table.HeadCell className="text-lg">Business</Table.HeadCell>
-            <Table.HeadCell className="text-lg">Owner</Table.HeadCell>
-            <Table.HeadCell className="text-lg">Status</Table.HeadCell>
-            <Table.HeadCell className="text-lg">Verification</Table.HeadCell>
-            <Table.HeadCell className="text-lg">Warnings</Table.HeadCell>
-            <Table.HeadCell className="text-lg">Actions</Table.HeadCell>
-          </Table.Head>
-          <Table.Body>
-            {vendors.map((vendor) => (
-              <Table.Row key={vendor.id} className="text-lg">
-                <Table.Cell>
-                  <p className="font-semibold">{vendor.businessName}</p>
-                  <p className="text-gray-500 text-sm">{vendor.address}</p>
-                </Table.Cell>
-                <Table.Cell>{vendor.ownerFullName || vendor.user?.name}</Table.Cell>
-                <Table.Cell className="flex gap-2 flex-wrap">
-                  <Badge color={vendor.isActive ? 'success' : 'failure'}>
-                    {vendor.isActive ? 'Active' : 'Inactive'}
-                  </Badge>
-                  {vendor.isVerified && <Badge color="indigo">Verified</Badge>}
-                  {vendor.isSuspicious && <Badge color="warning">Suspicious</Badge>}
-                </Table.Cell>
-                <Table.Cell>
-                  <div className="flex gap-2 flex-wrap">
-                    <Badge color={getStatusColor(vendor.registrationStatus)}>
-                      Reg: {vendor.registrationStatus || (vendor.isVerified ? 'approved' : 'pending')}
+          {requests.length === 0 ? (
+            <p className="text-sm text-slate-500">No pending vendor registrations right now.</p>
+          ) : (
+            <div className="overflow-hidden rounded-lg border border-slate-200">
+              {requests.map((request, index) => {
+                const ownerName = request.ownerFullName || request.user?.name || 'Unknown owner';
+                const documentCount =
+                  (request.documents?.filter((document) => Boolean(document.fileUrl)).length || 0) +
+                  (request.kycDocumentUrl ? 1 : 0);
+
+                return (
+                  <button
+                    key={request.id}
+                    type="button"
+                    onClick={() => navigate(`/admin/vendors/applicants/${request.id}`)}
+                    className={`group flex w-full items-start justify-between gap-4 bg-white px-4 py-3 text-left hover:bg-slate-50 ${index !== requests.length - 1 ? 'border-b border-slate-200' : ''
+                      }`}
+                  >
+                    <div className="min-w-0">
+                      <p className="truncate text-sm font-semibold text-slate-900">{request.businessName}</p>
+                      <p className="truncate text-xs text-slate-600">{ownerName} • {request.user?.email}</p>
+                      <p className="mt-0.5 truncate text-xs text-slate-500">{request.address}</p>
+                      <p className="mt-1 text-xs text-slate-500">
+                        {documentCount} file{documentCount === 1 ? '' : 's'} • Duplicate risk: {request.duplicateRiskScore || 0}
+                      </p>
+                    </div>
+
+                    <div className="flex shrink-0 flex-wrap items-center justify-end gap-2">
+                      <Badge color={getStatusColor(request.registrationStatus)}>
+                        Reg: {request.registrationStatus || 'pending'}
+                      </Badge>
+                      <Badge color={getStatusColor(request.kycStatus)}>
+                        KYC: {request.kycStatus || 'pending'}
+                      </Badge>
+                      <span className="text-xs font-semibold text-slate-600 group-hover:text-slate-900">
+                        Review
+                      </span>
+                    </div>
+                  </button>
+                );
+              })}
+            </div>
+          )}
+        </div>
+
+        <div className="overflow-x-auto rounded-xl shadow">
+          <Table striped>
+            <Table.Head>
+              <Table.HeadCell className="text-xs uppercase tracking-wide">Business</Table.HeadCell>
+              <Table.HeadCell className="text-xs uppercase tracking-wide">Owner</Table.HeadCell>
+              <Table.HeadCell className="text-xs uppercase tracking-wide">Status</Table.HeadCell>
+              <Table.HeadCell className="text-xs uppercase tracking-wide">Verification</Table.HeadCell>
+              <Table.HeadCell className="text-xs uppercase tracking-wide">Warnings</Table.HeadCell>
+              <Table.HeadCell className="text-xs uppercase tracking-wide">Actions</Table.HeadCell>
+            </Table.Head>
+            <Table.Body>
+              {vendors.map((vendor) => (
+                <Table.Row key={vendor.id} className="text-sm">
+                  <Table.Cell>
+                    <p className="font-semibold text-slate-900">{vendor.businessName}</p>
+                    <p className="text-xs text-gray-500">{vendor.address}</p>
+                  </Table.Cell>
+                  <Table.Cell>{vendor.ownerFullName || vendor.user?.name}</Table.Cell>
+                  <Table.Cell className="flex gap-2 flex-wrap">
+                    <Badge color={vendor.isActive ? 'success' : 'gray'}>
+                      {vendor.isActive ? 'Active' : 'Inactive'}
                     </Badge>
-                    <Badge color={getStatusColor(vendor.verificationStatus)}>
-                      Verification: {vendor.verificationStatus || 'pending_verification'}
-                    </Badge>
-                    {vendor.verificationBadge && (
-                      <Badge color="success">{vendor.verificationBadge}</Badge>
-                    )}
-                  </div>
-                </Table.Cell>
-                <Table.Cell className="text-center">{vendor.warningCount}/3</Table.Cell>
-                <Table.Cell>
-                  <div className="flex gap-2 flex-wrap">
-                    <Button
-                      size="sm"
-                      color="light"
-                      className={vendor.isVerified ? '!border-slate-300 !bg-slate-100 !text-slate-700 hover:!bg-slate-200' : '!border-emerald-200 !bg-emerald-50 !text-emerald-800 hover:!bg-emerald-100'}
-                      onClick={() => handleVerify(vendor)}
-                    >
-                      {vendor.isVerified ? 'Verified' : 'Verify'}
-                    </Button>
-                    <Button size="sm" color="light" className="!border-amber-200 !bg-amber-50 !text-amber-800 hover:!bg-amber-100" onClick={() => handleWarn(vendor)}>
-                      Warn
-                    </Button>
-                    <Button
-                      size="sm"
-                      color="light"
-                      className={vendor.isSuspicious ? '!border-slate-300 !bg-slate-100 !text-slate-700 hover:!bg-slate-200' : '!border-amber-200 !bg-amber-50 !text-amber-800 hover:!bg-amber-100'}
-                      onClick={() => handleFlagSuspicious(vendor)}
-                    >
-                      {vendor.isSuspicious ? 'Unflag' : 'Flag'}
-                    </Button>
-                    <Button
-                      size="sm"
-                      color="light"
-                      className="!border-rose-200 !bg-rose-50 !text-rose-700 hover:!bg-rose-100"
-                      onClick={() => handleSuspend(vendor)}
-                    >
-                      Suspend
-                    </Button>
-                    <Button
-                      size="sm"
-                      color="light"
-                      className={vendor.isActive ? '!border-rose-200 !bg-rose-50 !text-rose-700 hover:!bg-rose-100' : '!border-emerald-200 !bg-emerald-50 !text-emerald-800 hover:!bg-emerald-100'}
-                      onClick={() => handleToggleActive(vendor)}
-                    >
-                      {vendor.isActive ? 'Deactivate' : 'Activate'}
-                    </Button>
-                  </div>
-                </Table.Cell>
-              </Table.Row>
-            ))}
-          </Table.Body>
-        </Table>
+                    {vendor.isVerified && <Badge color="success">Verified</Badge>}
+                    {vendor.isSuspicious && <Badge color="failure">Suspicious</Badge>}
+                  </Table.Cell>
+                  <Table.Cell>
+                    <div className="flex gap-2 flex-wrap">
+                      <Badge color={getStatusColor(vendor.registrationStatus)}>
+                        Reg: {vendor.registrationStatus || (vendor.isVerified ? 'approved' : 'pending')}
+                      </Badge>
+                      <Badge color={getStatusColor(vendor.verificationStatus)}>
+                        Verification: {vendor.verificationStatus || 'pending_verification'}
+                      </Badge>
+                      <Badge
+                        color={vendor.paymongoMerchantId ? 'success' : vendor.paymongoOnboardingStatus === 'failed' ? 'failure' : 'gray'}
+                      >
+                        Merchant: {vendor.paymongoMerchantId
+                          ? 'ready'
+                          : (vendor.paymongoOnboardingStatus || 'missing').replace(/_/g, ' ')}
+                      </Badge>
+                      {vendor.verificationBadge && (
+                        <Badge color="success">{vendor.verificationBadge}</Badge>
+                      )}
+                    </div>
+                  </Table.Cell>
+                  <Table.Cell className="text-center">{vendor.warningCount}/3</Table.Cell>
+                  <Table.Cell>
+                    <div className="flex gap-1.5 flex-wrap">
+                      <Button
+                        size="xs"
+                        color="light"
+                        className={vendor.isVerified ? mutedActionClass : successActionClass}
+                        onClick={() => handleVerify(vendor)}
+                      >
+                        {vendor.isVerified ? 'Verified' : 'Verify'}
+                      </Button>
+                      <Button
+                        size="xs"
+                        color="light"
+                        className={vendor.paymongoMerchantId ? mutedActionClass : neutralActionClass}
+                        onClick={() => handleProvisionMerchant(vendor)}
+                        isProcessing={provisioningVendorId === vendor.id}
+                        disabled={Boolean(vendor.paymongoMerchantId) || provisioningVendorId === vendor.id}
+                      >
+                        {vendor.paymongoMerchantId ? 'Merchant OK' : 'Get Merchant ID'}
+                      </Button>
+                      <Button
+                        size="xs"
+                        color="light"
+                        className={neutralActionClass}
+                        onClick={() => handleWarn(vendor)}
+                      >
+                        Warn
+                      </Button>
+                      <Button
+                        size="xs"
+                        color="light"
+                        className={`${neutralActionClass} disabled:!border-slate-200 disabled:!bg-slate-100 disabled:!text-slate-400`}
+                        onClick={() => handleClearWarnings(vendor)}
+                        disabled={vendor.warningCount <= 0}
+                      >
+                        Clear
+                      </Button>
+                      <Button
+                        size="xs"
+                        color="light"
+                        className={vendor.isSuspicious ? mutedActionClass : neutralActionClass}
+                        onClick={() => handleFlagSuspicious(vendor)}
+                      >
+                        {vendor.isSuspicious ? 'Unflag' : 'Flag'}
+                      </Button>
+                      <Button
+                        size="xs"
+                        color="light"
+                        className={dangerActionClass}
+                        onClick={() => handleSuspend(vendor)}
+                      >
+                        Suspend
+                      </Button>
+                      <Button
+                        size="xs"
+                        color="light"
+                        className={vendor.isActive ? dangerActionClass : successActionClass}
+                        onClick={() => handleToggleActive(vendor)}
+                      >
+                        {vendor.isActive ? 'Deactivate' : 'Activate'}
+                      </Button>
+                    </div>
+                  </Table.Cell>
+                </Table.Row>
+              ))}
+            </Table.Body>
+          </Table>
+        </div>
       </div>
 
       <Modal show={showCreateModal} onClose={() => !creatingVendor && setShowCreateModal(false)}>
@@ -428,37 +434,37 @@ export default function VendorsList() {
             placeholder="User Email"
             value={createForm.userEmail}
             onChange={(event) => setCreateForm((current) => ({ ...current, userEmail: event.target.value }))}
-            sizing="lg"
+            sizing="md"
           />
           <TextInput
             placeholder="Business Name"
             value={createForm.businessName}
             onChange={(event) => setCreateForm((current) => ({ ...current, businessName: event.target.value }))}
-            sizing="lg"
+            sizing="md"
           />
           <TextInput
             placeholder="Owner Full Name (optional)"
             value={createForm.ownerFullName}
             onChange={(event) => setCreateForm((current) => ({ ...current, ownerFullName: event.target.value }))}
-            sizing="lg"
+            sizing="md"
           />
           <TextInput
             placeholder="Business Address"
             value={createForm.address}
             onChange={(event) => setCreateForm((current) => ({ ...current, address: event.target.value }))}
-            sizing="lg"
+            sizing="md"
           />
           <TextInput
             placeholder="Phone (optional)"
             value={createForm.phone}
             onChange={(event) => setCreateForm((current) => ({ ...current, phone: event.target.value }))}
-            sizing="lg"
+            sizing="md"
           />
           <TextInput
             placeholder="PayMongo Merchant ID (optional)"
             value={createForm.paymongoMerchantId}
             onChange={(event) => setCreateForm((current) => ({ ...current, paymongoMerchantId: event.target.value }))}
-            sizing="lg"
+            sizing="md"
           />
           <Select
             value={createForm.vendorType}
@@ -469,10 +475,10 @@ export default function VendorsList() {
           </Select>
         </Modal.Body>
         <Modal.Footer>
-          <Button size="lg" onClick={handleCreateVendor} isProcessing={creatingVendor} disabled={creatingVendor}>
+          <Button size="md" onClick={handleCreateVendor} isProcessing={creatingVendor} disabled={creatingVendor}>
             Save
           </Button>
-          <Button color="gray" size="lg" onClick={() => setShowCreateModal(false)} disabled={creatingVendor}>
+          <Button color="gray" size="md" onClick={() => setShowCreateModal(false)} disabled={creatingVendor}>
             Cancel
           </Button>
         </Modal.Footer>
@@ -487,7 +493,7 @@ export default function VendorsList() {
             placeholder="Suspension reason"
             value={suspendForm.reason}
             onChange={(event) => setSuspendForm((current) => ({ ...current, reason: event.target.value }))}
-            sizing="lg"
+            sizing="md"
           />
           <div>
             <label className="mb-1 block text-sm font-semibold text-slate-700">Suspend Until (optional)</label>
@@ -495,15 +501,15 @@ export default function VendorsList() {
               type="date"
               value={suspendForm.suspendedUntil}
               onChange={(event) => setSuspendForm((current) => ({ ...current, suspendedUntil: event.target.value }))}
-              sizing="lg"
+              sizing="md"
             />
           </div>
         </Modal.Body>
         <Modal.Footer>
-          <Button size="lg" onClick={submitSuspend} isProcessing={suspendingVendor} disabled={suspendingVendor}>
+          <Button size="md" onClick={submitSuspend} isProcessing={suspendingVendor} disabled={suspendingVendor}>
             Confirm Suspension
           </Button>
-          <Button color="gray" size="lg" onClick={() => setShowSuspendModal(false)} disabled={suspendingVendor}>
+          <Button color="gray" size="md" onClick={() => setShowSuspendModal(false)} disabled={suspendingVendor}>
             Cancel
           </Button>
         </Modal.Footer>

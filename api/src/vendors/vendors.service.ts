@@ -1255,6 +1255,26 @@ export class VendorsService {
     return this.withVerificationBadge(saved);
   }
 
+  async resetWarnings(id: string, reviewedByUserId?: string) {
+    const vendor = await this.findByIdRaw(id, false);
+    if (!vendor) throw new NotFoundException('Vendor not found');
+
+    await this.vendorsRepo.update(id, {
+      warningCount: 0,
+    });
+
+    await this.logVerificationStatus(id, {
+      status:
+        vendor.verificationStatus ||
+        VendorVerificationStatus.PENDING_VERIFICATION,
+      actionType: VendorVerificationAction.WARNING_RESET,
+      reason: 'Vendor warnings cleared by admin',
+      reviewedByUserId,
+    });
+
+    return this.findById(id, true);
+  }
+
   async verify(id: string, isVerified: boolean, reviewedByUserId?: string) {
     const vendor = await this.findByIdRaw(id, false);
     if (!vendor) throw new NotFoundException('Vendor not found');
@@ -1322,6 +1342,58 @@ export class VendorsService {
     return this.findById(id, true);
   }
 
+  async provisionMerchantId(id: string) {
+    const vendor = await this.findByIdRaw(id, true);
+    if (!vendor) throw new NotFoundException('Vendor not found');
+
+    const existingMerchantId = this.normalizeText(vendor.paymongoMerchantId);
+    if (existingMerchantId) {
+      if (
+        vendor.paymongoOnboardingStatus !==
+          VendorPayMongoOnboardingStatus.PROVISIONED ||
+        vendor.paymongoOnboardingError
+      ) {
+        await this.vendorsRepo.update(id, {
+          paymongoOnboardingStatus: VendorPayMongoOnboardingStatus.PROVISIONED,
+          paymongoOnboardingError: null,
+          paymongoOnboardedAt: vendor.paymongoOnboardedAt || new Date(),
+        });
+      }
+      return this.findById(id, true);
+    }
+
+    await this.vendorsRepo.update(id, {
+      paymongoOnboardingStatus: VendorPayMongoOnboardingStatus.PROCESSING,
+      paymongoOnboardingError: null,
+    });
+
+    try {
+      const merchantId = await this.provisionPayMongoMerchantId(vendor);
+      await this.vendorsRepo.update(id, {
+        paymongoMerchantId: merchantId,
+        paymongoOnboardingStatus: VendorPayMongoOnboardingStatus.PROVISIONED,
+        paymongoOnboardingError: null,
+        paymongoOnboardedAt: new Date(),
+      });
+      this.logger.log(
+        `Manually provisioned PayMongo merchant ${merchantId} for vendor ${vendor.id}`,
+      );
+    } catch (error) {
+      const message =
+        this.normalizeText(error instanceof Error ? error.message : String(error)) ||
+        'Unable to provision PayMongo merchant ID';
+
+      await this.vendorsRepo.update(id, {
+        paymongoOnboardingStatus: VendorPayMongoOnboardingStatus.FAILED,
+        paymongoOnboardingError: message,
+      });
+
+      throw new BadRequestException(message);
+    }
+
+    return this.findById(id, true);
+  }
+
   async setActive(
     id: string,
     isActive: boolean,
@@ -1332,16 +1404,60 @@ export class VendorsService {
     if (!vendor) throw new NotFoundException('Vendor not found');
 
     const normalizedReason = this.normalizeText(reason);
-    await this.vendorsRepo.update(id, {
+    const updatePayload: Partial<Vendor> = {
       isActive,
       suspendedUntil: isActive ? null : vendor.suspendedUntil,
       kycNotes: normalizedReason || vendor.kycNotes,
-    });
+    };
+
+    let statusForAudit =
+      this.normalizeVerificationStatus(vendor.verificationStatus) ||
+      VendorVerificationStatus.PENDING_VERIFICATION;
+
+    if (isActive) {
+      const normalizedCurrentStatus = this.normalizeVerificationStatus(
+        vendor.verificationStatus,
+      );
+      const hasApprovedVisibilityState =
+        vendor.isVerified &&
+        (normalizedCurrentStatus === VendorVerificationStatus.VERIFIED_BUSINESS ||
+          normalizedCurrentStatus === VendorVerificationStatus.VERIFIED_OWNER ||
+          vendor.registrationStatus === VendorRegistrationStatus.APPROVED);
+
+      if (!hasApprovedVisibilityState) {
+        const latestApprovedEntry = await this.verificationStatusRepo.findOne({
+          where: {
+            vendorId: id,
+            status: In([
+              VendorVerificationStatus.VERIFIED_BUSINESS,
+              VendorVerificationStatus.VERIFIED_OWNER,
+            ]),
+          },
+          order: { createdAt: 'DESC' },
+        });
+
+        if (latestApprovedEntry) {
+          statusForAudit = latestApprovedEntry.status;
+          updatePayload.isVerified = true;
+          updatePayload.registrationStatus = VendorRegistrationStatus.APPROVED;
+          updatePayload.kycStatus = VendorKycStatus.APPROVED;
+          updatePayload.verificationStatus = latestApprovedEntry.status;
+          updatePayload.verificationBadge = this.getVerificationBadgeLabel(
+            latestApprovedEntry.status,
+          );
+          updatePayload.rejectionReason = null;
+          updatePayload.reviewedAt = new Date();
+          updatePayload.reviewedByUserId = reviewedByUserId || null;
+
+          await this.usersService.updateRole(vendor.userId, UserRole.VENDOR);
+        }
+      }
+    }
+
+    await this.vendorsRepo.update(id, updatePayload);
 
     await this.logVerificationStatus(id, {
-      status:
-        vendor.verificationStatus ||
-        VendorVerificationStatus.PENDING_VERIFICATION,
+      status: statusForAudit,
       actionType: isActive
         ? VendorVerificationAction.REACTIVATED
         : VendorVerificationAction.SUSPENDED,
@@ -1647,6 +1763,22 @@ export class VendorsService {
     return this.parseBooleanFlag(process.env.PAYMONGO_VENDOR_ONBOARDING_ENABLED);
   }
 
+  private async isKycApprovalAllowedWithoutMerchantId() {
+    try {
+      const flags = await this.settingsService.getFeatureFlagsSettings();
+      return Boolean(flags.allowKycWithoutMerchantId);
+    } catch (error) {
+      this.logger.warn(
+        `Failed to read feature flags for KYC approval fallback: ${
+          error instanceof Error ? error.message : String(error)
+        }`,
+      );
+      return !this.parseBooleanFlag(
+        process.env.PAYMONGO_VENDOR_ONBOARDING_REQUIRED,
+      );
+    }
+  }
+
   private getPayMongoApiBaseUrl() {
     const baseApi = this.normalizeText(process.env.PAYMONGO_API_BASE_URL);
     return (baseApi || 'https://api.paymongo.com/v1').replace(/\/$/, '');
@@ -1673,7 +1805,15 @@ export class VendorsService {
       return existingMerchantId;
     }
 
+    const allowKycWithoutMerchantId =
+      await this.isKycApprovalAllowedWithoutMerchantId();
+
     if (!this.isPayMongoVendorOnboardingEnabled()) {
+      if (!allowKycWithoutMerchantId) {
+        throw new BadRequestException(
+          'Merchant ID is required before approval. Enable vendor onboarding or manually provision Merchant ID first.',
+        );
+      }
       return null;
     }
 
@@ -1704,7 +1844,14 @@ export class VendorsService {
         paymongoOnboardingError: message,
       });
 
-      throw new BadRequestException(message);
+      if (!allowKycWithoutMerchantId) {
+        throw new BadRequestException(message);
+      }
+
+      this.logger.warn(
+        `PayMongo onboarding failed for vendor ${vendor.id}, but approval will continue: ${message}`,
+      );
+      return null;
     }
   }
 

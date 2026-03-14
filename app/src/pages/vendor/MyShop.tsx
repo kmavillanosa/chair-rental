@@ -147,8 +147,8 @@ export default function MyShop() {
 
     return (
         <VendorLayout>
-            <h1 className="text-4xl font-bold text-gray-900 mb-6">🏪 {t('myShopPage.title')}</h1>
-            <div className="bg-white rounded-2xl shadow p-8 max-w-2xl space-y-5">
+            <h1 className="mb-4 text-2xl font-bold text-gray-900 sm:mb-6 sm:text-4xl">🏪 {t('myShopPage.title')}</h1>
+            <div className="mx-auto max-w-3xl space-y-5 rounded-2xl bg-white p-4 shadow sm:p-8">
                 <div>
                     <label className="block text-xl font-semibold mb-2">{t('common.businessName')}</label>
                     <TextInput value={form.businessName} onChange={(event) => setForm((current) => ({ ...current, businessName: event.target.value }))} sizing="lg" />
@@ -180,15 +180,15 @@ export default function MyShop() {
                 </div>
 
                 <div>
-                    <div className="flex items-center justify-between mb-2 gap-4">
+                    <div className="mb-2 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
                         <label className="block text-xl font-semibold">Pin Shop Location</label>
-                        <Button color="light" onClick={handleUseCurrentLocation} disabled={locating} isProcessing={locating}>
+                        <Button color="light" onClick={handleUseCurrentLocation} disabled={locating} isProcessing={locating} className="w-full sm:w-auto">
                             Use Current Location
                         </Button>
                     </div>
                     <p className="text-sm text-gray-500 mb-3">Click anywhere on the map to drop your pin. Drag the pin to refine your exact spot.</p>
 
-                    <div className="h-80 rounded-xl overflow-hidden border border-gray-200">
+                    <div className="h-64 overflow-hidden rounded-xl border border-gray-200 sm:h-80">
                         <MapContainer center={mapCenter} zoom={15} style={{ height: '100%', width: '100%' }}>
                             <TileLayer
                                 url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
@@ -221,12 +221,12 @@ export default function MyShop() {
 
                 <div className="bg-blue-50 rounded-xl p-4">
                     <p className="text-lg font-semibold text-blue-800">🔗 {t('myShopPage.shopUrl')}</p>
-                    <a href={`/shop/${vendor?.slug}`} target="_blank" rel="noopener noreferrer" className="text-blue-600 text-xl hover:underline">
+                    <a href={`/shop/${vendor?.slug}`} target="_blank" rel="noopener noreferrer" className="break-all text-sm text-blue-600 hover:underline sm:text-xl">
                         {window.location.origin}/shop/{vendor?.slug}
                     </a>
                 </div>
 
-                <Button size="xl" onClick={handleSave} disabled={saving} isProcessing={saving}>
+                <Button size="lg" onClick={handleSave} disabled={saving} isProcessing={saving} className="w-full sm:w-auto">
                     💾 {t('myShopPage.saveChanges')}
                 </Button>
             </div>

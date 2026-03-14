@@ -9,6 +9,7 @@ import { getItemTypes } from '../../api/items';
 import type { ItemType } from '../../types';
 import { useAuthStore } from '../../store/authStore';
 import { useTranslation } from 'react-i18next';
+import { getCurrentAppPath, savePostLoginRedirect } from '../../utils/postLoginRedirect';
 import type { TFunction } from 'i18next';
 
 // Fix Leaflet default icon when bundled by Vite.
@@ -823,7 +824,10 @@ export default function CustomerHome() {
                             <Button
                                 size="lg"
                                 color="light"
-                                onClick={() => navigate('/login')}
+                                onClick={() => {
+                                    savePostLoginRedirect(getCurrentAppPath());
+                                    navigate('/login');
+                                }}
                                 className="!rounded-full !px-8 !py-2.5 !font-semibold"
                             >
                                 {t('customerHome.heroCreateAccount')}
@@ -1168,13 +1172,43 @@ export default function CustomerHome() {
                 </div>
             </section>
 
+            <section className="bg-white py-14 sm:py-16">
+                <div className="mx-auto max-w-7xl px-4">
+                    <div className="relative overflow-hidden rounded-3xl border border-sky-200 bg-gradient-to-br from-[#0a2f62] via-[#13508f] to-[#2382a8] px-6 py-8 text-white shadow-xl sm:px-10 sm:py-10">
+                        <div className="pointer-events-none absolute -right-10 -top-10 h-36 w-36 rounded-full bg-white/15 blur-xl" />
+                        <div className="pointer-events-none absolute -bottom-14 left-1/3 h-40 w-40 rounded-full bg-cyan-300/20 blur-2xl" />
+
+                        <div className="relative">
+                            <p className="text-[11px] font-semibold uppercase tracking-[0.22em] text-cyan-100">
+                                {t('customerHome.appComingLabel')}
+                            </p>
+                            <h3 className="mt-2 text-2xl font-bold tracking-tight sm:text-3xl">
+                                {t('customerHome.appComingTitle')}
+                            </h3>
+                            <p className="mt-3 max-w-3xl text-sm text-sky-100 sm:text-base">
+                                {t('customerHome.appComingBody')}
+                            </p>
+
+                            <div className="mt-5 flex flex-wrap gap-2">
+                                <span className="inline-flex items-center rounded-full border border-white/35 bg-white/10 px-3 py-1 text-xs font-semibold text-white">
+                                    {t('customerHome.appComingAndroid')}
+                                </span>
+                                <span className="inline-flex items-center rounded-full border border-white/35 bg-white/10 px-3 py-1 text-xs font-semibold text-white">
+                                    {t('customerHome.appComingIos')}
+                                </span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
             <Modal
                 show={showLocationModal}
-                size="4xl"
+                size="xl"
                 onClose={() => setShowLocationModal(false)}
             >
                 <Modal.Header>{t('customerHome.modalTitle')}</Modal.Header>
-                <Modal.Body>
+                <Modal.Body className="space-y-3 !p-3 sm:!p-5">
                     <p className="mb-3 text-sm text-gray-600">
                         {t('customerHome.modalSubtitle')}
                     </p>
@@ -1211,7 +1245,7 @@ export default function CustomerHome() {
                         <p className="mt-2 text-xs text-gray-500">{t('customerHome.searchingAddresses')}</p>
                     )}
 
-                    <div className="mt-4 h-[320px] overflow-hidden rounded-xl border border-gray-200">
+                    <div className="mt-4 h-[240px] overflow-hidden rounded-xl border border-gray-200 sm:h-[320px]">
                         <MapContainer center={modalMapCenter} zoom={13} style={{ height: '100%', width: '100%' }}>
                             <MapCenterController center={modalMapCenter} />
                             <TileLayer
@@ -1239,14 +1273,14 @@ export default function CustomerHome() {
                         })}
                     </p>
 
-                    <div className="mt-4 flex flex-wrap justify-end gap-2">
-                        <Button size="sm" color="gray" onClick={useCurrentLocationInModal}>
+                    <div className="mt-4 flex flex-wrap justify-stretch gap-2 sm:justify-end">
+                        <Button size="sm" color="gray" onClick={useCurrentLocationInModal} className="w-full sm:w-auto">
                             {t('customerHome.modalUseCurrentLocation')}
                         </Button>
-                        <Button size="sm" color="light" onClick={() => setShowLocationModal(false)}>
+                        <Button size="sm" color="light" onClick={() => setShowLocationModal(false)} className="w-full sm:w-auto">
                             {t('common.cancel')}
                         </Button>
-                        <Button size="sm" onClick={confirmLocationFromModal}>
+                        <Button size="sm" onClick={confirmLocationFromModal} className="w-full sm:w-auto">
                             {t('customerHome.modalUseThisLocation')}
                         </Button>
                     </div>

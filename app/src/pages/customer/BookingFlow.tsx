@@ -1,12 +1,14 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
-import { useParams, useNavigate, useSearchParams } from 'react-router-dom';
+import { useParams, useNavigate, useSearchParams, useLocation } from 'react-router-dom';
 import { Button, TextInput } from 'flowbite-react';
 import toast from 'react-hot-toast';
 import L from 'leaflet';
 import {
   MapContainer,
   Marker,
+  Polyline,
   TileLayer,
+  Tooltip,
   useMap,
   useMapEvents,
 } from 'react-leaflet';
@@ -21,6 +23,7 @@ import { formatCurrency, calcDays, formatDate } from '../../utils/format';
 import LoadingSpinner from '../../components/common/LoadingSpinner';
 import { useAuthStore } from '../../store/authStore';
 import { useTranslation } from 'react-i18next';
+import { savePostLoginRedirect } from '../../utils/postLoginRedirect';
 
 type Coordinates = {
   lat: number;
@@ -37,6 +40,13 @@ const deliveryPinIcon = L.icon({
   iconAnchor: [12, 41],
   popupAnchor: [1, -34],
   shadowSize: [41, 41],
+});
+
+const vendorPinIcon = L.divIcon({
+  className: '',
+  html: '<div style="display:flex;align-items:center;justify-content:center;width:30px;height:30px;border-radius:9999px;background:#0f172a;color:#ffffff;border:2px solid #ffffff;font-weight:700;font-size:12px;box-shadow:0 4px 10px rgba(15,23,42,0.35);">V</div>',
+  iconSize: [30, 30],
+  iconAnchor: [15, 15],
 });
 
 function formatCoordinates(point: Coordinates) {
@@ -137,6 +147,7 @@ export default function BookingFlow() {
   const { t } = useTranslation();
   const { slug } = useParams<{ slug: string }>();
   const navigate = useNavigate();
+  const location = useLocation();
   const [searchParams] = useSearchParams();
   const { token } = useAuthStore();
   const [step, setStep] = useState(1);
@@ -182,6 +193,13 @@ export default function BookingFlow() {
     return { lat, lng } as Coordinates;
   }, [searchParams]);
 
+  const vendorCoordinates = useMemo(() => {
+    const lat = Number(vendor?.latitude);
+    const lng = Number(vendor?.longitude);
+    if (!Number.isFinite(lat) || !Number.isFinite(lng)) return null;
+    return { lat, lng } as Coordinates;
+  }, [vendor?.latitude, vendor?.longitude]);
+
   const setDeliveryCoordinatesWithMode = useCallback(
     (nextCoordinates: Coordinates, mode: 'auto' | 'manual') => {
       const normalized = {
@@ -197,7 +215,16 @@ export default function BookingFlow() {
   );
 
   useEffect(() => {
-    if (!token) { navigate('/login'); return; }
+    if (!vendorCoordinates || deliveryCoordinates) return;
+    setDeliveryMapCenter([vendorCoordinates.lat, vendorCoordinates.lng]);
+  }, [deliveryCoordinates, vendorCoordinates]);
+
+  useEffect(() => {
+    if (!token) {
+      savePostLoginRedirect(`${location.pathname}${location.search}${location.hash}`);
+      navigate('/login', { replace: true });
+      return;
+    }
     if (!slug) return;
 
     // Get dates from URL params if provided
@@ -233,6 +260,9 @@ export default function BookingFlow() {
       .finally(() => setLoading(false));
   }, [
     fallbackSearchCoordinates,
+    location.hash,
+    location.pathname,
+    location.search,
     navigate,
     searchParams,
     setDeliveryCoordinatesWithMode,
@@ -256,10 +286,7 @@ export default function BookingFlow() {
   }, []);
 
   useEffect(() => {
-    const vendorLat = Number(vendor?.latitude);
-    const vendorLng = Number(vendor?.longitude);
-
-    if (!vendor || !Number.isFinite(vendorLat) || !Number.isFinite(vendorLng)) {
+    if (!vendorCoordinates) {
       setDeliveryCharge(0);
       setDeliveryDistanceKm(null);
       return;
@@ -271,7 +298,6 @@ export default function BookingFlow() {
       return;
     }
 
-    const vendorCoordinates: Coordinates = { lat: vendorLat, lng: vendorLng };
     const applyEstimate = (
       targetCoordinates: Coordinates,
       options?: { persistCoordinates?: boolean; mode?: 'auto' | 'manual' },
@@ -369,7 +395,7 @@ export default function BookingFlow() {
     fallbackSearchCoordinates,
     parsedHelpersNeeded,
     setDeliveryCoordinatesWithMode,
-    vendor,
+    vendorCoordinates,
   ]);
 
   // Check availability when dates change
@@ -742,13 +768,33 @@ export default function BookingFlow() {
                 </Button>
               </div>
 
-              <div className="h-[300px] overflow-hidden rounded-xl border border-gray-200">
+              <div className="h-[240px] overflow-hidden rounded-xl border border-gray-200 sm:h-[300px]">
                 <MapContainer center={deliveryMapCenter} zoom={15} className="h-full w-full">
                   <DeliveryMapCenterController center={deliveryMapCenter} />
                   <TileLayer
                     url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
                     attribution="&copy; OpenStreetMap contributors"
                   />
+                  {vendorCoordinates && deliveryCoordinates && (
+                    <Polyline
+                      positions={[
+                        [vendorCoordinates.lat, vendorCoordinates.lng],
+                        [deliveryCoordinates.lat, deliveryCoordinates.lng],
+                      ]}
+                      pathOptions={{ color: '#2563eb', weight: 3, dashArray: '6 8', opacity: 0.75 }}
+                    />
+                  )}
+                  {vendorCoordinates && (
+                    <Marker
+                      position={[vendorCoordinates.lat, vendorCoordinates.lng]}
+                      icon={vendorPinIcon}
+                      interactive={false}
+                    >
+                      <Tooltip direction="top" offset={[0, -12]} permanent>
+                        {t('bookingFlow.vendorLocationPin')}
+                      </Tooltip>
+                    </Marker>
+                  )}
                   <DeliveryLocationPicker onPick={handleDeliveryPinPick} />
                   {deliveryCoordinates && (
                     <Marker
@@ -762,9 +808,27 @@ export default function BookingFlow() {
                           handleDeliveryPinPick({ lat, lng });
                         },
                       }}
-                    />
+                    >
+                      <Tooltip direction="top" offset={[0, -28]} permanent>
+                        {t('bookingFlow.deliveryLocationPin')}
+                      </Tooltip>
+                    </Marker>
                   )}
                 </MapContainer>
+              </div>
+
+              <div className="rounded-lg border border-gray-200 bg-gray-50 p-3 text-xs text-gray-700">
+                <p className="mb-2 font-semibold text-gray-800">{t('bookingFlow.mapLegend')}</p>
+                <div className="flex flex-wrap gap-4">
+                  <span className="inline-flex items-center gap-2">
+                    <span className="inline-flex h-5 w-5 items-center justify-center rounded-full bg-slate-900 text-[10px] font-bold text-white">V</span>
+                    {t('bookingFlow.vendorLocationPin')}
+                  </span>
+                  <span className="inline-flex items-center gap-2">
+                    <span className="inline-flex h-5 w-5 items-center justify-center rounded-full bg-blue-600 text-[10px] font-bold text-white">D</span>
+                    {t('bookingFlow.deliveryLocationPin')}
+                  </span>
+                </div>
               </div>
 
               <p className="text-sm font-medium text-gray-700">
@@ -774,6 +838,13 @@ export default function BookingFlow() {
                   })
                   : t('bookingFlow.deliveryCoordinatesRequiredHint')}
               </p>
+              {vendorCoordinates && (
+                <p className="text-sm font-medium text-gray-700">
+                  {t('bookingFlow.vendorCoordinatesLine', {
+                    coordinates: formatCoordinates(vendorCoordinates),
+                  })}
+                </p>
+              )}
             </div>
             <div className="rounded-xl border border-blue-100 bg-blue-50/60 p-4 text-sm text-blue-900">
               {estimatingDelivery ? (

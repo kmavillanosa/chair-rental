@@ -1,19 +1,31 @@
 import { loginWithGoogle } from '../api/auth';
 import { useTranslation } from 'react-i18next';
 import LanguageSwitcher from '../components/common/LanguageSwitcher';
-import { Link } from 'react-router-dom';
+import { Link, useSearchParams } from 'react-router-dom';
+import { HiArrowLeft, HiArrowRight } from 'react-icons/hi';
 
 export default function Login() {
   const { t } = useTranslation();
+  const [searchParams] = useSearchParams();
+  const vendorLoginUrl = (
+    import.meta.env.VITE_VENDOR_LOGIN_URL ||
+    import.meta.env.VITE_STAFF_APP_URL ||
+    'http://127.0.0.1:43172/login'
+  ).trim();
+  const authError = searchParams.get('error')?.trim() || '';
+
+  const handleVendorLoginRedirect = () => {
+    window.location.assign(vendorLoginUrl);
+  };
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-blue-600 to-blue-800 flex flex-col items-center justify-center p-6">
       <Link
         to="/"
         aria-label={t('login.backToHome')}
-        className="absolute top-6 left-6 inline-flex h-11 w-11 items-center justify-center rounded-full border border-white/40 bg-white/20 text-2xl font-semibold text-white backdrop-blur-sm hover:bg-white/30"
+        className="group absolute top-6 left-6 inline-flex h-12 w-12 items-center justify-center rounded-full border border-white/40 bg-white/20 text-white backdrop-blur-sm transition-colors hover:bg-white/30"
       >
-        ←
+        <HiArrowLeft className="h-5 w-5 transition-transform group-hover:-translate-x-0.5" aria-hidden="true" />
       </Link>
       <div className="bg-white rounded-3xl shadow-2xl p-10 max-w-md w-full text-center">
         <div className="mb-4 flex justify-end">
@@ -23,6 +35,11 @@ export default function Login() {
         <h1 className="text-4xl font-bold text-gray-900 mb-2">{t('common.appName')}</h1>
         <p className="text-xl text-gray-500 mb-2">{t('login.tagline')}</p>
         <p className="text-lg text-gray-400 mb-8">{t('login.subtitle')}</p>
+        {authError && (
+          <div className="mb-6 rounded-2xl border border-rose-200 bg-rose-50 px-4 py-3 text-left text-sm font-medium text-rose-700">
+            {authError}
+          </div>
+        )}
         <button
           onClick={loginWithGoogle}
           className="w-full flex items-center justify-center gap-4 bg-white border-2 border-gray-300 rounded-2xl px-6 py-5 text-2xl font-semibold text-gray-700 hover:bg-gray-50 hover:border-blue-400 transition-all shadow-md hover:shadow-lg"
@@ -35,6 +52,34 @@ export default function Login() {
           </svg>
           {t('login.googleButton')}
         </button>
+
+        <div className="my-5 flex items-center gap-3 text-sm font-semibold uppercase tracking-wider text-gray-400">
+          <span className="h-px flex-1 bg-gray-200" />
+          {t('login.orSeparator')}
+          <span className="h-px flex-1 bg-gray-200" />
+        </div>
+
+        <button
+          type="button"
+          onClick={handleVendorLoginRedirect}
+          className="group w-full rounded-2xl border border-slate-300 bg-gradient-to-r from-slate-900 via-slate-800 to-blue-900 px-6 py-4 text-left text-white shadow-lg transition-all hover:-translate-y-0.5 hover:shadow-xl"
+        >
+          <span className="flex items-center justify-between gap-4">
+            <span>
+              <span className="block text-sm font-medium uppercase tracking-wide text-blue-200">
+                {t('login.vendorPortalBadge')}
+              </span>
+              <span className="mt-1 block text-lg font-semibold leading-tight">
+                {t('login.vendorPortalButton')}
+              </span>
+            </span>
+            <span className="inline-flex h-10 w-10 items-center justify-center rounded-full bg-white/20 transition-transform duration-200 group-hover:translate-x-0.5">
+              <HiArrowRight className="h-5 w-5" aria-hidden="true" />
+            </span>
+          </span>
+        </button>
+
+        <p className="mt-3 text-sm text-gray-500">{t('login.vendorPortalHint')}</p>
         <p className="mt-6 text-gray-400 text-lg">{t('login.footer')}</p>
       </div>
     </div>

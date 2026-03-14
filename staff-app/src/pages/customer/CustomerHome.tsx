@@ -60,7 +60,7 @@ export default function CustomerHome() {
         {searched && !loading && (
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
             {/* Map */}
-            <div className="h-96 rounded-2xl overflow-hidden shadow-lg">
+            <div className="h-72 overflow-hidden rounded-2xl shadow-lg sm:h-96">
               <MapContainer center={center} zoom={12} style={{ height: '100%', width: '100%' }}>
                 <TileLayer url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png" attribution="© OpenStreetMap" />
                 {vendors.map(v => v.latitude && v.longitude ? (
@@ -78,7 +78,7 @@ export default function CustomerHome() {
             </div>
 
             {/* Vendor Cards */}
-            <div className="space-y-4 overflow-y-auto max-h-96">
+            <div className="space-y-4 overflow-visible max-h-none lg:max-h-96 lg:overflow-y-auto">
               {vendors.length === 0 && (
                 <div className="text-center py-10">
                   <p className="text-2xl text-gray-400">😔 No vendors found nearby.</p>

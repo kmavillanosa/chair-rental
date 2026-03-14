@@ -1,4 +1,4 @@
-import { Injectable, NotFoundException } from '@nestjs/common';
+import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { VendorPayment, PaymentStatus } from './entities/vendor-payment.entity';
@@ -38,7 +38,17 @@ export class PaymentsService {
   }
 
   async upsertDeliveryRate(vendorId: string, data: Partial<DeliveryRate>) {
-    const rate = this.deliveryRatesRepo.create({ ...data, vendorId });
+    const rate = this.deliveryRatesRepo.create({
+      vendorId,
+      distanceKm: this.parseNonNegativeNumber(data.distanceKm, 'distanceKm'),
+      chargeAmount: this.parseNonNegativeNumber(data.chargeAmount, 'chargeAmount'),
+      helpersCount: this.parseNonNegativeInteger(
+        data.helpersCount,
+        'helpersCount',
+        1,
+      ),
+    });
+
     return this.deliveryRatesRepo.save(rate);
   }
 
@@ -50,9 +60,18 @@ export class PaymentsService {
     }
 
     const updated = this.deliveryRatesRepo.merge(existing, {
-      distanceKm: data.distanceKm !== undefined ? Number(data.distanceKm) : existing.distanceKm,
-      chargeAmount: data.chargeAmount !== undefined ? Number(data.chargeAmount) : existing.chargeAmount,
-      helpersCount: data.helpersCount !== undefined ? Number(data.helpersCount) : existing.helpersCount,
+      distanceKm:
+        data.distanceKm !== undefined
+          ? this.parseNonNegativeNumber(data.distanceKm, 'distanceKm')
+          : existing.distanceKm,
+      chargeAmount:
+        data.chargeAmount !== undefined
+          ? this.parseNonNegativeNumber(data.chargeAmount, 'chargeAmount')
+          : existing.chargeAmount,
+      helpersCount:
+        data.helpersCount !== undefined
+          ? this.parseNonNegativeInteger(data.helpersCount, 'helpersCount')
+          : existing.helpersCount,
     });
 
     return this.deliveryRatesRepo.save(updated);
@@ -64,5 +83,38 @@ export class PaymentsService {
     if (!result.affected) {
       throw new NotFoundException('Delivery rate not found');
     }
+  }
+
+  private parseNonNegativeNumber(rawValue: unknown, fieldName: string) {
+    const value = Number(rawValue);
+    if (!Number.isFinite(value) || value < 0) {
+      throw new BadRequestException(`${fieldName} must be a non-negative number`);
+    }
+    return value;
+  }
+
+  private parseNonNegativeInteger(
+    rawValue: unknown,
+    fieldName: string,
+    defaultValue?: number,
+  ) {
+    if (
+      rawValue === undefined ||
+      rawValue === null ||
+      String(rawValue).trim() === ''
+    ) {
+      if (defaultValue !== undefined) {
+        return defaultValue;
+      }
+      throw new BadRequestException(`${fieldName} is required`);
+    }
+
+    const value = Number(rawValue);
+    if (!Number.isInteger(value) || value < 0) {
+      throw new BadRequestException(
+        `${fieldName} must be a non-negative integer`,
+      );
+    }
+    return value;
   }
 }

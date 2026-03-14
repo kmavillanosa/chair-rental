@@ -18,6 +18,7 @@ import type {
     VendorType,
 } from '../../types';
 import { useTranslation } from 'react-i18next';
+import { getCurrentAppPath, savePostLoginRedirect } from '../../utils/postLoginRedirect';
 
 delete (L.Icon.Default.prototype as any)._getIconUrl;
 L.Icon.Default.mergeOptions({
@@ -371,7 +372,7 @@ export default function BecomeVendor() {
                 <div className="max-w-3xl mx-auto px-4 py-10">
                     <h1 className="text-3xl font-bold text-gray-900">{t('becomeVendorPage.title')}</h1>
                     <p className="text-gray-600 mt-3">{t('becomeVendorPage.signInFirst')}</p>
-                    <Button className="mt-6" onClick={() => navigate('/login')}>{t('common.signIn')}</Button>
+                    <Button className="mt-6" onClick={() => { savePostLoginRedirect(getCurrentAppPath()); navigate('/login'); }}>{t('common.signIn')}</Button>
                 </div>
             </CustomerLayout>
         );
@@ -584,7 +585,7 @@ export default function BecomeVendor() {
                             </Button>
                         </div>
 
-                        <div className="h-[320px] overflow-hidden rounded-xl border border-gray-200">
+                        <div className="h-[240px] overflow-hidden rounded-xl border border-gray-200 sm:h-[320px]">
                             <MapContainer center={mapCenter} zoom={15} className="h-full w-full">
                                 <VendorMapCenterController center={mapCenter} />
                                 <TileLayer

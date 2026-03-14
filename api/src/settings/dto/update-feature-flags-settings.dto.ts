@@ -12,6 +12,10 @@ import {
 
 export class UpdateFeatureFlagsSettingsDto {
   @IsOptional()
+  @IsBoolean()
+  allowKycWithoutMerchantId?: boolean;
+
+  @IsOptional()
   @Type(() => Number)
   @IsNumber({ maxDecimalPlaces: 2 })
   @Min(0)

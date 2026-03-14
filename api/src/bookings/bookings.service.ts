@@ -33,6 +33,11 @@ type CreateBookingPayload = {
   notes?: string;
 };
 
+type NormalizedBookingItem = {
+  inventoryItemId: string;
+  quantity: number;
+};
+
 type PayMongoRecipient = {
   merchant_id: string;
   split_type: 'fixed' | 'percentage_net';
@@ -133,6 +138,19 @@ export class BookingsService {
       throw new BadRequestException('At least one booking item is required');
     }
 
+    const { startDate, endDate } = this.parseBookingDateRange(
+      data.startDate,
+      data.endDate,
+    );
+    const normalizedItems = this.normalizeBookingItems(data.items);
+    const delivery = this.parseNonNegativeMoney(data.deliveryCharge, 'deliveryCharge');
+    const service = this.parseNonNegativeMoney(data.serviceCharge, 'serviceCharge');
+    const { deliveryLatitude, deliveryLongitude } =
+      this.normalizeDeliveryCoordinates(
+        data.deliveryLatitude,
+        data.deliveryLongitude,
+      );
+
     const vendor = await this.vendorsRepo.findOne({ where: { id: data.vendorId } });
     if (!vendor) {
       throw new BadRequestException('Vendor not found');
@@ -153,26 +171,12 @@ export class BookingsService {
     );
 
     const createdBooking = await this.dataSource.transaction(async (manager) => {
-      const startDate = new Date(data.startDate);
-      const endDate = new Date(data.endDate);
       const days = Math.max(1, differenceInDays(endDate, startDate) + 1);
-
-      // Get all active bookings that overlap with requested dates
-      const overlappingBookings = await manager.find(Booking, {
-        where: { vendorId: data.vendorId },
-        relations: ['items'],
-      });
-
-      const activeOverlappingBookings = overlappingBookings.filter(b =>
-        [BookingStatus.PENDING, BookingStatus.CONFIRMED].includes(b.status) &&
-        new Date(b.endDate) >= startDate &&
-        new Date(b.startDate) <= endDate
-      );
 
       let subtotalItems = 0;
       const bookingItems: Partial<BookingItem>[] = [];
 
-      for (const item of data.items) {
+      for (const item of normalizedItems) {
         const invItem = await manager.findOne(InventoryItem, {
           where: { id: item.inventoryItemId },
           lock: { mode: 'pessimistic_write' },
@@ -181,11 +185,26 @@ export class BookingsService {
           throw new BadRequestException(`Item ${item.inventoryItemId} not found`);
         }
 
-        // Calculate how much is already booked during overlapping dates
-        const bookedQuantity = activeOverlappingBookings.reduce((sum, booking) => {
-          const bookingItem = booking.items?.find(bi => bi.inventoryItemId === item.inventoryItemId);
-          return sum + (bookingItem?.quantity || 0);
-        }, 0);
+        const bookedQuantityRaw = await manager
+          .createQueryBuilder(BookingItem, 'bookingItem')
+          .innerJoin(Booking, 'booking', 'booking.id = bookingItem.bookingId')
+          .where('booking.vendorId = :vendorId', { vendorId: data.vendorId })
+          .andWhere('bookingItem.inventoryItemId = :inventoryItemId', {
+            inventoryItemId: item.inventoryItemId,
+          })
+          .andWhere('booking.status IN (:...statuses)', {
+            statuses: [BookingStatus.PENDING, BookingStatus.CONFIRMED],
+          })
+          .andWhere('booking.endDate >= :requestedStartDate', {
+            requestedStartDate: startDate,
+          })
+          .andWhere('booking.startDate <= :requestedEndDate', {
+            requestedEndDate: endDate,
+          })
+          .select('COALESCE(SUM(bookingItem.quantity), 0)', 'total')
+          .getRawOne<{ total: string | number }>();
+
+        const bookedQuantity = Number(bookedQuantityRaw?.total || 0);
 
         const availableQuantity = Number(invItem.quantity) - bookedQuantity;
 
@@ -198,8 +217,6 @@ export class BookingsService {
         bookingItems.push({ inventoryItemId: item.inventoryItemId, quantity: item.quantity, ratePerDay: invItem.ratePerDay, subtotal });
       }
 
-      const delivery = data.deliveryCharge || 0;
-      const service = data.serviceCharge || 0;
       const platformFee = subtotalItems * commissionRate;
       const totalAmount = subtotalItems + delivery + service;
 
@@ -209,8 +226,8 @@ export class BookingsService {
         startDate,
         endDate,
         deliveryAddress: data.deliveryAddress,
-        deliveryLatitude: data.deliveryLatitude,
-        deliveryLongitude: data.deliveryLongitude,
+        deliveryLatitude,
+        deliveryLongitude,
         deliveryCharge: delivery,
         serviceCharge: service,
         platformFee,
@@ -298,12 +315,26 @@ export class BookingsService {
       throw new BadRequestException('Booking is not linked to PayMongo checkout');
     }
 
-    const sessionId = (checkoutSessionId || booking.paymentCheckoutSessionId || '').trim();
-    if (!sessionId) {
+    const storedSessionId = String(booking.paymentCheckoutSessionId || '').trim();
+    if (!storedSessionId) {
       throw new BadRequestException('Missing checkout session ID');
     }
 
-    const sessionPayload = await this.fetchPayMongoCheckoutSession(sessionId);
+    const requestedSessionId = String(checkoutSessionId || '').trim();
+    if (requestedSessionId && requestedSessionId !== storedSessionId) {
+      throw new BadRequestException(
+        'Provided checkout session does not match this booking',
+      );
+    }
+
+    const sessionPayload = await this.fetchPayMongoCheckoutSession(storedSessionId);
+    const checkoutReference = this.extractPayMongoCheckoutReference(sessionPayload);
+    if (checkoutReference && checkoutReference !== `booking_${booking.id}`) {
+      throw new BadRequestException(
+        'Checkout session reference does not belong to this booking',
+      );
+    }
+
     if (!this.checkoutLooksPaid(sessionPayload)) {
       throw new BadRequestException('Payment is not completed yet');
     }
@@ -314,7 +345,7 @@ export class BookingsService {
       paymentReference:
         this.extractPayMongoPaymentReference(sessionPayload) ||
         booking.paymentReference ||
-        sessionId,
+        storedSessionId,
     });
 
     return this.findById(booking.id);
@@ -898,9 +929,22 @@ export class BookingsService {
   ) {
     const fixedTotal = recipients
       .filter((recipient) => recipient.split_type === 'fixed')
-      .reduce((sum, recipient) => sum + Number(recipient.value || 0), 0);
+      .reduce((sum, recipient) => sum + Math.max(0, Number(recipient.value || 0)), 0);
 
-    if (fixedTotal <= 0) return;
+    const percentageTotalBps = recipients
+      .filter((recipient) => recipient.split_type === 'percentage_net')
+      .reduce(
+        (sum, recipient) => sum + Math.max(0, Math.floor(Number(recipient.value || 0))),
+        0,
+      );
+
+    if (percentageTotalBps > 10000) {
+      throw new BadRequestException(
+        'Configured percentage split recipients exceed 100% of net amount.',
+      );
+    }
+
+    if (fixedTotal <= 0 && percentageTotalBps <= 0) return;
 
     const grossMinor = this.toMinorUnits(totalAmount);
     const bufferBpsRaw = Number(process.env.PAYMONGO_SPLIT_FEE_BUFFER_BPS || 300);
@@ -909,9 +953,14 @@ export class BookingsService {
       : 300;
     const estimatedNet = Math.floor((grossMinor * (10000 - bufferBps)) / 10000);
 
-    if (fixedTotal > estimatedNet) {
+    const projectedPercentageTotal = Math.floor(
+      (estimatedNet * percentageTotalBps) / 10000,
+    );
+    const projectedTotalCommitted = fixedTotal + projectedPercentageTotal;
+
+    if (projectedTotalCommitted > estimatedNet) {
       throw new BadRequestException(
-        'Configured fixed split amounts are higher than the safe net amount. Reduce fixed split values or adjust PAYMONGO_SPLIT_FEE_BUFFER_BPS.',
+        'Configured split recipients exceed the safe net amount. Reduce recipient values or adjust PAYMONGO_SPLIT_FEE_BUFFER_BPS.',
       );
     }
   }
@@ -999,6 +1048,20 @@ export class BookingsService {
     });
   }
 
+  private extractPayMongoCheckoutReference(payload: PayMongoCheckoutResponse) {
+    const attributes = payload?.data?.attributes as
+      | Record<string, unknown>
+      | undefined;
+
+    const referenceNumber = String(
+      attributes?.reference_number ||
+        attributes?.referenceNumber ||
+        '',
+    ).trim();
+
+    return referenceNumber || null;
+  }
+
   private extractPayMongoPaymentReference(payload: PayMongoCheckoutResponse) {
     const attributes = payload?.data?.attributes;
     if (!attributes) return null;
@@ -1008,5 +1071,101 @@ export class BookingsService {
       : null;
 
     return firstPaymentId || attributes.payment_intent?.id || null;
+  }
+
+  private parseBookingDateRange(startDateRaw: string, endDateRaw: string) {
+    const startDate = new Date(startDateRaw);
+    const endDate = new Date(endDateRaw);
+
+    if (
+      Number.isNaN(startDate.getTime()) ||
+      Number.isNaN(endDate.getTime())
+    ) {
+      throw new BadRequestException('startDate and endDate must be valid dates');
+    }
+
+    if (endDate < startDate) {
+      throw new BadRequestException('endDate must be on or after startDate');
+    }
+
+    return { startDate, endDate };
+  }
+
+  private normalizeBookingItems(items: CreateBookingPayload['items']): NormalizedBookingItem[] {
+    return items.map((item, index) => {
+      const quantity = Number(item?.quantity);
+      if (!Number.isInteger(quantity) || quantity <= 0) {
+        throw new BadRequestException(
+          `items[${index}].quantity must be a positive integer`,
+        );
+      }
+
+      const inventoryItemId = String(item?.inventoryItemId || '').trim();
+      if (!inventoryItemId) {
+        throw new BadRequestException(
+          `items[${index}].inventoryItemId is required`,
+        );
+      }
+
+      return {
+        inventoryItemId,
+        quantity,
+      };
+    });
+  }
+
+  private parseNonNegativeMoney(value: unknown, fieldName: string) {
+    if (value === undefined || value === null || value === '') {
+      return 0;
+    }
+
+    const parsed = Number(value);
+    if (!Number.isFinite(parsed) || parsed < 0) {
+      throw new BadRequestException(
+        `${fieldName} must be a non-negative number`,
+      );
+    }
+
+    return this.toMoney(parsed);
+  }
+
+  private normalizeDeliveryCoordinates(latitudeRaw?: number, longitudeRaw?: number) {
+    const hasLatitude =
+      latitudeRaw !== undefined && latitudeRaw !== null && latitudeRaw !== ('' as any);
+    const hasLongitude =
+      longitudeRaw !== undefined && longitudeRaw !== null && longitudeRaw !== ('' as any);
+
+    if (hasLatitude !== hasLongitude) {
+      throw new BadRequestException(
+        'deliveryLatitude and deliveryLongitude must both be provided together',
+      );
+    }
+
+    if (!hasLatitude) {
+      return {
+        deliveryLatitude: null,
+        deliveryLongitude: null,
+      };
+    }
+
+    const deliveryLatitude = Number(latitudeRaw);
+    const deliveryLongitude = Number(longitudeRaw);
+
+    if (!Number.isFinite(deliveryLatitude) || deliveryLatitude < -90 || deliveryLatitude > 90) {
+      throw new BadRequestException('deliveryLatitude must be between -90 and 90');
+    }
+
+    if (
+      !Number.isFinite(deliveryLongitude) ||
+      deliveryLongitude < -180 ||
+      deliveryLongitude > 180
+    ) {
+      throw new BadRequestException('deliveryLongitude must be between -180 and 180');
+    }
+
+    return {
+      deliveryLatitude,
+      deliveryLongitude,
+    };
   }
 }
