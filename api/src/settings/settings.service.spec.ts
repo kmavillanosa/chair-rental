@@ -84,4 +84,94 @@ describe('SettingsService', () => {
     expect(result.launchNoCommissionUntil).toBeNull();
     expect(mocks.settingsRepo.save).toHaveBeenCalledTimes(7);
   });
+
+  it('getKycSettings returns defaults when no settings are stored', async () => {
+    const { service, mocks } = createService();
+    mocks.settingsRepo.find.mockResolvedValue([]);
+
+    const result = await service.getKycSettings();
+
+    expect(result.vendorRegistrationEnabled).toBe(true);
+    expect(result.requireOtpBeforeVendorRegistration).toBe(true);
+  });
+
+  it('getKycSettings reads stored boolean settings correctly', async () => {
+    const { service, mocks } = createService();
+    mocks.settingsRepo.find.mockResolvedValue([
+      { key: 'kyc.vendorRegistrationEnabled', value: '0' },
+      { key: 'kyc.requireOtpBeforeVendorRegistration', value: 'false' },
+    ]);
+
+    const result = await service.getKycSettings();
+
+    expect(result.vendorRegistrationEnabled).toBe(false);
+    expect(result.requireOtpBeforeVendorRegistration).toBe(false);
+  });
+
+  it('updateKycSettings saves both fields and returns the next state', async () => {
+    const { service, mocks } = createService();
+    mocks.settingsRepo.find.mockResolvedValue([]);
+    mocks.settingsRepo.findOne.mockResolvedValue(null);
+
+    const result = await service.updateKycSettings({
+      vendorRegistrationEnabled: false,
+      requireOtpBeforeVendorRegistration: false,
+    });
+
+    expect(result.vendorRegistrationEnabled).toBe(false);
+    expect(result.requireOtpBeforeVendorRegistration).toBe(false);
+    expect(mocks.settingsRepo.save).toHaveBeenCalledTimes(2);
+  });
+
+  it('upsertSetting updates existing record instead of creating new one', async () => {
+    const { service, mocks } = createService();
+    const existing = { key: 'flags.launchNoCommissionEnabled', value: 'false' };
+    mocks.settingsRepo.findOne.mockResolvedValue(existing);
+    mocks.settingsRepo.find.mockResolvedValue([
+      { key: 'flags.launchNoCommissionEnabled', value: 'false' },
+    ]);
+
+    await service.updateFeatureFlagsSettings({
+      allowKycWithoutMerchantId: true,
+      defaultPlatformCommissionRatePercent: 10,
+      launchNoCommissionEnabled: true,
+      launchNoCommissionUntil: null,
+      cancellationFullRefundMinDays: 3,
+      cancellationHalfRefundMinDays: 1,
+      cancellationHalfRefundPercent: 50,
+    });
+
+    expect(mocks.settingsRepo.save).toHaveBeenCalled();
+  });
+
+  it('getPlatformCommissionFallbackPercent converts fractional env value to percent', async () => {
+    const { service, mocks } = createService();
+    process.env.PLATFORM_COMMISSION_RATE = '0.08';
+    mocks.settingsRepo.find.mockResolvedValue([]);
+
+    const result = await service.getFeatureFlagsSettings();
+
+    expect(result.defaultPlatformCommissionRatePercent).toBe(8);
+  });
+
+  it('getPlatformCommissionFallbackPercent uses 10 as default when env is not set', async () => {
+    const { service, mocks } = createService();
+    delete process.env.PLATFORM_COMMISSION_RATE;
+    mocks.settingsRepo.find.mockResolvedValue([]);
+
+    const result = await service.getFeatureFlagsSettings();
+
+    expect(result.defaultPlatformCommissionRatePercent).toBe(10);
+  });
+
+  it('feature flags returns valid launchNoCommissionUntil when a valid date is stored', async () => {
+    const { service, mocks } = createService();
+    mocks.settingsRepo.find.mockResolvedValue([
+      { key: 'flags.launchNoCommissionUntil', value: '2030-12-31' },
+    ]);
+
+    const result = await service.getFeatureFlagsSettings();
+
+    expect(result.launchNoCommissionUntil).toBe('2030-12-31');
+  });
 });

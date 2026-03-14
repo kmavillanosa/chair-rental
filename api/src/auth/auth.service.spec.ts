@@ -153,4 +153,25 @@ describe('AuthService', () => {
       },
     });
   });
+
+  it('throws UnauthorizedException for inactive user on non-login validation', async () => {
+    usersService.findById.mockResolvedValue(buildUser({ isActive: false }));
+
+    await expect(service.validateAuthenticatedUser('inactive-user')).rejects.toBeInstanceOf(
+      UnauthorizedException,
+    );
+  });
+
+  it('throws ForbiddenException for inactive vendor during login', async () => {
+    const vendorUser = buildUser({ role: UserRole.VENDOR });
+    usersService.findById.mockResolvedValue(vendorUser);
+    vendorsRepo.findOne.mockResolvedValue({
+      userId: vendorUser.id,
+      isActive: false,
+    });
+
+    await expect(
+      service.validateAuthenticatedUser(vendorUser.id, true),
+    ).rejects.toBeInstanceOf(ForbiddenException);
+  });
 });

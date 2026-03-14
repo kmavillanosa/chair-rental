@@ -233,4 +233,70 @@ describe('BookingsController (e2e)', () => {
     expect(vendorsServiceMock.findByUserId).toHaveBeenCalledWith('vendor-user-1');
     expect(bookingsServiceMock.findByVendor).toHaveBeenCalledWith('vendor-1');
   });
+
+  it('returns customer bookings for current user', async () => {
+    bookingsServiceMock.findByCustomer.mockResolvedValue([{ id: 'booking-1' }, { id: 'booking-2' }]);
+
+    const response = await request(app.getHttpServer()).get('/bookings/my');
+
+    expect(response.status).toBe(200);
+    expect(bookingsServiceMock.findByCustomer).toHaveBeenCalledWith('customer-1');
+    expect(response.body).toHaveLength(2);
+  });
+
+  it('returns availability for a vendor within a date range', async () => {
+    bookingsServiceMock.checkAvailability.mockResolvedValue([
+      { inventory: { id: 'inv-1' }, available: 5 },
+    ]);
+
+    const response = await request(app.getHttpServer())
+      .get('/bookings/vendor/vendor-1/availability')
+      .query({ startDate: '2026-06-01', endDate: '2026-06-03' });
+
+    expect(response.status).toBe(200);
+    expect(bookingsServiceMock.checkAvailability).toHaveBeenCalledWith(
+      'vendor-1',
+      '2026-06-01',
+      '2026-06-03',
+    );
+  });
+
+  it('creates or refreshes a PayMongo checkout session for a booking', async () => {
+    bookingsServiceMock.createOrRefreshCheckout.mockResolvedValue({
+      id: 'booking-1',
+      paymentCheckoutUrl: 'https://checkout.paymongo.com/cs_test_abc',
+    });
+
+    const response = await request(app.getHttpServer())
+      .post('/bookings/booking-1/payment/checkout');
+
+    expect(response.status).toBe(201);
+    expect(bookingsServiceMock.createOrRefreshCheckout).toHaveBeenCalledWith(
+      'booking-1',
+      'customer-1',
+    );
+  });
+
+  it('returns cancellation preview for a booking', async () => {
+    bookingsServiceMock.getCancellationPreview.mockResolvedValue({
+      bookingId: 'booking-1',
+      policyCode: 'full_refund_3_days',
+      refundPercent: 100,
+      refundAmount: 500,
+      daysBeforeStartDate: 5,
+      isSameDayBooking: false,
+      isPaidBooking: false,
+    });
+
+    const response = await request(app.getHttpServer())
+      .get('/bookings/booking-1/cancellation-preview');
+
+    expect(response.status).toBe(200);
+    expect(bookingsServiceMock.getCancellationPreview).toHaveBeenCalledWith(
+      'booking-1',
+      'customer-1',
+      UserRole.CUSTOMER,
+    );
+    expect(response.body.policyCode).toBe('full_refund_3_days');
+  });
 });

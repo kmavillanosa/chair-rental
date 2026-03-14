@@ -112,4 +112,120 @@ describe('PaymentsService', () => {
       service.deleteDeliveryRate('vendor-1', 'rate-1'),
     ).rejects.toBeInstanceOf(NotFoundException);
   });
+
+  it('findByVendor delegates to repo with correct filters', async () => {
+    const { service, mocks } = createService();
+    mocks.paymentsRepo.find.mockResolvedValue([{ id: 'pay-1' }]);
+
+    const result = await service.findByVendor('vendor-1');
+
+    expect(mocks.paymentsRepo.find).toHaveBeenCalledWith(
+      expect.objectContaining({ where: { vendorId: 'vendor-1' } }),
+    );
+    expect(result).toHaveLength(1);
+  });
+
+  it('findAllPayments returns all payments with vendor relation', async () => {
+    const { service, mocks } = createService();
+    mocks.paymentsRepo.find.mockResolvedValue([{ id: 'pay-1' }, { id: 'pay-2' }]);
+
+    const result = await service.findAllPayments();
+
+    expect(mocks.paymentsRepo.find).toHaveBeenCalledWith(
+      expect.objectContaining({ relations: ['vendor'] }),
+    );
+    expect(result).toHaveLength(2);
+  });
+
+  it('createPayment creates and saves the entity', async () => {
+    const { service, mocks } = createService();
+    mocks.paymentsRepo.create.mockReturnValue({ vendorId: 'vendor-1', amount: 500 });
+    mocks.paymentsRepo.save.mockResolvedValue({ id: 'pay-1', vendorId: 'vendor-1', amount: 500 });
+
+    const result = await service.createPayment({ vendorId: 'vendor-1', amount: 500 } as any);
+
+    expect(mocks.paymentsRepo.create).toHaveBeenCalled();
+    expect(mocks.paymentsRepo.save).toHaveBeenCalled();
+    expect(result).toMatchObject({ vendorId: 'vendor-1' });
+  });
+
+  it('markPaid updates status and returns the updated record', async () => {
+    const { service, mocks } = createService();
+    mocks.paymentsRepo.findOne.mockResolvedValue({ id: 'pay-1', status: 'paid' });
+
+    const result = await service.markPaid('pay-1', 'txn_abc');
+
+    expect(mocks.paymentsRepo.update).toHaveBeenCalledWith(
+      'pay-1',
+      expect.objectContaining({ status: 'paid', transactionRef: 'txn_abc' }),
+    );
+    expect(result).toMatchObject({ id: 'pay-1' });
+  });
+
+  it('markPaid without transactionRef still updates status', async () => {
+    const { service, mocks } = createService();
+    mocks.paymentsRepo.findOne.mockResolvedValue({ id: 'pay-1', status: 'paid' });
+
+    await service.markPaid('pay-1');
+
+    expect(mocks.paymentsRepo.update).toHaveBeenCalledWith(
+      'pay-1',
+      expect.objectContaining({ status: 'paid' }),
+    );
+  });
+
+  it('markOverdue updates status to overdue', async () => {
+    const { service, mocks } = createService();
+    mocks.paymentsRepo.findOne.mockResolvedValue({ id: 'pay-1', status: 'overdue' });
+
+    const result = await service.markOverdue('pay-1');
+
+    expect(mocks.paymentsRepo.update).toHaveBeenCalledWith('pay-1', { status: 'overdue' });
+    expect(result).toMatchObject({ id: 'pay-1' });
+  });
+
+  it('getDeliveryRates returns sorted rates for vendor', async () => {
+    const { service, mocks } = createService();
+    mocks.deliveryRatesRepo.find.mockResolvedValue([{ id: 'rate-1', distanceKm: 5 }]);
+
+    const result = await service.getDeliveryRates('vendor-1');
+
+    expect(mocks.deliveryRatesRepo.find).toHaveBeenCalledWith(
+      expect.objectContaining({ where: { vendorId: 'vendor-1' } }),
+    );
+    expect(result).toHaveLength(1);
+  });
+
+  it('upsertDeliveryRate creates and saves valid rate with default helpersCount', async () => {
+    const { service, mocks } = createService();
+    mocks.deliveryRatesRepo.create.mockReturnValue({ vendorId: 'vendor-1', distanceKm: 5, chargeAmount: 100, helpersCount: 1 });
+    mocks.deliveryRatesRepo.save.mockResolvedValue({ id: 'rate-1', distanceKm: 5, chargeAmount: 100, helpersCount: 1 });
+
+    const result = await service.upsertDeliveryRate('vendor-1', {
+      distanceKm: 5,
+      chargeAmount: 100,
+    } as any);
+
+    expect(mocks.deliveryRatesRepo.save).toHaveBeenCalled();
+    expect(result).toMatchObject({ distanceKm: 5 });
+  });
+
+  it('deleteDeliveryRate succeeds when record is found', async () => {
+    const { service, mocks } = createService();
+    mocks.deliveryRatesRepo.delete.mockResolvedValue({ affected: 1 });
+
+    await expect(service.deleteDeliveryRate('vendor-1', 'rate-1')).resolves.toBeUndefined();
+  });
+
+  it('rejects delivery rate with non-integer helpersCount', async () => {
+    const { service } = createService();
+
+    await expect(
+      service.upsertDeliveryRate('vendor-1', {
+        distanceKm: 5,
+        chargeAmount: 100,
+        helpersCount: 1.5,
+      } as any),
+    ).rejects.toBeInstanceOf(BadRequestException);
+  });
 });

@@ -365,4 +365,428 @@ describe('VendorsService', () => {
       }),
     );
   });
+
+  describe('normalizeSlug', () => {
+    it('converts spaces and special chars to hyphens', () => {
+      const { service } = createService();
+      expect((service as any).normalizeSlug('Hello World!')).toBe('hello-world');
+    });
+
+    it('strips leading and trailing hyphens', () => {
+      const { service } = createService();
+      expect((service as any).normalizeSlug('--ABC--')).toBe('abc');
+    });
+
+    it('collapses consecutive non-alphanumeric chars to single hyphen', () => {
+      const { service } = createService();
+      expect((service as any).normalizeSlug('foo   bar')).toBe('foo-bar');
+    });
+
+    it('handles empty string gracefully', () => {
+      const { service } = createService();
+      expect((service as any).normalizeSlug('')).toBe('');
+    });
+  });
+
+  describe('normalizeVendorType', () => {
+    it('recognises individual_owner', () => {
+      const { service } = createService();
+      expect((service as any).normalizeVendorType('individual_owner')).toBe(
+        VendorType.INDIVIDUAL_OWNER,
+      );
+    });
+
+    it('defaults unrecognised input to registered_business', () => {
+      const { service } = createService();
+      expect((service as any).normalizeVendorType('unknown')).toBe(
+        VendorType.REGISTERED_BUSINESS,
+      );
+    });
+
+    it('defaults undefined to registered_business', () => {
+      const { service } = createService();
+      expect((service as any).normalizeVendorType(undefined)).toBe(
+        VendorType.REGISTERED_BUSINESS,
+      );
+    });
+  });
+
+  describe('normalizeVerificationStatus', () => {
+    it('returns verified_business for valid status', () => {
+      const { service } = createService();
+      expect((service as any).normalizeVerificationStatus('verified_business')).toBe(
+        VendorVerificationStatus.VERIFIED_BUSINESS,
+      );
+    });
+
+    it('returns verified_owner for valid status', () => {
+      const { service } = createService();
+      expect((service as any).normalizeVerificationStatus('verified_owner')).toBe(
+        VendorVerificationStatus.VERIFIED_OWNER,
+      );
+    });
+
+    it('returns pending_verification for valid status', () => {
+      const { service } = createService();
+      expect((service as any).normalizeVerificationStatus('pending_verification')).toBe(
+        VendorVerificationStatus.PENDING_VERIFICATION,
+      );
+    });
+
+    it('returns null for unrecognised status', () => {
+      const { service } = createService();
+      expect((service as any).normalizeVerificationStatus('bogus')).toBeNull();
+    });
+
+    it('returns null for undefined', () => {
+      const { service } = createService();
+      expect((service as any).normalizeVerificationStatus(undefined)).toBeNull();
+    });
+  });
+
+  describe('normalizeBusinessRegistrationType', () => {
+    it('recognises dti', () => {
+      const { service } = createService();
+      expect((service as any).normalizeBusinessRegistrationType('dti')).toBe(
+        BusinessRegistrationType.DTI,
+      );
+    });
+
+    it('recognises sec', () => {
+      const { service } = createService();
+      expect((service as any).normalizeBusinessRegistrationType('sec')).toBe(
+        BusinessRegistrationType.SEC,
+      );
+    });
+
+    it('returns null for unknown type', () => {
+      const { service } = createService();
+      expect((service as any).normalizeBusinessRegistrationType('other')).toBeNull();
+    });
+
+    it('returns null for undefined', () => {
+      const { service } = createService();
+      expect((service as any).normalizeBusinessRegistrationType(undefined)).toBeNull();
+    });
+  });
+
+  describe('normalizeText', () => {
+    it('trims whitespace', () => {
+      const { service } = createService();
+      expect((service as any).normalizeText('  hello  ')).toBe('hello');
+    });
+
+    it('returns null for empty string', () => {
+      const { service } = createService();
+      expect((service as any).normalizeText('')).toBeNull();
+    });
+
+    it('returns null for whitespace-only string', () => {
+      const { service } = createService();
+      expect((service as any).normalizeText('   ')).toBeNull();
+    });
+
+    it('returns null for null input', () => {
+      const { service } = createService();
+      expect((service as any).normalizeText(null)).toBeNull();
+    });
+
+    it('returns null for undefined input', () => {
+      const { service } = createService();
+      expect((service as any).normalizeText(undefined)).toBeNull();
+    });
+  });
+
+  describe('normalizeIdentifier', () => {
+    it('uppercases and strips spaces', () => {
+      const { service } = createService();
+      expect((service as any).normalizeIdentifier('abc 123')).toBe('ABC123');
+    });
+
+    it('returns null for empty input', () => {
+      const { service } = createService();
+      expect((service as any).normalizeIdentifier('')).toBeNull();
+    });
+
+    it('returns null for null input', () => {
+      const { service } = createService();
+      expect((service as any).normalizeIdentifier(null)).toBeNull();
+    });
+  });
+
+  describe('normalizeTin', () => {
+    it('returns null for empty input', () => {
+      const { service } = createService();
+      expect((service as any).normalizeTin(null)).toBeNull();
+      expect((service as any).normalizeTin('')).toBeNull();
+    });
+
+    it('accepts well-formed TIN with dashes', () => {
+      const { service } = createService();
+      expect((service as any).normalizeTin('123-456-789')).toBe('123-456-789');
+    });
+
+    it('accepts TIN without dashes', () => {
+      const { service } = createService();
+      expect((service as any).normalizeTin('123456789')).toBe('123456789');
+    });
+
+    it('throws BadRequestException for malformed TIN', () => {
+      const { service } = createService();
+      expect(() => (service as any).normalizeTin('not-a-tin')).toThrow(
+        BadRequestException,
+      );
+    });
+  });
+
+  describe('normalizePhone', () => {
+    it('returns null for empty input', () => {
+      const { service } = createService();
+      expect((service as any).normalizePhone(null)).toBeNull();
+      expect((service as any).normalizePhone('')).toBeNull();
+    });
+
+    it('accepts valid international phone', () => {
+      const { service } = createService();
+      expect((service as any).normalizePhone('+639171234567')).toBe('+639171234567');
+    });
+
+    it('accepts 10 digit phone', () => {
+      const { service } = createService();
+      expect((service as any).normalizePhone('9171234567')).toBe('9171234567');
+    });
+
+    it('throws BadRequestException for non-digit non-plus input', () => {
+      const { service } = createService();
+      // 'abc123' strips to '123' — only 3 digits, below the 10-digit minimum
+      expect(() => (service as any).normalizePhone('abc123')).toThrow(
+        BadRequestException,
+      );
+    });
+
+    it('throws BadRequestException for too-short digit string', () => {
+      const { service } = createService();
+      expect(() => (service as any).normalizePhone('12345')).toThrow(
+        BadRequestException,
+      );
+    });
+  });
+
+  describe('normalizeEmail', () => {
+    it('returns null for empty input', () => {
+      const { service } = createService();
+      expect((service as any).normalizeEmail('')).toBeNull();
+      expect((service as any).normalizeEmail(null)).toBeNull();
+    });
+
+    it('lowercases and returns valid email', () => {
+      const { service } = createService();
+      expect((service as any).normalizeEmail('Vendor@Example.COM')).toBe(
+        'vendor@example.com',
+      );
+    });
+
+    it('throws BadRequestException for invalid email format', () => {
+      const { service } = createService();
+      expect(() => (service as any).normalizeEmail('not-an-email')).toThrow(
+        BadRequestException,
+      );
+    });
+  });
+
+  describe('normalizeDocumentType', () => {
+    it('maps government_id canonical value', () => {
+      const { service } = createService();
+      expect((service as any).normalizeDocumentType('government_id')).toBe(
+        VendorDocumentType.GOVERNMENT_ID,
+      );
+    });
+
+    it('maps selfie alias to selfie_verification', () => {
+      const { service } = createService();
+      expect((service as any).normalizeDocumentType('selfie')).toBe(
+        VendorDocumentType.SELFIE_VERIFICATION,
+      );
+    });
+
+    it('maps logo alias to business_logo', () => {
+      const { service } = createService();
+      expect((service as any).normalizeDocumentType('logo')).toBe(
+        VendorDocumentType.BUSINESS_LOGO,
+      );
+    });
+
+    it('maps mayors_permit canonical value', () => {
+      const { service } = createService();
+      expect((service as any).normalizeDocumentType('mayors_permit')).toBe(
+        VendorDocumentType.MAYORS_PERMIT,
+      );
+    });
+
+    it('maps barangay_permit canonical value', () => {
+      const { service } = createService();
+      expect((service as any).normalizeDocumentType('barangay_permit')).toBe(
+        VendorDocumentType.BARANGAY_PERMIT,
+      );
+    });
+
+    it('returns null for unknown document type', () => {
+      const { service } = createService();
+      expect((service as any).normalizeDocumentType('unknown_type')).toBeNull();
+    });
+  });
+
+  describe('normalizeVendorItemPhotoType', () => {
+    it('maps item_only canonical value', () => {
+      const { service } = createService();
+      expect((service as any).normalizeVendorItemPhotoType('item_only')).toBe(
+        VendorItemPhotoType.ITEM_ONLY,
+      );
+    });
+
+    it('maps proof alias', () => {
+      const { service } = createService();
+      expect((service as any).normalizeVendorItemPhotoType('proof')).toBe(
+        VendorItemPhotoType.WITH_VENDOR_NAME_AND_DATE,
+      );
+    });
+
+    it('returns null for unknown type', () => {
+      const { service } = createService();
+      expect((service as any).normalizeVendorItemPhotoType('other')).toBeNull();
+    });
+  });
+
+  describe('hashValue', () => {
+    it('returns null for falsy input', () => {
+      const { service } = createService();
+      expect((service as any).hashValue(null)).toBeNull();
+      expect((service as any).hashValue('')).toBeNull();
+    });
+
+    it('returns a hex string for non-empty input', () => {
+      const { service } = createService();
+      const result = (service as any).hashValue('test');
+      expect(typeof result).toBe('string');
+      expect(result).toHaveLength(64);
+    });
+
+    it('is deterministic for the same input', () => {
+      const { service } = createService();
+      expect((service as any).hashValue('same')).toBe(
+        (service as any).hashValue('same'),
+      );
+    });
+  });
+
+  describe('hashOtp', () => {
+    it('returns a 64-char hex string', () => {
+      const { service } = createService();
+      const result = (service as any).hashOtp('+639171234567', '123456');
+      expect(typeof result).toBe('string');
+      expect(result).toHaveLength(64);
+    });
+
+    it('is deterministic for same inputs', () => {
+      const { service } = createService();
+      const a = (service as any).hashOtp('+639171234567', '123456');
+      const b = (service as any).hashOtp('+639171234567', '123456');
+      expect(a).toBe(b);
+    });
+
+    it('differs for different OTP codes', () => {
+      const { service } = createService();
+      const a = (service as any).hashOtp('+639171234567', '111111');
+      const b = (service as any).hashOtp('+639171234567', '222222');
+      expect(a).not.toBe(b);
+    });
+  });
+
+  describe('withVerificationBadge', () => {
+    it('returns null passthrough for null vendor', () => {
+      const { service } = createService();
+      expect((service as any).withVerificationBadge(null)).toBeNull();
+    });
+
+    it('adds verificationBadge string for verified_business status', () => {
+      const { service } = createService();
+      const vendor = {
+        id: 'v-1',
+        verificationStatus: VendorVerificationStatus.VERIFIED_BUSINESS,
+        verificationBadge: null,
+        isVerified: true,
+        registrationStatus: VendorRegistrationStatus.APPROVED,
+        vendorType: VendorType.REGISTERED_BUSINESS,
+      };
+      const result = (service as any).withVerificationBadge(vendor);
+      expect(result).toHaveProperty('verificationBadge');
+      expect(typeof result.verificationBadge).toBe('string');
+      expect(result.verificationBadge).toBe('Verified Business');
+    });
+
+    it('returns null badge for non-verified status', () => {
+      const { service } = createService();
+      const vendor = {
+        id: 'v-2',
+        verificationStatus: VendorVerificationStatus.PENDING_VERIFICATION,
+        verificationBadge: null,
+        isVerified: false,
+        registrationStatus: VendorRegistrationStatus.PENDING,
+        vendorType: VendorType.REGISTERED_BUSINESS,
+      };
+      const result = (service as any).withVerificationBadge(vendor);
+      expect(result.verificationBadge).toBeNull();
+    });
+
+    it('does not recompute badge if already set', () => {
+      const { service } = createService();
+      const vendor = {
+        id: 'v-3',
+        verificationStatus: VendorVerificationStatus.PENDING_VERIFICATION,
+        verificationBadge: 'Already Set',
+        isVerified: false,
+        registrationStatus: VendorRegistrationStatus.PENDING,
+        vendorType: VendorType.REGISTERED_BUSINESS,
+      };
+      const result = (service as any).withVerificationBadge(vendor);
+      expect(result.verificationBadge).toBe('Already Set');
+    });
+  });
+
+  describe('parseBooleanFlag', () => {
+    it('treats "true" as true', () => {
+      const { service } = createService();
+      expect((service as any).parseBooleanFlag('true')).toBe(true);
+    });
+
+    it('treats "1" as true', () => {
+      const { service } = createService();
+      expect((service as any).parseBooleanFlag('1')).toBe(true);
+    });
+
+    it('treats "yes" as true', () => {
+      const { service } = createService();
+      expect((service as any).parseBooleanFlag('yes')).toBe(true);
+    });
+
+    it('treats "on" as true', () => {
+      const { service } = createService();
+      expect((service as any).parseBooleanFlag('on')).toBe(true);
+    });
+
+    it('treats "false" as false', () => {
+      const { service } = createService();
+      expect((service as any).parseBooleanFlag('false')).toBe(false);
+    });
+
+    it('treats null as false', () => {
+      const { service } = createService();
+      expect((service as any).parseBooleanFlag(null)).toBe(false);
+    });
+
+    it('treats undefined as false', () => {
+      const { service } = createService();
+      expect((service as any).parseBooleanFlag(undefined)).toBe(false);
+    });
+  });
 });

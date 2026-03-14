@@ -232,4 +232,76 @@ describe('PaymentsController (e2e)', () => {
     expect(response.status).toBe(400);
     expect(paymentsServiceMock.updateDeliveryRate).not.toHaveBeenCalled();
   });
+
+  it('returns all payments for admin', async () => {
+    authUser.role = UserRole.ADMIN;
+    paymentsServiceMock.findAllPayments.mockResolvedValue([{ id: 'pay-1' }, { id: 'pay-2' }]);
+
+    const response = await request(app.getHttpServer()).get('/payments');
+
+    expect(response.status).toBe(200);
+    expect(paymentsServiceMock.findAllPayments).toHaveBeenCalled();
+    expect(response.body).toHaveLength(2);
+  });
+
+  it('returns delivery rates for current vendor', async () => {
+    vendorsServiceMock.findByUserId.mockResolvedValue({ id: 'vendor-1' });
+    paymentsServiceMock.getDeliveryRates.mockResolvedValue([
+      { id: 'rate-1', distanceKm: 5, chargeAmount: 150 },
+    ]);
+
+    const response = await request(app.getHttpServer()).get('/payments/delivery-rates');
+
+    expect(response.status).toBe(200);
+    expect(vendorsServiceMock.findByUserId).toHaveBeenCalledWith('vendor-user-1');
+    expect(paymentsServiceMock.getDeliveryRates).toHaveBeenCalledWith('vendor-1');
+  });
+
+  it('returns delivery rates for a public vendor id', async () => {
+    paymentsServiceMock.getDeliveryRates.mockResolvedValue([{ id: 'rate-1', distanceKm: 10 }]);
+
+    const response = await request(app.getHttpServer())
+      .get('/payments/delivery-rates/vendor/vendor-99');
+
+    expect(response.status).toBe(200);
+    expect(paymentsServiceMock.getDeliveryRates).toHaveBeenCalledWith('vendor-99');
+  });
+
+  it('updates delivery rate for current vendor', async () => {
+    vendorsServiceMock.findByUserId.mockResolvedValue({ id: 'vendor-1' });
+    paymentsServiceMock.updateDeliveryRate.mockResolvedValue({ id: 'rate-1', chargeAmount: 200 });
+
+    const response = await request(app.getHttpServer())
+      .patch('/payments/delivery-rates/rate-1')
+      .send({ chargeAmount: '200', helpersCount: '1' });
+
+    expect(response.status).toBe(200);
+    expect(paymentsServiceMock.updateDeliveryRate).toHaveBeenCalledWith(
+      'vendor-1',
+      'rate-1',
+      expect.objectContaining({ chargeAmount: 200, helpersCount: 1 }),
+    );
+  });
+
+  it('deletes delivery rate for current vendor', async () => {
+    vendorsServiceMock.findByUserId.mockResolvedValue({ id: 'vendor-1' });
+    paymentsServiceMock.deleteDeliveryRate.mockResolvedValue(undefined);
+
+    const response = await request(app.getHttpServer())
+      .delete('/payments/delivery-rates/rate-1');
+
+    expect(response.status).toBe(200);
+    expect(paymentsServiceMock.deleteDeliveryRate).toHaveBeenCalledWith('vendor-1', 'rate-1');
+  });
+
+  it('marks payment as overdue', async () => {
+    authUser.role = UserRole.ADMIN;
+    paymentsServiceMock.markOverdue.mockResolvedValue({ id: 'pay-1', status: 'overdue' });
+
+    const response = await request(app.getHttpServer())
+      .patch('/payments/pay-1/overdue');
+
+    expect(response.status).toBe(200);
+    expect(paymentsServiceMock.markOverdue).toHaveBeenCalledWith('pay-1');
+  });
 });
