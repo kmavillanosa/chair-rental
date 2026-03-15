@@ -1,10 +1,54 @@
+@font-face {
+  font-family: 'Inter UCC';
+  src: url('/inter-ucc.woff2') format('woff2');
+  font-weight: 100 900;
+  font-style: normal;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: 'Space Grotesk';
+  src: url('/spacegrotesk-v8.woff2') format('woff2');
+  font-weight: 300 700;
+  font-style: normal;
+  font-display: swap;
+}
+
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
 
+:root {
+  --rb-navy-950: #1f2944;
+  --rb-navy-900: #243153;
+  --rb-navy-800: #2d3f63;
+  --rb-blue-700: #0d4ea8;
+  --rb-blue-600: #1561bf;
+  --rb-cyan-500: #2ab6e8;
+  --rb-lime-400: #b7e92f;
+  --rb-lime-500: #9fcd23;
+  --rb-surface-50: #f3f5f8;
+  --rb-text-900: #1f2d47;
+}
+
 body {
-  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
-  background-color: #f9fafb;
+  font-family: 'Inter UCC', 'Segoe UI', system-ui, -apple-system, sans-serif;
+  background-color: var(--rb-surface-50);
+  color: var(--rb-text-900);
+}
+
+h1,
+h2,
+h3,
+h4,
+h5,
+h6 {
+  font-family: 'Space Grotesk', 'Inter UCC', 'Segoe UI', system-ui, sans-serif;
+  letter-spacing: -0.01em;
+}
+
+.font-display {
+  font-family: 'Space Grotesk', 'Inter UCC', 'Segoe UI', system-ui, sans-serif;
 }
 
 .leaflet-container {

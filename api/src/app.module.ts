@@ -28,6 +28,8 @@ import { SeedsModule } from './seeds/seeds.module';
 import { SettingsModule } from './settings/settings.module';
 import { PlatformSetting } from './settings/entities/platform-setting.entity';
 
+const uploadRootPath = process.env.UPLOAD_DIR || join(process.cwd(), 'uploads');
+
 @Module({
   imports: [
     TypeOrmModule.forRoot({
@@ -61,7 +63,7 @@ import { PlatformSetting } from './settings/entities/platform-setting.entity';
       autoLoadEntities: true,
     }),
     ServeStaticModule.forRoot({
-      rootPath: join(__dirname, '..', 'uploads'),
+      rootPath: uploadRootPath,
       serveRoot: '/uploads',
     }),
     AuthModule,

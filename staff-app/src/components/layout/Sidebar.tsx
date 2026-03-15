@@ -31,10 +31,10 @@ export default function Sidebar({ role, className = '', onNavigate }: Props) {
   const links = role === 'admin' ? adminLinks : vendorLinks;
 
   return (
-    <aside className={`flex h-full min-h-0 w-64 shrink-0 flex-col border-r border-slate-800 bg-slate-900 text-slate-100 shadow-lg ${className}`.trim()}>
-      <div className="border-b border-slate-800 p-6">
+    <aside className={`flex h-full min-h-0 w-64 shrink-0 flex-col border-r border-[#2d3f63] bg-[#1f2944] text-slate-100 shadow-lg ${className}`.trim()}>
+      <div className="border-b border-[#2d3f63] p-6">
         <h1 className="text-2xl font-bold">RentalBasic</h1>
-        <p className="mt-1 text-sm text-slate-400">{role === 'admin' ? 'Admin Panel' : 'Vendor Panel'}</p>
+        <p className="mt-1 text-sm text-slate-300">{role === 'admin' ? 'Admin Panel' : 'Vendor Panel'}</p>
       </div>
       <nav className="flex-1 min-h-0 overflow-y-auto p-4 space-y-1">
         {links.map(({ to, label, exact }) => {
@@ -44,7 +44,7 @@ export default function Sidebar({ role, className = '', onNavigate }: Props) {
               key={to}
               to={to}
               onClick={() => onNavigate?.()}
-              className={`flex items-center px-4 py-3 rounded-lg text-lg font-medium transition-colors ${active ? 'bg-slate-100 text-slate-900' : 'text-slate-200 hover:bg-slate-800'
+              className={`flex items-center px-4 py-3 rounded-lg text-lg font-medium transition-colors ${active ? 'bg-[#b7e92f] text-[#1f2944]' : 'text-slate-100 hover:bg-[#2d3f63]'
                 }`}
             >
               {label}
@@ -52,12 +52,12 @@ export default function Sidebar({ role, className = '', onNavigate }: Props) {
           );
         })}
       </nav>
-      <div className="border-t border-slate-800 p-4">
+      <div className="border-t border-[#2d3f63] p-4">
         <div className="mb-3 flex items-start gap-3">
           {user?.avatar && <img src={user.avatar} className="h-10 w-10 shrink-0 rounded-full" alt="" />}
           <div className="min-w-0">
             <p className="truncate text-sm font-semibold">{user?.name}</p>
-            <p className="mt-0.5 break-all text-xs leading-tight text-slate-400">{user?.email}</p>
+            <p className="mt-0.5 break-all text-xs leading-tight text-slate-300">{user?.email}</p>
           </div>
         </div>
         <button
@@ -66,7 +66,7 @@ export default function Sidebar({ role, className = '', onNavigate }: Props) {
             logout();
             window.location.href = '/login';
           }}
-          className="w-full rounded-lg px-4 py-2 text-left text-base text-slate-200 transition-colors hover:bg-slate-800"
+          className="w-full rounded-lg px-4 py-2 text-left text-base text-slate-100 transition-colors hover:bg-[#2d3f63]"
         >
           Sign Out
         </button>

@@ -19,15 +19,15 @@ export default function Login() {
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-blue-600 to-blue-800 flex flex-col items-center justify-center p-6">
+    <div className="min-h-screen bg-gradient-to-br from-[#1f2944] via-[#243153] to-[#0d4ea8] flex flex-col items-center justify-center p-6">
       <Link
         to="/"
         aria-label={t('login.backToHome')}
-        className="group absolute top-6 left-6 inline-flex h-12 w-12 items-center justify-center rounded-full border border-white/40 bg-white/20 text-white backdrop-blur-sm transition-colors hover:bg-white/30"
+        className="group absolute top-6 left-6 inline-flex h-12 w-12 items-center justify-center rounded-full border border-white/35 bg-white/15 text-white backdrop-blur-sm transition-colors hover:bg-white/25"
       >
         <HiArrowLeft className="h-5 w-5 transition-transform group-hover:-translate-x-0.5" aria-hidden="true" />
       </Link>
-      <div className="bg-white rounded-3xl shadow-2xl p-10 max-w-md w-full text-center">
+      <div className="bg-white rounded-3xl shadow-2xl p-10 max-w-md w-full text-center border border-[#dce3ef]">
         <div className="mb-4 flex justify-end">
           <LanguageSwitcher compact />
         </div>
@@ -42,7 +42,7 @@ export default function Login() {
         )}
         <button
           onClick={loginWithGoogle}
-          className="w-full flex items-center justify-center gap-4 bg-white border-2 border-gray-300 rounded-2xl px-6 py-5 text-2xl font-semibold text-gray-700 hover:bg-gray-50 hover:border-blue-400 transition-all shadow-md hover:shadow-lg"
+          className="w-full flex items-center justify-center gap-4 bg-white border-2 border-gray-300 rounded-2xl px-6 py-5 text-2xl font-semibold text-gray-700 hover:bg-gray-50 hover:border-[#1561bf] transition-all shadow-md hover:shadow-lg"
         >
           <svg className="w-8 h-8" viewBox="0 0 24 24">
             <path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z" />
@@ -62,11 +62,11 @@ export default function Login() {
         <button
           type="button"
           onClick={handleVendorLoginRedirect}
-          className="group w-full rounded-2xl border border-slate-300 bg-gradient-to-r from-slate-900 via-slate-800 to-blue-900 px-6 py-4 text-left text-white shadow-lg transition-all hover:-translate-y-0.5 hover:shadow-xl"
+          className="group w-full rounded-2xl border border-[#2d3f63] bg-gradient-to-r from-[#1f2944] via-[#243153] to-[#0d4ea8] px-6 py-4 text-left text-white shadow-lg transition-all hover:-translate-y-0.5 hover:shadow-xl"
         >
           <span className="flex items-center justify-between gap-4">
             <span>
-              <span className="block text-sm font-medium uppercase tracking-wide text-blue-200">
+              <span className="block text-sm font-medium uppercase tracking-wide text-[#b7e92f]">
                 {t('login.vendorPortalBadge')}
               </span>
               <span className="mt-1 block text-lg font-semibold leading-tight">

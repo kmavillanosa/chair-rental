@@ -17,15 +17,15 @@ export default function AdminLayout({ children }: { children?: React.ReactNode }
   }, [mobileSidebarOpen]);
 
   return (
-    <div className="flex h-screen overflow-hidden bg-gray-50">
-      <div className="fixed inset-x-0 top-0 z-30 flex h-14 items-center justify-between border-b border-slate-200 bg-white/95 px-4 backdrop-blur lg:hidden">
-        <p className="text-sm font-semibold text-slate-900">Admin Panel</p>
+    <div className="flex h-screen overflow-hidden bg-[#f3f5f8]">
+      <div className="fixed inset-x-0 top-0 z-30 flex h-14 items-center justify-between border-b border-[#2d3f63] bg-[#1f2944]/95 px-4 backdrop-blur lg:hidden">
+        <p className="text-sm font-semibold text-slate-100">Admin Panel</p>
         <button
           type="button"
           aria-label="Open menu"
           aria-expanded={mobileSidebarOpen}
           onClick={() => setMobileSidebarOpen((current) => !current)}
-          className="rounded-md border border-slate-300 px-3 py-1.5 text-sm font-medium text-slate-700"
+          className="rounded-md border border-white/35 px-3 py-1.5 text-sm font-semibold text-slate-100 transition hover:bg-white/10"
         >
           Menu
         </button>
@@ -36,7 +36,7 @@ export default function AdminLayout({ children }: { children?: React.ReactNode }
           type="button"
           aria-label="Close menu"
           onClick={() => setMobileSidebarOpen(false)}
-          className="fixed inset-0 z-30 bg-slate-900/45 lg:hidden"
+          className="fixed inset-0 z-30 bg-[#0f172a]/55 lg:hidden"
         />
       )}
 

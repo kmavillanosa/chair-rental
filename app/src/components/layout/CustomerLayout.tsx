@@ -17,17 +17,17 @@ export default function CustomerLayout({ children, hideHeaderBackground = false 
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
 
   const headerClassName = hideHeaderBackground
-    ? 'absolute inset-x-0 top-0 z-[1100] bg-gradient-to-b from-[#082b57]/95 via-[#082b57]/70 to-transparent text-white'
-    : 'bg-blue-700 text-white shadow-md';
+    ? 'absolute inset-x-0 top-0 z-[1100] border-b border-white/10 bg-[#1f2944]/95 text-white shadow-sm backdrop-blur'
+    : 'bg-[#1f2944] text-white shadow-md';
 
   const navPillClass = (isActive: boolean) =>
     `inline-flex items-center rounded-md px-3 py-2 text-sm font-medium transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/70 ${isActive
-      ? 'bg-white/20 text-white'
-      : 'text-blue-50 hover:bg-white/10 hover:text-white'
+      ? 'bg-[#b7e92f] text-[#1f2944]'
+      : 'text-slate-100 hover:bg-white/10 hover:text-white'
     }`;
 
   const secondaryActionClass =
-    'inline-flex items-center rounded-md px-3 py-2 text-sm font-medium text-blue-50 transition hover:bg-white/10 hover:text-white';
+    'inline-flex items-center rounded-md px-3 py-2 text-sm font-medium text-slate-100 transition hover:bg-white/10 hover:text-white';
 
   useEffect(() => {
     setMobileMenuOpen(false);
@@ -61,7 +61,7 @@ export default function CustomerLayout({ children, hideHeaderBackground = false 
   ];
 
   return (
-    <div className={`min-h-screen bg-gray-50 ${hideHeaderBackground ? 'relative' : ''}`}>
+    <div className={`min-h-screen bg-[#f3f5f8] ${hideHeaderBackground ? 'relative' : ''}`}>
       <header className={headerClassName}>
         <div className="mx-auto max-w-7xl px-3 py-2 sm:px-4 sm:py-3">
           <div className="flex items-center justify-between gap-2">
@@ -92,7 +92,7 @@ export default function CustomerLayout({ children, hideHeaderBackground = false 
                   <Link
                     to="/login"
                     onClick={() => savePostLoginRedirect(getCurrentAppPath())}
-                    className="inline-flex items-center rounded-md bg-white px-3 py-2 text-sm font-semibold text-blue-700 transition hover:bg-blue-50"
+                    className="inline-flex items-center rounded-md bg-[#b7e92f] px-3 py-2 text-sm font-semibold text-[#1f2944] transition hover:bg-[#9fcd23]"
                   >
                     {t('common.signIn')}
                   </Link>
@@ -112,7 +112,7 @@ export default function CustomerLayout({ children, hideHeaderBackground = false 
           {mobileMenuOpen && (
             <nav
               id="customer-mobile-menu"
-              className="mt-2 rounded-xl border border-white/25 bg-[#072448]/85 p-2 backdrop-blur md:hidden"
+              className="mt-2 rounded-xl border border-white/25 bg-[#1f2944]/90 p-2 backdrop-blur md:hidden"
             >
               <div className="flex flex-col gap-1">
                 {navLinks.map((link) => (
@@ -129,7 +129,7 @@ export default function CustomerLayout({ children, hideHeaderBackground = false 
                   <Link
                     to="/login"
                     onClick={() => savePostLoginRedirect(getCurrentAppPath())}
-                    className="inline-flex items-center rounded-md bg-white px-3 py-2 text-sm font-semibold text-blue-700 transition hover:bg-blue-50"
+                    className="inline-flex items-center rounded-md bg-[#b7e92f] px-3 py-2 text-sm font-semibold text-[#1f2944] transition hover:bg-[#9fcd23]"
                   >
                     {t('common.signIn')}
                   </Link>

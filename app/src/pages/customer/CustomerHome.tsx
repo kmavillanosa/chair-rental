@@ -37,15 +37,15 @@ const DEFAULT_EVENT_TAGS = [
 ];
 
 const HERO_SELECT_OPTION_STYLE = {
-    color: '#0f172a',
+    color: '#1f2944',
     backgroundColor: '#ffffff',
 };
 
 const HERO_SENTENCE_TEXT_CLASS = 'text-[clamp(1rem,1.55vw,1.75rem)] leading-[1.35]';
 const HERO_INLINE_TEXT_CLASS = '[font-size:inherit] [line-height:1.1]';
-const HERO_SELECT_CLASS = 'mx-1 my-1 inline-block max-w-full border-0 border-b-2 border-slate-300 bg-transparent px-1 pb-1 font-serif font-medium text-sky-700 focus:border-blue-600 focus:outline-none';
-const HERO_ITEM_BUTTON_CLASS = 'mx-1 my-1 inline-block max-w-full border-0 border-b-2 border-slate-300 bg-transparent px-1 pb-1 font-serif font-medium text-sky-700 hover:text-sky-800';
-const HERO_LOCATION_INPUT_CLASS = 'mx-1 my-1 inline-block w-[min(90vw,520px)] max-w-full border-0 border-b-2 border-slate-300 bg-transparent px-1 pb-1 font-serif font-medium text-sky-700 placeholder:text-sky-400 focus:border-blue-600 focus:outline-none sm:w-[min(56vw,520px)]';
+const HERO_SELECT_CLASS = 'mx-1 my-1 inline-block max-w-full border-0 border-b-2 border-slate-300 bg-transparent px-1 pb-1 font-serif font-medium text-[#0d4ea8] focus:border-[#1561bf] focus:outline-none';
+const HERO_ITEM_BUTTON_CLASS = 'mx-1 my-1 inline-block max-w-full border-0 border-b-2 border-slate-300 bg-transparent px-1 pb-1 font-serif font-medium text-[#0d4ea8] hover:text-[#0b3f89]';
+const HERO_LOCATION_INPUT_CLASS = 'mx-1 my-1 inline-block w-[min(90vw,520px)] max-w-full border-0 border-b-2 border-slate-300 bg-transparent px-1 pb-1 font-serif font-medium text-[#0d4ea8] placeholder:text-[#2382a8] focus:border-[#1561bf] focus:outline-none sm:w-[min(56vw,520px)]';
 const RADIUS_OPTIONS_KM = [1, 3, 5, 10, 15, 20, 25, 30, 40, 50, 60, 80, 100];
 
 interface LocationSuggestion {
@@ -802,7 +802,7 @@ export default function CustomerHome() {
                 />
                 <div className="absolute inset-0 bg-gradient-to-r from-[#04162e]/90 via-[#0d3c73]/70 to-[#1d6f8f]/55" />
                 <div className="relative mx-auto max-w-7xl px-4 pb-20 pt-24 sm:pb-24 sm:pt-28">
-                    <div className="max-w-3xl text-white">
+                    <div className="mx-auto max-w-3xl text-center text-white">
                         <p className="text-[11px] font-semibold uppercase tracking-[0.2em] text-cyan-100">
                             {t('customerHome.heroLabel')}
                         </p>
@@ -813,7 +813,7 @@ export default function CustomerHome() {
                             {t('customerHome.heroSubtitle')}
                         </p>
 
-                        <div className="mt-8 flex flex-wrap items-center gap-3">
+                        <div className="mt-8 flex flex-wrap items-center justify-center gap-3">
                             <Button
                                 size="lg"
                                 onClick={scrollToSearchHero}
