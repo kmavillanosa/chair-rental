@@ -43,12 +43,31 @@ jobs:
     needs: test
 
     steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Prepare SSH key
+        shell: bash
+        env:
+          VPS_SSH_KEY: ${{ secrets.VPS_SSH_KEY }}
+        run: |
+          set -euo pipefail
+          mkdir -p ~/.ssh
+          printf '%b' "$VPS_SSH_KEY" > ~/.ssh/github_deploy
+          sed -i 's/\r$//' ~/.ssh/github_deploy
+          chmod 600 ~/.ssh/github_deploy
+
+          if ! grep -q "BEGIN OPENSSH PRIVATE KEY" ~/.ssh/github_deploy; then
+            echo "VPS_SSH_KEY is not a valid OpenSSH private key"
+            exit 1
+          fi
+
       - name: Deploy to VPS via SSH
         uses: appleboy/ssh-action@v1
         with:
           host: ${{ secrets.VPS_HOST }}
           username: ${{ secrets.VPS_USER }}
-          key: ${{ secrets.VPS_SSH_KEY }}
+          key_path: ~/.ssh/github_deploy
           script: |
             set -e
             cd /root/chair-rental
