@@ -658,7 +658,7 @@ export default function BecomeVendor() {
                         </div>
                         {form.subdomainSlug && (
                             <p className={`mt-1 text-xs font-medium ${slugStatus === 'available' ? 'text-green-600' :
-                                    slugStatus === 'taken' ? 'text-red-600' : 'text-gray-400'
+                                slugStatus === 'taken' ? 'text-red-600' : 'text-gray-400'
                                 }`}>
                                 {slugStatus === 'available' && `${form.subdomainSlug}.${VENDOR_DOMAIN} is available`}
                                 {slugStatus === 'taken' && `${form.subdomainSlug}.${VENDOR_DOMAIN} is already taken`}

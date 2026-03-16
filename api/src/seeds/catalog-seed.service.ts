@@ -25,6 +25,22 @@ type CatalogProfile = {
   matchers: Array<string | RegExp>;
 };
 
+type CatalogTypeVariant = {
+  name: string;
+  defaultRatePerDay: number;
+  variantLabel?: string;
+};
+
+type SizeVariantRule = {
+  matchers: Array<string | RegExp>;
+  includeBaseType?: boolean;
+  variants: Array<{
+    suffix: string;
+    rate?: number;
+    rateDelta?: number;
+  }>;
+};
+
 const COMMON_EVENT_TAGS = [
   'birthday',
   'debut',
@@ -211,6 +227,35 @@ const DEFAULT_PROFILE: CatalogProfile = {
   brands: ['Generic Event Supply'],
 };
 
+const SIZE_VARIANT_RULES: SizeVariantRule[] = [
+  {
+    matchers: ['folding-tables', 'foldable-tables', 'folding-table', 'foldable-table'],
+    includeBaseType: false,
+    variants: [
+      { suffix: '4 ft', rate: 140 },
+      { suffix: '6 ft', rate: 170 },
+    ],
+  },
+  {
+    matchers: ['rectangular-banquet-tables', 'rectangular-banquet'],
+    includeBaseType: false,
+    variants: [
+      { suffix: '4 ft', rate: 250 },
+      { suffix: '6 ft', rate: 350 },
+      { suffix: '8 ft', rate: 450 },
+    ],
+  },
+  {
+    matchers: ['round-banquet-tables', 'round-banquet'],
+    includeBaseType: false,
+    variants: [
+      { suffix: '4 ft', rate: 350 },
+      { suffix: '5 ft', rate: 450 },
+      { suffix: '6 ft', rate: 550 },
+    ],
+  },
+];
+
 @Injectable()
 export class CatalogSeedService {
   private static readonly IMAGE_EXTENSIONS = new Set([
@@ -296,80 +341,97 @@ export class CatalogSeedService {
 
     const uploadFolders = this.getUploadFolders();
     const seededItemTypeNames = new Set<string>();
+    const folderToTypeNames = new Map<string, string[]>();
 
     for (const folderName of uploadFolders) {
       const typeName = this.folderNameToTypeName(folderName);
       if (!typeName) continue;
 
-      const normalizedTypeName = typeName.trim().toLowerCase();
-      seededItemTypeNames.add(normalizedTypeName);
-
       const profile = this.resolveProfile(folderName);
       const normalizedEventTags = this.normalizeTags(profile.eventTags);
       const normalizedSetTags = this.normalizeTags(profile.setTags);
       const seededPictureUrl = this.resolveSeedPictureUrl(typeName, folderName);
-      const defaultRatePerDay = this.resolveDefaultRatePerDay(
+      const baseDefaultRatePerDay = this.resolveDefaultRatePerDay(
         folderName,
         profile.defaultRatePerDay,
       );
-      const existingType = itemTypeByName.get(normalizedTypeName);
+      const variants = this.resolveTypeVariants(
+        folderName,
+        typeName,
+        baseDefaultRatePerDay,
+      );
 
-      if (existingType) {
-        const currentEventTags = this.normalizeTags(existingType.eventTags);
-        const currentSetTags = this.normalizeTags(existingType.setTags);
-        const shouldSyncPicture = Boolean(seededPictureUrl)
-          && existingType.pictureUrl !== seededPictureUrl;
+      const seededTypeNamesForFolder: string[] = [];
 
-        const shouldUpdate =
-          !this.sameTags(currentEventTags, normalizedEventTags)
-          || !this.sameTags(currentSetTags, normalizedSetTags)
-          || shouldSyncPicture
-          || Number(existingType.defaultRatePerDay || 0) !== defaultRatePerDay
-          || existingType.description !== `Seeded from uploads/${folderName}`
-          || existingType.isActive !== true;
+      for (const variant of variants) {
+        const normalizedTypeName = variant.name.trim().toLowerCase();
+        seededItemTypeNames.add(normalizedTypeName);
+        seededTypeNamesForFolder.push(variant.name);
 
-        if (shouldUpdate) {
-          existingType.eventTags = normalizedEventTags;
-          existingType.setTags = normalizedSetTags;
-          existingType.defaultRatePerDay = defaultRatePerDay;
-          existingType.description = `Seeded from uploads/${folderName}`;
-          existingType.isActive = true;
-          if (seededPictureUrl) {
-            existingType.pictureUrl = seededPictureUrl;
+        const existingType = itemTypeByName.get(normalizedTypeName);
+        const expectedDescription = variant.variantLabel
+          ? `Seeded from uploads/${folderName} (${variant.variantLabel})`
+          : `Seeded from uploads/${folderName}`;
+
+        if (existingType) {
+          const currentEventTags = this.normalizeTags(existingType.eventTags);
+          const currentSetTags = this.normalizeTags(existingType.setTags);
+          const shouldSyncPicture = Boolean(seededPictureUrl)
+            && existingType.pictureUrl !== seededPictureUrl;
+
+          const shouldUpdate =
+            !this.sameTags(currentEventTags, normalizedEventTags)
+            || !this.sameTags(currentSetTags, normalizedSetTags)
+            || shouldSyncPicture
+            || Number(existingType.defaultRatePerDay || 0) !== variant.defaultRatePerDay
+            || existingType.description !== expectedDescription
+            || existingType.isActive !== true;
+
+          if (shouldUpdate) {
+            existingType.eventTags = normalizedEventTags;
+            existingType.setTags = normalizedSetTags;
+            existingType.defaultRatePerDay = variant.defaultRatePerDay;
+            existingType.description = expectedDescription;
+            existingType.isActive = true;
+            if (seededPictureUrl) {
+              existingType.pictureUrl = seededPictureUrl;
+            }
+            await this.itemTypesRepo.save(existingType);
+            itemTypesUpdated += 1;
           }
-          await this.itemTypesRepo.save(existingType);
-          itemTypesUpdated += 1;
+
+          if (seededPictureUrl || existingType.pictureUrl) {
+            itemTypesWithSeededPictures += 1;
+          } else {
+            itemTypesMissingSeededPictures += 1;
+          }
+
+          continue;
         }
 
-        if (seededPictureUrl || existingType.pictureUrl) {
+        const createdType = await this.itemTypesRepo.save(
+          this.itemTypesRepo.create({
+            name: variant.name,
+            description: expectedDescription,
+            defaultRatePerDay: variant.defaultRatePerDay,
+            eventTags: normalizedEventTags,
+            setTags: normalizedSetTags,
+            pictureUrl: seededPictureUrl,
+            isActive: true,
+          }),
+        );
+
+        if (seededPictureUrl) {
           itemTypesWithSeededPictures += 1;
         } else {
           itemTypesMissingSeededPictures += 1;
         }
 
-        continue;
+        itemTypesCreated += 1;
+        itemTypeByName.set(normalizedTypeName, createdType);
       }
 
-      const createdType = await this.itemTypesRepo.save(
-        this.itemTypesRepo.create({
-          name: typeName,
-          description: `Seeded from uploads/${folderName}`,
-          defaultRatePerDay,
-          eventTags: normalizedEventTags,
-          setTags: normalizedSetTags,
-          pictureUrl: seededPictureUrl,
-          isActive: true,
-        }),
-      );
-
-      if (seededPictureUrl) {
-        itemTypesWithSeededPictures += 1;
-      } else {
-        itemTypesMissingSeededPictures += 1;
-      }
-
-      itemTypesCreated += 1;
-      itemTypeByName.set(normalizedTypeName, createdType);
+      folderToTypeNames.set(folderName, seededTypeNamesForFolder);
     }
 
     if (this.parseBooleanFlag(process.env.SEED_DEACTIVATE_MISSING_ITEM_TYPES)) {
@@ -391,27 +453,29 @@ export class CatalogSeedService {
     }
 
     for (const folderName of uploadFolders) {
-      const typeName = this.folderNameToTypeName(folderName);
-      if (!typeName) continue;
-
-      const itemType = itemTypeByName.get(typeName.trim().toLowerCase());
-      if (!itemType) continue;
+      const seededTypeNamesForFolder = folderToTypeNames.get(folderName) || [];
+      if (!seededTypeNamesForFolder.length) continue;
 
       const profile = this.resolveProfile(folderName);
-      for (const brandName of profile.brands) {
-        const brandKey = this.toBrandKey(itemType.id, brandName);
-        if (brandKeySet.has(brandKey)) continue;
+      for (const typeName of seededTypeNamesForFolder) {
+        const itemType = itemTypeByName.get(typeName.trim().toLowerCase());
+        if (!itemType) continue;
 
-        await this.brandsRepo.save(
-          this.brandsRepo.create({
-            itemTypeId: itemType.id,
-            name: brandName,
-            description: `Seeded brand for ${typeName}`,
-          }),
-        );
+        for (const brandName of profile.brands) {
+          const brandKey = this.toBrandKey(itemType.id, brandName);
+          if (brandKeySet.has(brandKey)) continue;
 
-        brandsCreated += 1;
-        brandKeySet.add(brandKey);
+          await this.brandsRepo.save(
+            this.brandsRepo.create({
+              itemTypeId: itemType.id,
+              name: brandName,
+              description: `Seeded brand for ${typeName}`,
+            }),
+          );
+
+          brandsCreated += 1;
+          brandKeySet.add(brandKey);
+        }
       }
     }
 
@@ -508,6 +572,59 @@ export class CatalogSeedService {
     if (normalizedFolderName.includes('plates')) rate -= 100;
 
     return Math.max(50, Number(rate.toFixed(2)));
+  }
+
+  private resolveTypeVariants(
+    folderName: string,
+    baseTypeName: string,
+    baseDefaultRatePerDay: number,
+  ): CatalogTypeVariant[] {
+    const normalizedFolderName = this.normalizeForPath(folderName);
+
+    const matchedRule = SIZE_VARIANT_RULES.find((rule) =>
+      rule.matchers.some((matcher) => this.matcherMatches(normalizedFolderName, matcher)),
+    );
+
+    if (!matchedRule) {
+      return [
+        {
+          name: baseTypeName,
+          defaultRatePerDay: baseDefaultRatePerDay,
+        },
+      ];
+    }
+
+    const variants: CatalogTypeVariant[] = matchedRule.variants.map((variant) => {
+      const variantRate = Number(
+        (
+          variant.rate ??
+          (baseDefaultRatePerDay + Number(variant.rateDelta || 0))
+        ).toFixed(2),
+      );
+
+      return {
+        name: `${baseTypeName} (${variant.suffix})`,
+        defaultRatePerDay: Math.max(50, variantRate),
+        variantLabel: variant.suffix,
+      };
+    });
+
+    if (matchedRule.includeBaseType) {
+      variants.unshift({
+        name: baseTypeName,
+        defaultRatePerDay: baseDefaultRatePerDay,
+      });
+    }
+
+    return variants;
+  }
+
+  private matcherMatches(value: string, matcher: string | RegExp) {
+    if (typeof matcher === 'string') {
+      return value.includes(matcher);
+    }
+
+    return matcher.test(value);
   }
 
   private resolveTypeImageFolder(typeName: string): string | undefined {
