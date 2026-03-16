@@ -46,31 +46,26 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
-      - name: Prepare SSH key
-        shell: bash
+      - name: Install SSH key
+        uses: webfactory/ssh-agent@v0.9.1
+        with:
+          ssh-private-key: ${{ secrets.VPS_SSH_KEY }}
+
+      - name: Verify loaded SSH key
+        run: ssh-add -l
+
+      - name: Deploy to VPS
         env:
-          VPS_SSH_KEY: ${{ secrets.VPS_SSH_KEY }}
+          VPS_HOST: ${{ secrets.VPS_HOST }}
+          VPS_USER: ${{ secrets.VPS_USER }}
         run: |
           set -euo pipefail
-          mkdir -p ~/.ssh
-          printf '%b' "$VPS_SSH_KEY" > ~/.ssh/github_deploy
-          sed -i 's/\r$//' ~/.ssh/github_deploy
-          chmod 600 ~/.ssh/github_deploy
+          SSH_OPTS="-o StrictHostKeyChecking=no -o ConnectTimeout=90 -o ConnectionAttempts=5 -o ServerAliveInterval=15 -o ServerAliveCountMax=60 -o TCPKeepAlive=yes"
 
-          if ! grep -q "BEGIN OPENSSH PRIVATE KEY" ~/.ssh/github_deploy; then
-            echo "VPS_SSH_KEY is not a valid OpenSSH private key"
-            exit 1
-          fi
-
-      - name: Deploy to VPS via SSH
-        uses: appleboy/ssh-action@v1
-        with:
-          host: ${{ secrets.VPS_HOST }}
-          username: ${{ secrets.VPS_USER }}
-          key_path: ~/.ssh/github_deploy
-          script: |
-            set -e
-            cd /root/chair-rental
-            git pull origin main
-            docker compose up -d --build
-            docker compose ps
+          ssh $SSH_OPTS "$VPS_USER@$VPS_HOST" "bash -s" <<'REMOTE'
+          set -e
+          cd /root/chair-rental
+          git pull origin main
+          docker compose up -d --build
+          docker compose ps
+          REMOTE
