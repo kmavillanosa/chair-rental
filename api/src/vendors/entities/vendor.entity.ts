@@ -161,6 +161,9 @@ export class Vendor {
   @Column({ type: 'datetime', nullable: true })
   paymongoOnboardedAt: Date;
 
+  @Column({ type: 'longtext', nullable: true })
+  paymongoOnboardingData: string;
+
   @Column({
     type: 'enum',
     enum: VendorRegistrationStatus,

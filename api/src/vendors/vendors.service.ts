@@ -45,6 +45,90 @@ import { SettingsService } from '../settings/settings.service';
 
 type JsonRecord = Record<string, any>;
 
+type PayMongoOnboardingData = {
+  child_merchant?: {
+    address?: {
+      state?: string;
+    };
+    bank?: {
+      id?: string;
+    };
+    business?: {
+      age?: string;
+      estimated_monthly_volume?: string;
+      handle?: string;
+      industry?: string;
+      intended_product?: string;
+      legal_name?: string;
+      size?: string;
+      trade_name?: string;
+      type?: string;
+    };
+    e_wallet?: {
+      provider?: string;
+    };
+    features?: string[];
+    representative?: {
+      nature_of_work?: string;
+      nationality?: string;
+      source_of_funds?: string;
+    };
+  };
+  related_consumer?: {
+    address?: {
+      state?: string;
+    };
+    intended_use?: string;
+    features?: string[];
+    nature_of_work?: string;
+    nationality?: string;
+    source_of_funds?: string;
+  };
+  file_record?: {
+    purpose?: string;
+  };
+};
+
+const PAYMONGO_CHILD_MERCHANT_BUSINESS_TYPES = new Set([
+  'individual',
+  'sole_proprietor',
+  'partnership',
+  'corporation',
+]);
+
+const PAYMONGO_E_WALLET_PROVIDERS = new Set([
+  'gcash',
+  'maya',
+  'grab_pay',
+  'other',
+]);
+
+const PAYMONGO_CHILD_MERCHANT_FEATURES = new Set([
+  'payment_gateway',
+  'basic_wallet',
+  'standard_wallet',
+]);
+
+const PAYMONGO_RELATED_CONSUMER_FEATURES = new Set([
+  'basic_wallet',
+  'fully_verified_standard_wallet',
+]);
+
+const PAYMONGO_SOURCE_OF_FUNDS = new Set([
+  'salary',
+  'pension',
+  'allowance',
+  'commission',
+  'donation',
+  'other',
+]);
+
+const PAYMONGO_RELATED_CONSUMER_INTENDED_USE = new Set([
+  'bills_payment',
+  'fund_transfer',
+  'store_value',
+]);
+
 @Injectable()
 export class VendorsService {
   private readonly logger = new Logger(VendorsService.name);
@@ -144,6 +228,11 @@ export class VendorsService {
     const normalizedPayMongoMerchantId = this.normalizeText(
       vendorInput.paymongoMerchantId,
     );
+    const normalizedPayMongoOnboardingData =
+      this.normalizePayMongoOnboardingDataInput(
+        vendorInput.paymongoOnboardingData,
+        normalizedVendorType,
+      );
     const hasConfiguredPayMongoMerchantId = Boolean(normalizedPayMongoMerchantId);
     const verificationStatus =
       this.normalizeVerificationStatus(data.verificationStatus) ||
@@ -172,6 +261,7 @@ export class VendorsService {
         : VendorPayMongoOnboardingStatus.NOT_STARTED,
       paymongoOnboardingError: null,
       paymongoOnboardedAt: hasConfiguredPayMongoMerchantId ? new Date() : null,
+      paymongoOnboardingData: normalizedPayMongoOnboardingData,
       registrationStatus:
         vendorInput.registrationStatus || VendorRegistrationStatus.APPROVED,
       kycStatus: vendorInput.kycStatus || VendorKycStatus.APPROVED,
@@ -441,6 +531,11 @@ export class VendorsService {
 
     const faceMatch = this.evaluateFaceMatch(candidateGovernmentIdUrl, candidateSelfieUrl);
     const existingPayMongoMerchantId = this.normalizeText(existing?.paymongoMerchantId);
+    const resolvedPayMongoOnboardingData = this.resolvePayMongoOnboardingData(
+      data.paymongoOnboardingData,
+      vendorType,
+      existing?.paymongoOnboardingData,
+    );
 
     const payload: Partial<Vendor> = {
       userId,
@@ -469,6 +564,7 @@ export class VendorsService {
       paymongoOnboardedAt: existingPayMongoMerchantId
         ? existing?.paymongoOnboardedAt || new Date()
         : null,
+      paymongoOnboardingData: resolvedPayMongoOnboardingData,
       kycDocumentUrl: candidateGovernmentIdUrl,
       kycNotes: this.normalizeText(data.kycNotes),
       rejectionReason: null,
@@ -532,6 +628,10 @@ export class VendorsService {
       data,
       'paymongoMerchantId',
     );
+    const hasPayMongoOnboardingDataField = Object.prototype.hasOwnProperty.call(
+      data,
+      'paymongoOnboardingData',
+    );
     const normalizedPayMongoMerchantId = hasPayMongoMerchantIdField
       ? this.normalizeText(data.paymongoMerchantId)
       : undefined;
@@ -559,6 +659,20 @@ export class VendorsService {
         : VendorPayMongoOnboardingStatus.NOT_STARTED;
       payload.paymongoOnboardingError = null;
       payload.paymongoOnboardedAt = normalizedPayMongoMerchantId ? new Date() : null;
+    }
+
+    if (hasPayMongoOnboardingDataField) {
+      let onboardingVendorType = payload.vendorType;
+      if (!onboardingVendorType) {
+        const existingVendor = await this.findByIdRaw(id);
+        onboardingVendorType =
+          existingVendor?.vendorType || VendorType.REGISTERED_BUSINESS;
+      }
+
+      payload.paymongoOnboardingData = this.normalizePayMongoOnboardingDataInput(
+        data.paymongoOnboardingData,
+        onboardingVendorType,
+      );
     }
 
     await this.vendorsRepo.update(id, payload);
@@ -1672,6 +1786,352 @@ export class VendorsService {
     return normalized;
   }
 
+  private resolvePayMongoOnboardingData(
+    input: unknown,
+    vendorType: VendorType,
+    existingSerializedData?: unknown,
+  ) {
+    if (input === undefined) {
+      return this.normalizePayMongoOnboardingDataInput(
+        existingSerializedData,
+        vendorType,
+      );
+    }
+
+    return this.normalizePayMongoOnboardingDataInput(input, vendorType);
+  }
+
+  private normalizePayMongoOnboardingDataInput(
+    input: unknown,
+    vendorType: VendorType,
+  ): string | null {
+    const raw = this.parseJsonRecord(input);
+    if (!raw) {
+      return null;
+    }
+
+    const normalized: PayMongoOnboardingData = {};
+    const childMerchantRaw = this.parseJsonRecord(
+      raw.child_merchant || raw.childMerchant,
+    );
+    const relatedConsumerRaw = this.parseJsonRecord(
+      raw.related_consumer || raw.relatedConsumer,
+    );
+    const fileRecordRaw = this.parseJsonRecord(raw.file_record || raw.fileRecord);
+
+    const childMerchant = this.normalizePayMongoChildMerchantData(
+      childMerchantRaw,
+      vendorType,
+    );
+    if (childMerchant) {
+      normalized.child_merchant = childMerchant;
+    }
+
+    const relatedConsumer =
+      this.normalizePayMongoRelatedConsumerData(relatedConsumerRaw);
+    if (relatedConsumer) {
+      normalized.related_consumer = relatedConsumer;
+    }
+
+    const fileRecord = this.normalizePayMongoFileRecordData(fileRecordRaw);
+    if (fileRecord) {
+      normalized.file_record = fileRecord;
+    }
+
+    if (!Object.keys(normalized).length) {
+      return null;
+    }
+
+    return JSON.stringify(normalized);
+  }
+
+  private normalizePayMongoChildMerchantData(
+    input: JsonRecord | null,
+    vendorType: VendorType,
+  ): PayMongoOnboardingData['child_merchant'] | null {
+    if (!input) {
+      return null;
+    }
+
+    const addressInput = this.parseJsonRecord(input.address);
+    const bankInput = this.parseJsonRecord(input.bank);
+    const businessInput = this.parseJsonRecord(input.business);
+    const eWalletInput = this.parseJsonRecord(input.e_wallet || input.eWallet);
+    const representativeInput = this.parseJsonRecord(input.representative);
+
+    const normalizedBusinessType = this.normalizePayMongoBusinessTypeInput(
+      businessInput?.type || input.business_type || input.businessType,
+      this.mapVendorTypeToPayMongoBusinessType(vendorType),
+      'child_merchant.business.type',
+    );
+
+    const normalizedFeatures = this.normalizePayMongoFeatureList(
+      input.features,
+      PAYMONGO_CHILD_MERCHANT_FEATURES,
+      'child_merchant.features',
+    );
+    const walletFeatures = normalizedFeatures.filter(
+      (feature) => feature === 'basic_wallet' || feature === 'standard_wallet',
+    );
+    if (walletFeatures.length > 1) {
+      throw new BadRequestException(
+        'child_merchant.features cannot contain both basic_wallet and standard_wallet',
+      );
+    }
+
+    const normalized = this.compactJson<PayMongoOnboardingData['child_merchant']>({
+      address: {
+        state: this.normalizeText(addressInput?.state),
+      },
+      bank: {
+        id: this.normalizeText(bankInput?.id),
+      },
+      business: {
+        age: this.normalizeText(businessInput?.age),
+        estimated_monthly_volume: this.normalizeText(
+          businessInput?.estimated_monthly_volume ||
+            businessInput?.estimatedMonthlyVolume,
+        ),
+        handle: this.normalizeText(businessInput?.handle),
+        industry: this.normalizeText(businessInput?.industry),
+        intended_product: this.normalizeText(
+          businessInput?.intended_product || businessInput?.intendedProduct,
+        ),
+        legal_name: this.normalizeText(
+          businessInput?.legal_name || businessInput?.legalName,
+        ),
+        size: this.normalizeText(businessInput?.size),
+        trade_name: this.normalizeText(
+          businessInput?.trade_name || businessInput?.tradeName,
+        ),
+        type: normalizedBusinessType,
+      },
+      e_wallet: {
+        provider: this.normalizePayMongoEnum(
+          eWalletInput?.provider,
+          PAYMONGO_E_WALLET_PROVIDERS,
+          'child_merchant.e_wallet.provider',
+        ),
+      },
+      features: normalizedFeatures,
+      representative: {
+        nature_of_work: this.normalizeText(
+          representativeInput?.nature_of_work ||
+            representativeInput?.natureOfWork,
+        ),
+        nationality: this.normalizePayMongoNationality(
+          representativeInput?.nationality,
+          'child_merchant.representative.nationality',
+        ),
+        source_of_funds: this.normalizePayMongoEnum(
+          representativeInput?.source_of_funds ||
+            representativeInput?.sourceOfFunds,
+          PAYMONGO_SOURCE_OF_FUNDS,
+          'child_merchant.representative.source_of_funds',
+        ),
+      },
+    });
+
+    return Object.keys(normalized || {}).length ? normalized : null;
+  }
+
+  private normalizePayMongoRelatedConsumerData(
+    input: JsonRecord | null,
+  ): PayMongoOnboardingData['related_consumer'] | null {
+    if (!input) {
+      return null;
+    }
+
+    const addressInput = this.parseJsonRecord(input.address);
+    const normalized = this.compactJson<PayMongoOnboardingData['related_consumer']>({
+      address: {
+        state: this.normalizeText(addressInput?.state),
+      },
+      intended_use: this.normalizePayMongoEnum(
+        input.intended_use || input.intendedUse,
+        PAYMONGO_RELATED_CONSUMER_INTENDED_USE,
+        'related_consumer.intended_use',
+      ),
+      features: this.normalizePayMongoFeatureList(
+        input.features,
+        PAYMONGO_RELATED_CONSUMER_FEATURES,
+        'related_consumer.features',
+      ),
+      nature_of_work: this.normalizeText(
+        input.nature_of_work || input.natureOfWork,
+      ),
+      nationality: this.normalizePayMongoNationality(
+        input.nationality,
+        'related_consumer.nationality',
+      ),
+      source_of_funds: this.normalizePayMongoEnum(
+        input.source_of_funds || input.sourceOfFunds,
+        PAYMONGO_SOURCE_OF_FUNDS,
+        'related_consumer.source_of_funds',
+      ),
+    });
+
+    return Object.keys(normalized || {}).length ? normalized : null;
+  }
+
+  private normalizePayMongoFileRecordData(
+    input: JsonRecord | null,
+  ): PayMongoOnboardingData['file_record'] | null {
+    if (!input) {
+      return null;
+    }
+
+    const normalizedPurpose = this.normalizeText(input.purpose);
+    if (!normalizedPurpose) {
+      return null;
+    }
+
+    return {
+      purpose: normalizedPurpose,
+    };
+  }
+
+  private normalizePayMongoBusinessTypeInput(
+    input: unknown,
+    fallback: string,
+    fieldPath: string,
+  ) {
+    const normalized = this.normalizeText(input || fallback)?.toLowerCase() || null;
+    if (!normalized) {
+      return fallback;
+    }
+
+    if (!PAYMONGO_CHILD_MERCHANT_BUSINESS_TYPES.has(normalized)) {
+      throw new BadRequestException(
+        `${fieldPath} must be one of: individual, sole_proprietor, partnership, corporation`,
+      );
+    }
+
+    return normalized;
+  }
+
+  private normalizePayMongoEnum(
+    input: unknown,
+    allowedValues: Set<string>,
+    fieldPath: string,
+  ) {
+    const normalized = this.normalizeText(input)?.toLowerCase() || null;
+    if (!normalized) {
+      return null;
+    }
+
+    if (!allowedValues.has(normalized)) {
+      throw new BadRequestException(
+        `${fieldPath} has an invalid value: ${normalized}`,
+      );
+    }
+
+    return normalized;
+  }
+
+  private normalizePayMongoNationality(input: unknown, fieldPath: string) {
+    const normalized = this.normalizeText(input)?.toUpperCase() || null;
+    if (!normalized) {
+      return null;
+    }
+
+    if (!/^[A-Z]{3}$/.test(normalized)) {
+      throw new BadRequestException(
+        `${fieldPath} must be a 3-letter code (example: PHL)`,
+      );
+    }
+
+    return normalized;
+  }
+
+  private normalizePayMongoFeatureList(
+    input: unknown,
+    allowedValues: Set<string>,
+    fieldPath: string,
+  ) {
+    const normalizedFeatures = this.normalizeStringArray(input)
+      .map((value) => value.toLowerCase())
+      .filter(Boolean);
+
+    for (const feature of normalizedFeatures) {
+      if (!allowedValues.has(feature)) {
+        throw new BadRequestException(
+          `${fieldPath} has an invalid value: ${feature}`,
+        );
+      }
+    }
+
+    return [...new Set(normalizedFeatures)];
+  }
+
+  private normalizeStringArray(input: unknown) {
+    if (input === undefined || input === null) {
+      return [] as string[];
+    }
+
+    if (Array.isArray(input)) {
+      return input
+        .map((item) => this.normalizeText(item) || '')
+        .filter(Boolean);
+    }
+
+    const normalized = this.normalizeText(input);
+    if (!normalized) {
+      return [] as string[];
+    }
+
+    if (normalized.startsWith('[')) {
+      try {
+        const parsed = JSON.parse(normalized);
+        if (Array.isArray(parsed)) {
+          return parsed
+            .map((item) => this.normalizeText(item) || '')
+            .filter(Boolean);
+        }
+      } catch {
+        throw new BadRequestException('Features must be a valid JSON array or CSV list');
+      }
+    }
+
+    return normalized
+      .split(',')
+      .map((item) => item.trim())
+      .filter(Boolean);
+  }
+
+  private parseJsonRecord(input: unknown): JsonRecord | null {
+    if (input === undefined || input === null) {
+      return null;
+    }
+
+    if (typeof input === 'string') {
+      const normalized = input.trim();
+      if (!normalized) {
+        return null;
+      }
+
+      try {
+        const parsed = JSON.parse(normalized);
+        if (parsed && typeof parsed === 'object' && !Array.isArray(parsed)) {
+          return parsed as JsonRecord;
+        }
+
+        throw new BadRequestException('paymongoOnboardingData must be a JSON object');
+      } catch (error) {
+        if (error instanceof BadRequestException) {
+          throw error;
+        }
+        throw new BadRequestException('paymongoOnboardingData must be valid JSON');
+      }
+    }
+
+    if (typeof input === 'object' && !Array.isArray(input)) {
+      return input as JsonRecord;
+    }
+
+    throw new BadRequestException('paymongoOnboardingData must be a JSON object');
+  }
+
   private parseOptionalNumber(input: unknown): number | null {
     if (input === undefined || input === null || String(input).trim() === '') {
       return null;
@@ -1891,13 +2351,18 @@ export class VendorsService {
     }
 
     const onboardingUrl = this.getPayMongoVendorOnboardingUrl();
+    const isChildMerchantEndpoint = this.isPayMongoChildMerchantOnboardingUrl(
+      onboardingUrl,
+    );
     const response = await fetch(onboardingUrl, {
       method: 'POST',
       headers: {
         Authorization: `Basic ${Buffer.from(`${secretKey}:`).toString('base64')}`,
         'Content-Type': 'application/json',
       },
-      body: JSON.stringify(this.buildPayMongoVendorOnboardingPayload(vendor)),
+      body: JSON.stringify(
+        this.buildPayMongoVendorOnboardingPayload(vendor, onboardingUrl),
+      ),
     });
 
     const responsePayload = await this.parseJsonBody(response);
@@ -1910,11 +2375,93 @@ export class VendorsService {
       throw new Error('Merchant onboarding succeeded but no merchant ID was returned');
     }
 
+    if (isChildMerchantEndpoint) {
+      await this.updatePayMongoChildMerchantAfterCreate(
+        vendor,
+        merchantId,
+        secretKey,
+      );
+    }
+
     return merchantId;
   }
 
-  private buildPayMongoVendorOnboardingPayload(vendor: Vendor): JsonRecord {
-    return {
+  private async updatePayMongoChildMerchantAfterCreate(
+    vendor: Vendor,
+    childMerchantId: string,
+    secretKey: string,
+  ) {
+    const onboardingData = this.parseStoredPayMongoOnboardingData(
+      vendor.paymongoOnboardingData,
+      vendor.vendorType,
+    );
+    if (!onboardingData?.child_merchant) {
+      return;
+    }
+
+    const updatePayload = this.buildPayMongoChildMerchantUpdatePayload(vendor);
+    if (!updatePayload) {
+      return;
+    }
+
+    const childMerchantPathId = encodeURIComponent(childMerchantId);
+    const updateUrl = `${this.getPayMongoApiBaseUrl()}/merchants/children/${childMerchantPathId}`;
+
+    const updateResponse = await fetch(updateUrl, {
+      method: 'PATCH',
+      headers: {
+        Authorization: `Basic ${Buffer.from(`${secretKey}:`).toString('base64')}`,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify(updatePayload),
+    });
+
+    const updateResponsePayload = await this.parseJsonBody(updateResponse);
+    if (!updateResponse.ok) {
+      throw new Error(
+        `Child merchant created but update failed: ${this.extractPayMongoOnboardingErrorMessage(
+          updateResponsePayload,
+        )}`,
+      );
+    }
+
+    if (!this.parseBooleanFlag(process.env.PAYMONGO_VENDOR_ONBOARDING_AUTO_SUBMIT)) {
+      return;
+    }
+
+    const submitUrl = `${this.getPayMongoApiBaseUrl()}/merchants/children/${childMerchantPathId}/submit`;
+    const submitResponse = await fetch(submitUrl, {
+      method: 'POST',
+      headers: {
+        Authorization: `Basic ${Buffer.from(`${secretKey}:`).toString('base64')}`,
+        'Content-Type': 'application/json',
+      },
+    });
+
+    const submitResponsePayload = await this.parseJsonBody(submitResponse);
+    if (!submitResponse.ok) {
+      throw new Error(
+        `Child merchant update succeeded but submit failed: ${this.extractPayMongoOnboardingErrorMessage(
+          submitResponsePayload,
+        )}`,
+      );
+    }
+  }
+
+  private buildPayMongoVendorOnboardingPayload(
+    vendor: Vendor,
+    onboardingUrl = this.getPayMongoVendorOnboardingUrl(),
+  ): JsonRecord {
+    if (this.isPayMongoChildMerchantOnboardingUrl(onboardingUrl)) {
+      return this.buildPayMongoChildMerchantCreatePayload(vendor);
+    }
+
+    const onboardingData = this.parseStoredPayMongoOnboardingData(
+      vendor.paymongoOnboardingData,
+      vendor.vendorType,
+    );
+
+    return this.compactJson({
       data: {
         attributes: {
           external_reference: vendor.id,
@@ -1932,10 +2479,252 @@ export class VendorsService {
           metadata: {
             vendor_id: vendor.id,
             vendor_type: this.normalizeText(vendor.vendorType),
+            onboarding_appendix: onboardingData || undefined,
           },
         },
       },
+    });
+  }
+
+  private buildPayMongoChildMerchantCreatePayload(vendor: Vendor): JsonRecord {
+    const onboardingData = this.parseStoredPayMongoOnboardingData(
+      vendor.paymongoOnboardingData,
+      vendor.vendorType,
+    );
+    const businessType = this.resolvePayMongoChildMerchantBusinessType(
+      vendor,
+      onboardingData,
+    );
+    const childFeatures = this.resolvePayMongoChildMerchantFeatures(
+      onboardingData?.child_merchant?.features,
+      true,
+    );
+    const tradeName =
+      this.normalizeText(onboardingData?.child_merchant?.business?.trade_name) ||
+      this.normalizeText(vendor.businessName) ||
+      this.normalizeText(vendor.ownerFullName) ||
+      vendor.id;
+
+    return {
+      data: {
+        attributes: {
+          business: {
+            trade_name: tradeName,
+            type: businessType,
+          },
+          features: childFeatures,
+        },
+      },
     };
+  }
+
+  private buildPayMongoChildMerchantUpdatePayload(vendor: Vendor): JsonRecord | null {
+    const onboardingData = this.parseStoredPayMongoOnboardingData(
+      vendor.paymongoOnboardingData,
+      vendor.vendorType,
+    );
+    const childMerchant = onboardingData?.child_merchant;
+    if (!childMerchant) {
+      return null;
+    }
+
+    const businessType = this.resolvePayMongoChildMerchantBusinessType(
+      vendor,
+      onboardingData,
+    );
+    const legalName = this.resolvePayMongoLegalName(vendor, childMerchant);
+    const updateAttributes = this.compactJson({
+      address: {
+        state: this.normalizeText(childMerchant.address?.state),
+      },
+      bank: {
+        id: this.normalizeText(childMerchant.bank?.id),
+      },
+      business: {
+        trade_name:
+          this.normalizeText(childMerchant.business?.trade_name) ||
+          this.normalizeText(vendor.businessName) ||
+          undefined,
+        type: businessType,
+        age: this.normalizeText(childMerchant.business?.age),
+        estimated_monthly_volume: this.normalizeText(
+          childMerchant.business?.estimated_monthly_volume,
+        ),
+        handle: this.normalizeText(childMerchant.business?.handle),
+        industry: this.normalizeText(childMerchant.business?.industry),
+        intended_product: this.normalizeText(
+          childMerchant.business?.intended_product,
+        ),
+        legal_name: legalName,
+        size: this.normalizeText(childMerchant.business?.size),
+      },
+      e_wallet: {
+        provider: this.normalizeText(childMerchant.e_wallet?.provider),
+      },
+      features: this.resolvePayMongoChildMerchantFeatures(
+        childMerchant.features,
+        false,
+      ),
+      representative: {
+        nature_of_work: this.normalizeText(
+          childMerchant.representative?.nature_of_work,
+        ),
+        nationality: this.normalizeText(childMerchant.representative?.nationality),
+        source_of_funds: this.normalizeText(
+          childMerchant.representative?.source_of_funds,
+        ),
+      },
+    });
+
+    if (!Object.keys(updateAttributes).length) {
+      return null;
+    }
+
+    return {
+      data: {
+        attributes: updateAttributes,
+      },
+    };
+  }
+
+  private resolvePayMongoChildMerchantBusinessType(
+    vendor: Vendor,
+    onboardingData?: PayMongoOnboardingData | null,
+  ) {
+    const explicitType = this.normalizeText(
+      onboardingData?.child_merchant?.business?.type,
+    )?.toLowerCase();
+    if (explicitType && PAYMONGO_CHILD_MERCHANT_BUSINESS_TYPES.has(explicitType)) {
+      return explicitType;
+    }
+
+    return this.mapVendorTypeToPayMongoBusinessType(vendor.vendorType);
+  }
+
+  private resolvePayMongoChildMerchantFeatures(
+    featuresInput: unknown,
+    includeDefaultWhenEmpty: boolean,
+  ) {
+    const features = this.normalizeStringArray(featuresInput)
+      .map((value) => value.toLowerCase())
+      .filter((value) => PAYMONGO_CHILD_MERCHANT_FEATURES.has(value));
+
+    const uniqueFeatures = [...new Set(features)];
+    if (!uniqueFeatures.length) {
+      return includeDefaultWhenEmpty ? ['payment_gateway'] : [];
+    }
+
+    return uniqueFeatures;
+  }
+
+  private resolvePayMongoLegalName(
+    vendor: Vendor,
+    childMerchant: PayMongoOnboardingData['child_merchant'],
+  ) {
+    const explicitLegalName = this.normalizeText(childMerchant?.business?.legal_name);
+    if (explicitLegalName) {
+      return explicitLegalName;
+    }
+
+    const businessType = this.resolvePayMongoChildMerchantBusinessType(vendor, {
+      child_merchant: childMerchant,
+    });
+    if (businessType === 'individual') {
+      return this.normalizeText(vendor.ownerFullName);
+    }
+
+    if (businessType === 'sole_proprietor') {
+      return (
+        this.normalizeText(vendor.businessName) ||
+        this.normalizeText(vendor.ownerFullName)
+      );
+    }
+
+    return this.normalizeText(vendor.businessName);
+  }
+
+  private mapVendorTypeToPayMongoBusinessType(vendorType: VendorType) {
+    if (vendorType === VendorType.INDIVIDUAL_OWNER) {
+      return 'individual';
+    }
+    return 'sole_proprietor';
+  }
+
+  private parseStoredPayMongoOnboardingData(
+    serializedData: unknown,
+    vendorType: VendorType,
+  ): PayMongoOnboardingData | null {
+    let normalized: string | null = null;
+    try {
+      normalized = this.normalizePayMongoOnboardingDataInput(
+        serializedData,
+        vendorType,
+      );
+    } catch (error) {
+      this.logger.warn(
+        `Skipping invalid stored PayMongo onboarding data: ${(error as Error)?.message || String(error)}`,
+      );
+      return null;
+    }
+
+    if (!normalized) {
+      return null;
+    }
+
+    try {
+      return JSON.parse(normalized) as PayMongoOnboardingData;
+    } catch {
+      this.logger.warn('Invalid normalized PayMongo onboarding payload in vendor record');
+      return null;
+    }
+  }
+
+  private isPayMongoChildMerchantOnboardingUrl(url: string) {
+    const normalizedUrl = this.normalizeText(url);
+    if (!normalizedUrl) {
+      return false;
+    }
+
+    return /\/merchants\/children\/?$/i.test(normalizedUrl);
+  }
+
+  private compactJson<T>(input: T): T {
+    if (Array.isArray(input)) {
+      return input
+        .map((item) => this.compactJson(item))
+        .filter((item) => {
+          if (item === null || item === undefined) return false;
+          if (Array.isArray(item)) return item.length > 0;
+          if (typeof item === 'object') return Object.keys(item).length > 0;
+          return true;
+        }) as T;
+    }
+
+    if (input && typeof input === 'object') {
+      const compacted: JsonRecord = {};
+      for (const [key, value] of Object.entries(input as JsonRecord)) {
+        const normalizedValue = this.compactJson(value);
+        if (normalizedValue === null || normalizedValue === undefined) {
+          continue;
+        }
+        if (Array.isArray(normalizedValue) && normalizedValue.length === 0) {
+          continue;
+        }
+        if (
+          typeof normalizedValue === 'object' &&
+          !Array.isArray(normalizedValue) &&
+          Object.keys(normalizedValue).length === 0
+        ) {
+          continue;
+        }
+
+        compacted[key] = normalizedValue;
+      }
+
+      return compacted as T;
+    }
+
+    return input;
   }
 
   private async parseJsonBody(response: { text: () => Promise<string> }) {

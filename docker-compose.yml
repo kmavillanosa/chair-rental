@@ -46,17 +46,17 @@ services:
     environment:
       MONGO_URL: mongodb://rocketchat_mongo:27017/rocketchat?replicaSet=rs0
       MONGO_OPLOG_URL: mongodb://rocketchat_mongo:27017/local?replicaSet=rs0
-      ROOT_URL: ${ROCKETCHAT_PUBLIC_URL:-http://localhost:4000}
+      ROOT_URL: ${ROCKETCHAT_PUBLIC_URL}
       PORT: 3000
       DEPLOY_PLATFORM: docker
       # Auto-complete the setup wizard so RC starts ready to use
       OVERWRITE_SETTING_Show_Setup_Wizard: completed
       # Pre-create admin account from env vars
-      ADMIN_EMAIL: ${ROCKETCHAT_ADMIN_EMAIL:-admin@rentalbasic.com}
-      ADMIN_PASS: ${ROCKETCHAT_ADMIN_PASSWORD:-ChangeMe_RC_Password_2024}
+      ADMIN_EMAIL: ${ROCKETCHAT_ADMIN_EMAIL}
+      ADMIN_PASS: ${ROCKETCHAT_ADMIN_PASSWORD}
       ADMIN_USERNAME: rcadmin
       ADMIN_NAME: RC Admin
-      CREATE_TOKENS_FOR_USERS_SECRET: ${ROCKETCHAT_USER_SECRET:-}
+      CREATE_TOKENS_FOR_USERS_SECRET: ${ROCKETCHAT_USER_SECRET}
       # Disable public registration — users are created via the admin API
       OVERWRITE_SETTING_Accounts_RegistrationForm: Disabled
       # Disable Rocket.Chat's frame restriction so the booking widget can embed it
@@ -106,9 +106,9 @@ services:
       DB_NAME: ${MYSQL_DATABASE}
       DB_USER: ${MYSQL_USER}
       DB_PASSWORD: ${MYSQL_PASSWORD}
-      DB_SYNC: ${DB_SYNC:-true}
+      DB_SYNC: ${DB_SYNC}
       JWT_SECRET: ${JWT_SECRET}
-      JWT_EXPIRY: ${JWT_EXPIRY:-7d}
+      JWT_EXPIRY: ${JWT_EXPIRY}
       GOOGLE_CLIENT_ID: ${GOOGLE_CLIENT_ID}
       GOOGLE_CLIENT_SECRET: ${GOOGLE_CLIENT_SECRET}
       GOOGLE_CALLBACK_URL: ${GOOGLE_CALLBACK_URL}
@@ -116,27 +116,27 @@ services:
       STAFF_FRONTEND_URL: ${STAFF_FRONTEND_URL}
       GMAIL_USER: ${GMAIL_USER}
       GMAIL_APP_PASSWORD: ${GMAIL_APP_PASSWORD}
-      PLATFORM_COMMISSION_RATE: ${PLATFORM_COMMISSION_RATE:-0.10}
-      PAYMONGO_ENABLED: ${PAYMONGO_ENABLED:-false}
+      PLATFORM_COMMISSION_RATE: ${PLATFORM_COMMISSION_RATE}
+      PAYMONGO_ENABLED: ${PAYMONGO_ENABLED}
       PAYMONGO_SECRET_KEY: ${PAYMONGO_SECRET_KEY}
-      PAYMONGO_API_BASE_URL: ${PAYMONGO_API_BASE_URL:-https://api.paymongo.com/v1}
+      PAYMONGO_API_BASE_URL: ${PAYMONGO_API_BASE_URL}
       PAYMONGO_PLATFORM_MERCHANT_ID: ${PAYMONGO_PLATFORM_MERCHANT_ID}
       PAYMONGO_DELIVERY_MERCHANT_ID: ${PAYMONGO_DELIVERY_MERCHANT_ID}
-      PAYMONGO_VENDOR_ONBOARDING_ENABLED: ${PAYMONGO_VENDOR_ONBOARDING_ENABLED:-false}
-      PAYMONGO_VENDOR_ONBOARDING_REQUIRED: ${PAYMONGO_VENDOR_ONBOARDING_REQUIRED:-false}
-      PAYMONGO_VENDOR_ONBOARDING_URL: ${PAYMONGO_VENDOR_ONBOARDING_URL:-}
-      PAYMONGO_PAYMENT_METHOD_TYPES: ${PAYMONGO_PAYMENT_METHOD_TYPES:-gcash}
+      PAYMONGO_VENDOR_ONBOARDING_ENABLED: ${PAYMONGO_VENDOR_ONBOARDING_ENABLED}
+      PAYMONGO_VENDOR_ONBOARDING_REQUIRED: ${PAYMONGO_VENDOR_ONBOARDING_REQUIRED}
+      PAYMONGO_VENDOR_ONBOARDING_URL: ${PAYMONGO_VENDOR_ONBOARDING_URL}
+      PAYMONGO_PAYMENT_METHOD_TYPES: ${PAYMONGO_PAYMENT_METHOD_TYPES}
       PAYMONGO_SUCCESS_URL: ${PAYMONGO_SUCCESS_URL}
       PAYMONGO_CANCEL_URL: ${PAYMONGO_CANCEL_URL}
-      PAYMONGO_SPLIT_FEE_BUFFER_BPS: ${PAYMONGO_SPLIT_FEE_BUFFER_BPS:-300}
+      PAYMONGO_SPLIT_FEE_BUFFER_BPS: ${PAYMONGO_SPLIT_FEE_BUFFER_BPS}
       UPLOAD_DIR: /app/uploads
       # Rocket.Chat integration
-      ROCKETCHAT_URL: ${ROCKETCHAT_URL:-http://rocketchat:3000}
-      ROCKETCHAT_PUBLIC_URL: ${ROCKETCHAT_PUBLIC_URL:-http://localhost:4000}
-      ROCKETCHAT_ADMIN_EMAIL: ${ROCKETCHAT_ADMIN_EMAIL:-admin@rentalbasic.com}
-      ROCKETCHAT_ADMIN_PASSWORD: ${ROCKETCHAT_ADMIN_PASSWORD:-ChangeMe_RC_Password_2024}
-      ROCKETCHAT_WEBHOOK_SECRET: ${ROCKETCHAT_WEBHOOK_SECRET:-}
-      ROCKETCHAT_USER_SECRET: ${ROCKETCHAT_USER_SECRET:-}
+      ROCKETCHAT_URL: ${ROCKETCHAT_URL}
+      ROCKETCHAT_PUBLIC_URL: ${ROCKETCHAT_PUBLIC_URL}
+      ROCKETCHAT_ADMIN_EMAIL: ${ROCKETCHAT_ADMIN_EMAIL}
+      ROCKETCHAT_ADMIN_PASSWORD: ${ROCKETCHAT_ADMIN_PASSWORD}
+      ROCKETCHAT_WEBHOOK_SECRET: ${ROCKETCHAT_WEBHOOK_SECRET}
+      ROCKETCHAT_USER_SECRET: ${ROCKETCHAT_USER_SECRET}
     volumes:
       - ./api/uploads:/app/uploads
     ports:
@@ -152,8 +152,8 @@ services:
       context: ./app
       dockerfile: Dockerfile
       args:
-        VITE_VENDOR_DOMAIN: ${VENDOR_DOMAIN:-rentalbasic.com}
-        VITE_API_URL: ${VITE_API_URL:-}
+        VITE_VENDOR_DOMAIN: ${VENDOR_DOMAIN}
+        VITE_API_URL: ${VITE_API_URL}
     container_name: chair_rental_app
     restart: unless-stopped
     ports:
@@ -168,8 +168,8 @@ services:
       context: ./staff-app
       dockerfile: Dockerfile
       args:
-        VITE_VENDOR_DOMAIN: ${VENDOR_DOMAIN:-rentalbasic.com}
-        VITE_API_URL: ${VITE_API_URL:-}
+        VITE_VENDOR_DOMAIN: ${VENDOR_DOMAIN}
+        VITE_API_URL: ${VITE_API_URL}
     container_name: chair_rental_staff_app
     restart: unless-stopped
     ports:
@@ -184,7 +184,7 @@ services:
     container_name: chair_rental_proxy
     restart: unless-stopped
     ports:
-      - "${PROXY_PORT:-80}:80"
+      - "${PROXY_PORT}:80"
       - "443:443"
     volumes:
       - ./nginx/nginx.conf:/etc/nginx/conf.d/default.conf:ro

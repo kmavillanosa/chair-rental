@@ -272,244 +272,244 @@ export default function VendorBookingDetails() {
                 />
 
                 <div className="space-y-4">
-                        <div className="rounded border border-slate-200 bg-gray-50 p-4">
-                    <div>
-                        <p className="text-sm font-semibold text-gray-600">Customer</p>
-                        <p className="text-base font-semibold">{booking.customer?.name}</p>
-                        <p className="text-sm text-gray-600">{booking.customer?.email}</p>
-                    </div>
-                    <div className="mt-3 grid grid-cols-1 gap-3 sm:grid-cols-2">
+                    <div className="rounded border border-slate-200 bg-gray-50 p-4">
                         <div>
-                            <p className="text-sm font-semibold text-gray-600">Start Date</p>
-                            <p className="text-sm font-medium">{formatDate(booking.startDate)}</p>
+                            <p className="text-sm font-semibold text-gray-600">Customer</p>
+                            <p className="text-base font-semibold">{booking.customer?.name}</p>
+                            <p className="text-sm text-gray-600">{booking.customer?.email}</p>
                         </div>
-                        <div>
-                            <p className="text-sm font-semibold text-gray-600">End Date</p>
-                            <p className="text-sm font-medium">{formatDate(booking.endDate)}</p>
-                        </div>
-                    </div>
-                    <div className="mt-3">
-                        <p className="text-sm font-semibold text-gray-600">Delivery Address</p>
-                        <p className="text-sm">{booking.deliveryAddress || 'Not specified'}</p>
-                        {Number.isFinite(Number(booking.deliveryLatitude)) &&
-                            Number.isFinite(Number(booking.deliveryLongitude)) ? (
-                            <div className="mt-2">
-                                <p className="text-sm font-semibold text-gray-600">Delivery Coordinates</p>
-                                <p className="font-mono text-sm text-gray-700">
-                                    {Number(booking.deliveryLatitude).toFixed(6)}, {Number(booking.deliveryLongitude).toFixed(6)}
-                                </p>
-                                <a
-                                    href={`https://www.google.com/maps?q=${booking.deliveryLatitude},${booking.deliveryLongitude}`}
-                                    target="_blank"
-                                    rel="noopener noreferrer"
-                                    className="text-sm font-semibold text-blue-600 hover:underline"
-                                >
-                                    Open in Maps
-                                </a>
+                        <div className="mt-3 grid grid-cols-1 gap-3 sm:grid-cols-2">
+                            <div>
+                                <p className="text-sm font-semibold text-gray-600">Start Date</p>
+                                <p className="text-sm font-medium">{formatDate(booking.startDate)}</p>
                             </div>
-                        ) : null}
+                            <div>
+                                <p className="text-sm font-semibold text-gray-600">End Date</p>
+                                <p className="text-sm font-medium">{formatDate(booking.endDate)}</p>
+                            </div>
+                        </div>
+                        <div className="mt-3">
+                            <p className="text-sm font-semibold text-gray-600">Delivery Address</p>
+                            <p className="text-sm">{booking.deliveryAddress || 'Not specified'}</p>
+                            {Number.isFinite(Number(booking.deliveryLatitude)) &&
+                                Number.isFinite(Number(booking.deliveryLongitude)) ? (
+                                <div className="mt-2">
+                                    <p className="text-sm font-semibold text-gray-600">Delivery Coordinates</p>
+                                    <p className="font-mono text-sm text-gray-700">
+                                        {Number(booking.deliveryLatitude).toFixed(6)}, {Number(booking.deliveryLongitude).toFixed(6)}
+                                    </p>
+                                    <a
+                                        href={`https://www.google.com/maps?q=${booking.deliveryLatitude},${booking.deliveryLongitude}`}
+                                        target="_blank"
+                                        rel="noopener noreferrer"
+                                        className="text-sm font-semibold text-blue-600 hover:underline"
+                                    >
+                                        Open in Maps
+                                    </a>
+                                </div>
+                            ) : null}
+                        </div>
                     </div>
-                </div>
 
-                <div className="rounded border border-slate-200 bg-white p-4">
-                    <h3 className="mb-2 text-sm font-semibold text-slate-700">Items Requested</h3>
-                    <div className="space-y-2">
-                        {booking.items && booking.items.length > 0 ? (
-                            booking.items.map((item) => (
-                                <div key={item.id} className="rounded border border-slate-200 bg-slate-50 p-3">
-                                    <div className="flex items-start justify-between gap-3">
-                                        <div>
-                                            <p className="font-semibold">{item.inventoryItem?.itemType?.name}</p>
-                                            <p className="text-sm text-gray-600">
-                                                {item.inventoryItem?.brand?.name} - Qty: {item.quantity} x {formatCurrency(item.ratePerDay)}/day
-                                            </p>
-                                        </div>
-                                        <div className="text-right">
-                                            <p className="font-bold">{formatCurrency(item.subtotal)}</p>
-                                            <p className="text-xs text-gray-500">subtotal</p>
+                    <div className="rounded border border-slate-200 bg-white p-4">
+                        <h3 className="mb-2 text-sm font-semibold text-slate-700">Items Requested</h3>
+                        <div className="space-y-2">
+                            {booking.items && booking.items.length > 0 ? (
+                                booking.items.map((item) => (
+                                    <div key={item.id} className="rounded border border-slate-200 bg-slate-50 p-3">
+                                        <div className="flex items-start justify-between gap-3">
+                                            <div>
+                                                <p className="font-semibold">{item.inventoryItem?.itemType?.name}</p>
+                                                <p className="text-sm text-gray-600">
+                                                    {item.inventoryItem?.brand?.name} - Qty: {item.quantity} x {formatCurrency(item.ratePerDay)}/day
+                                                </p>
+                                            </div>
+                                            <div className="text-right">
+                                                <p className="font-bold">{formatCurrency(item.subtotal)}</p>
+                                                <p className="text-xs text-gray-500">subtotal</p>
+                                            </div>
                                         </div>
                                     </div>
-                                </div>
-                            ))
-                        ) : (
-                            <p className="text-sm text-gray-500">No items listed.</p>
-                        )}
+                                ))
+                            ) : (
+                                <p className="text-sm text-gray-500">No items listed.</p>
+                            )}
+                        </div>
                     </div>
-                </div>
 
-                <div className="rounded border border-slate-200 bg-gray-50 p-4 space-y-2">
-                    <div className="flex justify-between text-sm">
-                        <span className="text-gray-700">Items Subtotal</span>
-                        <span className="font-semibold">
-                            {formatCurrency(booking.totalAmount - booking.deliveryCharge - booking.serviceCharge)}
-                        </span>
-                    </div>
-                    {booking.deliveryCharge > 0 && (
+                    <div className="rounded border border-slate-200 bg-gray-50 p-4 space-y-2">
                         <div className="flex justify-between text-sm">
-                            <span className="text-gray-700">Delivery Charge</span>
-                            <span className="font-semibold">{formatCurrency(booking.deliveryCharge)}</span>
+                            <span className="text-gray-700">Items Subtotal</span>
+                            <span className="font-semibold">
+                                {formatCurrency(booking.totalAmount - booking.deliveryCharge - booking.serviceCharge)}
+                            </span>
+                        </div>
+                        {booking.deliveryCharge > 0 && (
+                            <div className="flex justify-between text-sm">
+                                <span className="text-gray-700">Delivery Charge</span>
+                                <span className="font-semibold">{formatCurrency(booking.deliveryCharge)}</span>
+                            </div>
+                        )}
+                        {booking.serviceCharge > 0 && (
+                            <div className="flex justify-between text-sm">
+                                <span className="text-gray-700">Service Charge</span>
+                                <span className="font-semibold">{formatCurrency(booking.serviceCharge)}</span>
+                            </div>
+                        )}
+                        <div className="flex justify-between border-t pt-2 text-sm font-semibold">
+                            <span>Total Amount</span>
+                            <span className="text-green-600">{formatCurrency(booking.totalAmount)}</span>
+                        </div>
+                    </div>
+
+                    {booking.notes && (
+                        <div className="rounded border border-yellow-200 bg-yellow-50 p-3">
+                            <h3 className="mb-1 text-sm font-semibold text-yellow-800">Special Instructions</h3>
+                            <p className="text-sm text-gray-700">{booking.notes}</p>
                         </div>
                     )}
-                    {booking.serviceCharge > 0 && (
-                        <div className="flex justify-between text-sm">
-                            <span className="text-gray-700">Service Charge</span>
-                            <span className="font-semibold">{formatCurrency(booking.serviceCharge)}</span>
-                        </div>
-                    )}
-                    <div className="flex justify-between border-t pt-2 text-sm font-semibold">
-                        <span>Total Amount</span>
-                        <span className="text-green-600">{formatCurrency(booking.totalAmount)}</span>
+
+                    <div className="rounded border border-slate-200 bg-white p-4">
+                        <h3 className="mb-2 text-sm font-semibold text-slate-700">Status</h3>
+                        <BookingStatusBadge status={booking.status} />
                     </div>
-                </div>
 
-                {booking.notes && (
-                    <div className="rounded border border-yellow-200 bg-yellow-50 p-3">
-                        <h3 className="mb-1 text-sm font-semibold text-yellow-800">Special Instructions</h3>
-                        <p className="text-sm text-gray-700">{booking.notes}</p>
-                    </div>
-                )}
-
-                <div className="rounded border border-slate-200 bg-white p-4">
-                    <h3 className="mb-2 text-sm font-semibold text-slate-700">Status</h3>
-                    <BookingStatusBadge status={booking.status} />
-                </div>
-
-                <div className="rounded border border-slate-200 bg-white p-4">
-                    <h3 className="mb-2 text-sm font-semibold text-slate-700">Actions</h3>
-                    <div className="flex flex-wrap gap-2">
-                        {booking.status === 'pending' && (
-                            <>
+                    <div className="rounded border border-slate-200 bg-white p-4">
+                        <h3 className="mb-2 text-sm font-semibold text-slate-700">Actions</h3>
+                        <div className="flex flex-wrap gap-2">
+                            {booking.status === 'pending' && (
+                                <>
+                                    <button
+                                        type="button"
+                                        className="rounded border border-emerald-200 bg-emerald-50 px-3 py-1.5 text-xs text-emerald-700 hover:bg-emerald-100 disabled:opacity-50"
+                                        onClick={() => updateStatus('confirmed')}
+                                        disabled={actionBookingId === booking.id}
+                                    >
+                                        Confirm
+                                    </button>
+                                    <button
+                                        type="button"
+                                        className="rounded border border-rose-200 bg-rose-50 px-3 py-1.5 text-xs text-rose-700 hover:bg-rose-100 disabled:opacity-50"
+                                        onClick={() => updateStatus('cancelled')}
+                                        disabled={actionBookingId === booking.id}
+                                    >
+                                        Cancel
+                                    </button>
+                                </>
+                            )}
+                            {booking.status === 'confirmed' && (
                                 <button
                                     type="button"
-                                    className="rounded border border-emerald-200 bg-emerald-50 px-3 py-1.5 text-xs text-emerald-700 hover:bg-emerald-100 disabled:opacity-50"
-                                    onClick={() => updateStatus('confirmed')}
+                                    className="rounded border border-blue-200 bg-blue-50 px-3 py-1.5 text-xs text-blue-700 hover:bg-blue-100 disabled:opacity-50"
+                                    onClick={() => updateStatus('completed')}
                                     disabled={actionBookingId === booking.id}
                                 >
-                                    Confirm
+                                    Complete
                                 </button>
-                                <button
-                                    type="button"
-                                    className="rounded border border-rose-200 bg-rose-50 px-3 py-1.5 text-xs text-rose-700 hover:bg-rose-100 disabled:opacity-50"
-                                    onClick={() => updateStatus('cancelled')}
-                                    disabled={actionBookingId === booking.id}
-                                >
-                                    Cancel
-                                </button>
-                            </>
-                        )}
-                        {booking.status === 'confirmed' && (
+                            )}
                             <button
                                 type="button"
-                                className="rounded border border-blue-200 bg-blue-50 px-3 py-1.5 text-xs text-blue-700 hover:bg-blue-100 disabled:opacity-50"
-                                onClick={() => updateStatus('completed')}
+                                className="rounded border border-slate-300 px-3 py-1.5 text-xs text-slate-700 hover:bg-slate-50 disabled:opacity-50"
+                                onClick={uploadProof}
                                 disabled={actionBookingId === booking.id}
                             >
-                                Complete
+                                Upload Proof
                             </button>
+                            <button
+                                type="button"
+                                className="rounded border border-amber-200 bg-amber-50 px-3 py-1.5 text-xs text-amber-700 hover:bg-amber-100 disabled:opacity-50"
+                                onClick={reviewCustomer}
+                                disabled={actionBookingId === booking.id}
+                            >
+                                Write Review
+                            </button>
+                            <button
+                                type="button"
+                                className="rounded border border-rose-200 bg-rose-50 px-3 py-1.5 text-xs text-rose-700 hover:bg-rose-100 disabled:opacity-50"
+                                onClick={openDispute}
+                                disabled={actionBookingId === booking.id}
+                            >
+                                Open Dispute
+                            </button>
+                            <button
+                                type="button"
+                                className="rounded border border-slate-300 px-3 py-1.5 text-xs text-slate-700 hover:bg-slate-50 disabled:opacity-50"
+                                onClick={() => downloadSignedDocument(booking, 'contract')}
+                                disabled={actionBookingId === booking.id}
+                            >
+                                Contract PDF
+                            </button>
+                            <button
+                                type="button"
+                                className="rounded border border-slate-300 px-3 py-1.5 text-xs text-slate-700 hover:bg-slate-50 disabled:opacity-50"
+                                onClick={() => downloadSignedDocument(booking, 'receipt')}
+                                disabled={actionBookingId === booking.id}
+                            >
+                                Receipt PDF
+                            </button>
+                        </div>
+                    </div>
+
+                    <div className="rounded border border-slate-200 bg-white p-4">
+                        <h3 className="mb-2 text-sm font-semibold text-slate-700">Messages</h3>
+                        {messages.length === 0 ? (
+                            <p className="text-sm text-gray-500">No messages yet.</p>
+                        ) : (
+                            <div className="space-y-2">
+                                {messages.map((message) => (
+                                    <div key={message.id} className="rounded border border-slate-200 bg-slate-50 p-3 text-sm">
+                                        <p className="font-semibold capitalize text-slate-800">{message.senderRole}</p>
+                                        <p className="text-slate-700">{message.content}</p>
+                                        {message.isFlagged ? (
+                                            <p className="mt-1 text-xs font-semibold text-rose-700">Flagged for policy review</p>
+                                        ) : null}
+                                    </div>
+                                ))}
+                            </div>
                         )}
-                        <button
-                            type="button"
-                            className="rounded border border-slate-300 px-3 py-1.5 text-xs text-slate-700 hover:bg-slate-50 disabled:opacity-50"
-                            onClick={uploadProof}
-                            disabled={actionBookingId === booking.id}
-                        >
-                            Upload Proof
-                        </button>
-                        <button
-                            type="button"
-                            className="rounded border border-amber-200 bg-amber-50 px-3 py-1.5 text-xs text-amber-700 hover:bg-amber-100 disabled:opacity-50"
-                            onClick={reviewCustomer}
-                            disabled={actionBookingId === booking.id}
-                        >
-                            Write Review
-                        </button>
-                        <button
-                            type="button"
-                            className="rounded border border-rose-200 bg-rose-50 px-3 py-1.5 text-xs text-rose-700 hover:bg-rose-100 disabled:opacity-50"
-                            onClick={openDispute}
-                            disabled={actionBookingId === booking.id}
-                        >
-                            Open Dispute
-                        </button>
-                        <button
-                            type="button"
-                            className="rounded border border-slate-300 px-3 py-1.5 text-xs text-slate-700 hover:bg-slate-50 disabled:opacity-50"
-                            onClick={() => downloadSignedDocument(booking, 'contract')}
-                            disabled={actionBookingId === booking.id}
-                        >
-                            Contract PDF
-                        </button>
-                        <button
-                            type="button"
-                            className="rounded border border-slate-300 px-3 py-1.5 text-xs text-slate-700 hover:bg-slate-50 disabled:opacity-50"
-                            onClick={() => downloadSignedDocument(booking, 'receipt')}
-                            disabled={actionBookingId === booking.id}
-                        >
-                            Receipt PDF
-                        </button>
+                    </div>
+
+                    <div className="rounded border border-slate-200 bg-white p-4">
+                        <h3 className="mb-2 text-sm font-semibold text-slate-700">Reviews</h3>
+                        {reviews.length === 0 ? (
+                            <p className="text-sm text-gray-500">No reviews yet.</p>
+                        ) : (
+                            <div className="space-y-2">
+                                {reviews.map((review) => (
+                                    <div key={review.id} className="rounded border border-amber-200 bg-amber-50 p-3 text-sm">
+                                        <p className="font-semibold text-amber-900">
+                                            {review.rating}/5 from {review.reviewerRole}
+                                        </p>
+                                        {review.comment ? <p className="text-amber-800">{review.comment}</p> : null}
+                                    </div>
+                                ))}
+                            </div>
+                        )}
+                    </div>
+
+                    <div className="rounded border border-slate-200 bg-white p-4">
+                        <h3 className="mb-2 text-sm font-semibold text-slate-700">Disputes</h3>
+                        {disputes.length === 0 ? (
+                            <p className="text-sm text-gray-500">No disputes on this booking.</p>
+                        ) : (
+                            <div className="space-y-2">
+                                {disputes.map((dispute) => (
+                                    <div key={dispute.id} className="rounded border border-rose-200 bg-rose-50 p-3 text-sm">
+                                        <p className="font-semibold capitalize text-rose-900">
+                                            {dispute.status.replace('_', ' ')}
+                                        </p>
+                                        <p className="text-rose-800">{dispute.reason}</p>
+                                        {dispute.outcome ? (
+                                            <p className="mt-1 text-xs font-semibold text-rose-700">
+                                                Outcome: {dispute.outcome.replace(/_/g, ' ')}
+                                            </p>
+                                        ) : null}
+                                    </div>
+                                ))}
+                            </div>
+                        )}
                     </div>
                 </div>
-
-                <div className="rounded border border-slate-200 bg-white p-4">
-                    <h3 className="mb-2 text-sm font-semibold text-slate-700">Messages</h3>
-                    {messages.length === 0 ? (
-                        <p className="text-sm text-gray-500">No messages yet.</p>
-                    ) : (
-                        <div className="space-y-2">
-                            {messages.map((message) => (
-                                <div key={message.id} className="rounded border border-slate-200 bg-slate-50 p-3 text-sm">
-                                    <p className="font-semibold capitalize text-slate-800">{message.senderRole}</p>
-                                    <p className="text-slate-700">{message.content}</p>
-                                    {message.isFlagged ? (
-                                        <p className="mt-1 text-xs font-semibold text-rose-700">Flagged for policy review</p>
-                                    ) : null}
-                                </div>
-                            ))}
-                        </div>
-                    )}
-                </div>
-
-                <div className="rounded border border-slate-200 bg-white p-4">
-                    <h3 className="mb-2 text-sm font-semibold text-slate-700">Reviews</h3>
-                    {reviews.length === 0 ? (
-                        <p className="text-sm text-gray-500">No reviews yet.</p>
-                    ) : (
-                        <div className="space-y-2">
-                            {reviews.map((review) => (
-                                <div key={review.id} className="rounded border border-amber-200 bg-amber-50 p-3 text-sm">
-                                    <p className="font-semibold text-amber-900">
-                                        {review.rating}/5 from {review.reviewerRole}
-                                    </p>
-                                    {review.comment ? <p className="text-amber-800">{review.comment}</p> : null}
-                                </div>
-                            ))}
-                        </div>
-                    )}
-                </div>
-
-                <div className="rounded border border-slate-200 bg-white p-4">
-                    <h3 className="mb-2 text-sm font-semibold text-slate-700">Disputes</h3>
-                    {disputes.length === 0 ? (
-                        <p className="text-sm text-gray-500">No disputes on this booking.</p>
-                    ) : (
-                        <div className="space-y-2">
-                            {disputes.map((dispute) => (
-                                <div key={dispute.id} className="rounded border border-rose-200 bg-rose-50 p-3 text-sm">
-                                    <p className="font-semibold capitalize text-rose-900">
-                                        {dispute.status.replace('_', ' ')}
-                                    </p>
-                                    <p className="text-rose-800">{dispute.reason}</p>
-                                    {dispute.outcome ? (
-                                        <p className="mt-1 text-xs font-semibold text-rose-700">
-                                            Outcome: {dispute.outcome.replace(/_/g, ' ')}
-                                        </p>
-                                    ) : null}
-                                </div>
-                            ))}
-                        </div>
-                    )}
-                </div>
-            </div>
             </div>
         </VendorLayout>
     );

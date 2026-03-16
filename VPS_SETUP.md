@@ -2,6 +2,15 @@
 
 Complete step-by-step guide for deploying the RentalBasic platform to a production VPS with HTTPS, vendor subdomains, and automatic certificate renewal.
 
+This guide is tailored for:
+- Hostinger VPS
+- Ubuntu 24.04 LTS
+- Domain DNS managed in Hostinger hPanel
+
+Deployment mode used in this guide:
+- Docker Compose only (API, frontends, MySQL, nginx proxy, certbot, phpMyAdmin all run in containers)
+- No PM2/systemd Node app setup required on the VPS host
+
 ---
 
 ## Architecture Overview
@@ -28,10 +37,29 @@ Internet ──80/443─► nginx_proxy  ─── api.rentalbasic.com  ──�
 ## Prerequisites
 
 On your VPS:
-- Ubuntu 22.04 / Debian 12 (or any Linux with Docker support)
+- Hostinger VPS running Ubuntu 24.04 LTS
+- SSH access as `root` or a sudo-enabled user
 - Minimum 1 vCPU, 1 GB RAM (2 GB+ recommended)
-- Ports **80** and **443** open in your firewall / security group
-- A domain pointed at your server's IP (see DNS section below)
+- Ports **80** and **443** open in Hostinger VPS firewall and system firewall
+- A domain managed in Hostinger DNS pointing to your VPS public IP
+
+---
+
+## Step 0 — Base VPS Prep (Hostinger Ubuntu 24.04)
+
+```bash
+sudo apt update && sudo apt upgrade -y
+sudo apt install -y ca-certificates curl gnupg lsb-release ufw
+
+# Firewall (keep SSH open before enabling)
+sudo ufw allow 22/tcp
+sudo ufw allow 80/tcp
+sudo ufw allow 443/tcp
+sudo ufw --force enable
+sudo ufw status
+```
+
+In Hostinger hPanel, also verify the VPS firewall/security rules allow inbound `22`, `80`, and `443`.
 
 ---
 
@@ -39,7 +67,10 @@ On your VPS:
 
 ```bash
 # Install Docker
-curl -fsSL https://get.docker.com | sh
+curl -fsSL https://get.docker.com | sudo sh
+sudo systemctl enable --now docker
+
+# Optional if using non-root account
 sudo usermod -aG docker $USER   # allow your user to run docker without sudo
 newgrp docker
 
@@ -50,9 +81,28 @@ docker compose version
 
 ---
 
-## Step 2 — DNS Records
+## Step 1.1 — Ensure Host Ports 80/443 Are Free for Docker
 
-At your domain registrar (wherever `rentalbasic.com` is managed), add these records.  
+If the host has nginx/apache installed, stop them so the `nginx_proxy` container can bind ports `80` and `443`.
+
+```bash
+sudo systemctl disable --now nginx 2>/dev/null || true
+sudo systemctl disable --now apache2 2>/dev/null || true
+
+# Verify listeners on 80/443 (should be empty before docker compose up)
+sudo ss -ltnp | grep -E ':80|:443' || true
+```
+
+---
+
+## Step 2 — DNS Records (Hostinger hPanel)
+
+In Hostinger hPanel:
+1. Go to `Domains`.
+2. Open your domain.
+3. Open `DNS / Nameservers`.
+4. Add or update these records.
+
 Replace `<SERVER_IP>` with your VPS public IP address.
 
 | Type | Name      | Value          | TTL |
@@ -64,6 +114,8 @@ Replace `<SERVER_IP>` with your VPS public IP address.
 | A    | `*`       | `<SERVER_IP>`  | 300 |
 
 > The wildcard `*` record covers every vendor's subdomain (e.g. `juans-rentals.rentalbasic.com`) automatically — no manual DNS entry needed per vendor.
+
+Remove conflicting records first (for example, old `AAAA` or `CNAME` entries for the same hostnames).
 
 Wait for DNS to propagate before continuing. You can check with:
 ```bash
@@ -84,10 +136,11 @@ cd chair-rental
 
 ## Step 4 — Configure Environment Variables
 
-Copy the root `.env` template and fill in every value:
+Copy the root `.env.example` template, then fill in every value:
 
 ```bash
-cp .env.example .env   # or: nano .env
+cp .env.example .env
+nano .env
 ```
 
 ### Full Variable Reference
@@ -158,6 +211,21 @@ cp .env.example .env   # or: nano .env
 | `PAYMONGO_CANCEL_URL` | Redirect after cancelled payment | `https://rentalbasic.com/bookings?payment=cancelled` |
 | `PAYMONGO_SPLIT_FEE_BUFFER_BPS` | Fee rounding buffer in basis points | `300` (= 3%) |
 
+#### 💬 Rocket.Chat (Booking Chat)
+
+| Variable | Purpose | Production value |
+|---|---|---|
+| `ROCKETCHAT_URL` | Internal API-to-Rocket.Chat URL (Docker network) | `http://rocketchat:3000` |
+| `ROCKETCHAT_PUBLIC_URL` | Public URL loaded by the booking chat iframe | Browser-reachable URL (`https://chat.rentalbasic.com` or `http://<SERVER_IP>:4000`) |
+| `ROCKETCHAT_ADMIN_EMAIL` | Rocket.Chat bootstrap admin email | `admin@rentalbasic.com` |
+| `ROCKETCHAT_ADMIN_PASSWORD` | Rocket.Chat bootstrap admin password | Strong unique password |
+| `ROCKETCHAT_USER_SECRET` | Shared token secret used by API + Rocket.Chat `users.createToken` | `openssl rand -hex 32` |
+| `ROCKETCHAT_WEBHOOK_SECRET` | Secret for validating Rocket.Chat webhook calls to API | `openssl rand -hex 32` |
+
+> `docker-compose.yml` maps `CREATE_TOKENS_FOR_USERS_SECRET` from `ROCKETCHAT_USER_SECRET`. Keep this as one shared value.
+>
+> `ROCKETCHAT_PUBLIC_URL` must be browser-reachable. If you keep the current default networking, use `http://<SERVER_IP>:4000`. If you proxy Rocket.Chat behind nginx + TLS, use `https://chat.rentalbasic.com`.
+
 #### 🗂️ General
 
 | Variable | Purpose | Value |
@@ -191,6 +259,16 @@ STAFF_FRONTEND_URL=https://vendors.rentalbasic.com
 VITE_API_URL=https://api.rentalbasic.com
 VITE_CUSTOMER_APP_URL=https://rentalbasic.com
 VENDOR_DOMAIN=rentalbasic.com
+
+# Rocket.Chat
+ROCKETCHAT_URL=http://rocketchat:3000
+ROCKETCHAT_PUBLIC_URL=http://<SERVER_IP>:4000
+# Recommended after adding nginx + TLS proxy for Rocket.Chat:
+# ROCKETCHAT_PUBLIC_URL=https://chat.rentalbasic.com
+ROCKETCHAT_ADMIN_EMAIL=admin@rentalbasic.com
+ROCKETCHAT_ADMIN_PASSWORD=change_me_rocket_chat_password
+ROCKETCHAT_USER_SECRET=change_me_64_hex_secret
+ROCKETCHAT_WEBHOOK_SECRET=change_me_64_hex_secret
 
 # Email
 GMAIL_USER=yourapp@gmail.com
@@ -235,14 +313,29 @@ DOMAIN=rentalbasic.com EMAIL=you@rentalbasic.com bash nginx/certbot-init.sh
 The script will:
 1. Generate a temporary self-signed cert so nginx can start
 2. Bring up the nginx proxy
-3. Run certbot in interactive DNS-01 challenge mode — **it will ask you to add a TXT record in your DNS registrar**
+3. Run certbot in interactive DNS-01 challenge mode — **it will ask you to add TXT record(s) in Hostinger DNS**
 4. Reload nginx with the real certificate
+
+When prompted by certbot, add TXT records in Hostinger hPanel:
+1. `Domains` -> your domain -> `DNS / Nameservers`.
+2. Add `TXT` record with:
+      - Name: `_acme-challenge`
+      - Value: token shown by certbot
+      - TTL: `300`
+3. If certbot shows a second token, add another `TXT` record with the same name and second value.
+4. Wait for propagation and verify:
+
+```bash
+dig TXT _acme-challenge.rentalbasic.com +short
+```
+
+5. Press Enter in the certbot terminal to continue.
 
 > After completing the DNS challenge, certbot auto-renewal runs every 12 hours inside the `certbot` container — you never need to manually renew.
 
 ---
 
-## Step 6 — Start the Stack
+## Step 6 — Start the Stack (Docker Compose)
 
 ```bash
 docker compose up -d --build
@@ -402,8 +495,8 @@ In your GitHub repo go to:
 
 | Secret Name | Value |
 |---|---|
-| `VPS_HOST` | `72.62.125.235` |
-| `VPS_USER` | `root` |
+| `VPS_HOST` | Your Hostinger VPS public IPv4 (hPanel -> VPS -> Manage) |
+| `VPS_USER` | `root` (or your deploy user) |
 | `VPS_SSH_KEY` | Full contents of `~/.ssh/github_deploy` (include `-----BEGIN...` and `-----END...` lines) |
 
 ---

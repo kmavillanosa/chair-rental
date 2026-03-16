@@ -366,6 +366,75 @@ describe('VendorsService', () => {
     );
   });
 
+  it('normalizes paymongo onboarding appendix payload fields', () => {
+    const { service } = createService();
+
+    const normalized = (service as any).normalizePayMongoOnboardingDataInput(
+      {
+        child_merchant: {
+          features: ['Payment_Gateway', 'BASIC_WALLET', 'basic_wallet'],
+          business: {
+            type: 'SOLE_PROPRIETOR',
+            trade_name: '  ACME Rentals  ',
+          },
+          e_wallet: {
+            provider: 'GCASH',
+          },
+          representative: {
+            nationality: 'phl',
+            source_of_funds: 'Salary',
+          },
+        },
+      },
+      VendorType.REGISTERED_BUSINESS,
+    );
+
+    const payload = JSON.parse(normalized);
+    expect(payload.child_merchant.business.type).toBe('sole_proprietor');
+    expect(payload.child_merchant.e_wallet.provider).toBe('gcash');
+    expect(payload.child_merchant.representative.nationality).toBe('PHL');
+    expect(payload.child_merchant.representative.source_of_funds).toBe('salary');
+    expect(payload.child_merchant.features).toEqual([
+      'payment_gateway',
+      'basic_wallet',
+    ]);
+  });
+
+  it('rejects conflicting paymongo wallet features', () => {
+    const { service } = createService();
+
+    expect(() =>
+      (service as any).normalizePayMongoOnboardingDataInput(
+        {
+          child_merchant: {
+            features: ['basic_wallet', 'standard_wallet'],
+          },
+        },
+        VendorType.INDIVIDUAL_OWNER,
+      ),
+    ).toThrow(BadRequestException);
+  });
+
+  it('uses vendor type fallback for child merchant business type', () => {
+    const { service } = createService();
+
+    const payload = (service as any).buildPayMongoChildMerchantCreatePayload({
+      id: 'vendor-1',
+      vendorType: VendorType.INDIVIDUAL_OWNER,
+      ownerFullName: 'Juan Dela Cruz',
+      businessName: null,
+      paymongoOnboardingData: JSON.stringify({
+        child_merchant: {
+          business: {
+            trade_name: 'Juan Rentals',
+          },
+        },
+      }),
+    });
+
+    expect(payload.data.attributes.business.type).toBe('individual');
+  });
+
   describe('normalizeSlug', () => {
     it('converts spaces and special chars to hyphens', () => {
       const { service } = createService();

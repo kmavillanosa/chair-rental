@@ -75,7 +75,8 @@ Split-payment variables (PayMongo):
 - `PAYMONGO_DELIVERY_MERCHANT_ID` – optional merchant org ID that receives fixed delivery split.
 - `PAYMONGO_VENDOR_ONBOARDING_ENABLED` – set `true` to auto-provision vendor merchant IDs during admin approval.
 - `PAYMONGO_VENDOR_ONBOARDING_REQUIRED` – when `true`, onboarding failure blocks approval/verify; default `false` allows approval to continue while recording onboarding failure.
-- `PAYMONGO_VENDOR_ONBOARDING_URL` – optional override URL for merchant onboarding API; defaults to `${PAYMONGO_API_BASE_URL}/organizations`.
+- `PAYMONGO_VENDOR_ONBOARDING_URL` – optional override URL for merchant onboarding API; defaults to `${PAYMONGO_API_BASE_URL}/organizations`. You can set `${PAYMONGO_API_BASE_URL}/merchants/children` for child-merchant onboarding.
+- `PAYMONGO_VENDOR_ONBOARDING_AUTO_SUBMIT` – when `true`, child-merchant onboarding will auto-submit after a successful create/update call.
 - `PAYMONGO_PAYMENT_METHOD_TYPES` – comma-separated methods for checkout session (default `gcash`).
 - `PAYMONGO_SUCCESS_URL` / `PAYMONGO_CANCEL_URL` – customer redirect URLs after checkout.
 - `PAYMONGO_SPLIT_FEE_BUFFER_BPS` – safety buffer (bps) for fixed splits against net amount (default `300`).

@@ -342,7 +342,7 @@ export default function MyBookingDetails() {
                 />
 
                 <div className="space-y-4">
-                        <div className="rounded border border-slate-200 bg-white p-4 shadow-sm">
+                    <div className="rounded border border-slate-200 bg-white p-4 shadow-sm">
                         <div className="flex items-start justify-between gap-3">
                             <div>
                                 <h3 className="text-base font-semibold text-slate-800">{booking.vendor?.businessName}</h3>

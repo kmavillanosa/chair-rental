@@ -113,6 +113,12 @@ export const submitVendorRegistration = (data: VendorRegistrationPayload) => {
     ) {
       continue;
     }
+
+    if (typeof value === 'object') {
+      formData.append(key, JSON.stringify(value));
+      continue;
+    }
+
     formData.append(key, String(value));
   }
 
