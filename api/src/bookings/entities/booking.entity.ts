@@ -6,6 +6,10 @@ import { v4 as uuidv4 } from 'uuid';
 import { User, UserRole } from '../../users/entities/user.entity';
 import { Vendor } from '../../vendors/entities/vendor.entity';
 import { BookingItem } from './booking-item.entity';
+import { BookingMessage } from './booking-message.entity';
+import { BookingReview } from './booking-review.entity';
+import { BookingDeliveryProof } from './booking-delivery-proof.entity';
+import { BookingDocument } from './booking-document.entity';
 
 export enum BookingStatus {
   PENDING = 'pending',
@@ -15,11 +19,15 @@ export enum BookingStatus {
 }
 
 export enum BookingPaymentStatus {
+  PENDING = 'pending',
   UNPAID = 'unpaid',
   CHECKOUT_PENDING = 'checkout_pending',
   PAID = 'paid',
+  HELD = 'held',
+  COMPLETED = 'completed',
   FAILED = 'failed',
   REFUNDED = 'refunded',
+  DISPUTED = 'disputed',
 }
 
 @Entity('bookings')
@@ -71,6 +79,24 @@ export class Booking {
   @Column({ type: 'decimal', precision: 10, scale: 2, default: 0 })
   platformFee: number;
 
+  @Column({ type: 'decimal', precision: 5, scale: 2, default: 100 })
+  depositPercentage: number;
+
+  @Column({ type: 'decimal', precision: 12, scale: 2, default: 0 })
+  depositAmount: number;
+
+  @Column({ type: 'decimal', precision: 12, scale: 2, default: 0 })
+  remainingBalanceAmount: number;
+
+  @Column({ type: 'decimal', precision: 12, scale: 2, default: 0 })
+  totalPaidAmount: number;
+
+  @Column({ type: 'decimal', precision: 12, scale: 2, default: 0 })
+  escrowHeldAmount: number;
+
+  @Column({ type: 'decimal', precision: 12, scale: 2, default: 0 })
+  escrowReleasedAmount: number;
+
   @Column({ type: 'text', nullable: true })
   notes: string;
 
@@ -97,6 +123,33 @@ export class Booking {
   paymentPaidAt: Date;
 
   @Column({ type: 'datetime', nullable: true })
+  depositPaidAt: Date;
+
+  @Column({ type: 'datetime', nullable: true })
+  finalPaymentPaidAt: Date;
+
+  @Column({ type: 'datetime', nullable: true })
+  escrowHeldAt: Date;
+
+  @Column({ type: 'datetime', nullable: true })
+  escrowReleasedAt: Date;
+
+  @Column({ type: 'datetime', nullable: true })
+  vendorMarkedDeliveredAt: Date;
+
+  @Column({ type: 'datetime', nullable: true })
+  customerConfirmedDeliveryAt: Date;
+
+  @Column({ type: 'varchar', length: 36, nullable: true })
+  customerConfirmedDeliveryByUserId: string;
+
+  @Column({ nullable: true })
+  createdFromIp: string;
+
+  @Column({ type: 'int', default: 0 })
+  fraudRiskScore: number;
+
+  @Column({ type: 'datetime', nullable: true })
   cancelledAt: Date;
 
   @Column({ type: 'varchar', length: 36, nullable: true })
@@ -116,6 +169,21 @@ export class Booking {
 
   @OneToMany(() => BookingItem, (item) => item.booking, { cascade: true })
   items: BookingItem[];
+
+  @OneToMany(() => BookingMessage, (message) => message.booking)
+  messages: BookingMessage[];
+
+  @OneToMany(() => BookingReview, (review) => review.booking)
+  reviews: BookingReview[];
+
+  @OneToMany(() => BookingDeliveryProof, (proof) => proof.booking)
+  deliveryProofs: BookingDeliveryProof[];
+
+  @OneToMany(() => BookingDocument, (document) => document.booking)
+  documents: BookingDocument[];
+
+  @Column({ type: 'varchar', length: 255, nullable: true })
+  rocketchatRoomId: string | null;
 
   @CreateDateColumn()
   createdAt: Date;

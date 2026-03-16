@@ -1,5 +1,7 @@
+import { useEffect, useState } from 'react'
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom'
 import { useAuthStore } from './store/authStore'
+import { getFeatureFlagsSettings, type FeatureFlagsSettings } from './api/settings'
 import Login from './pages/Login'
 import AuthCallback from './pages/AuthCallback'
 import AdminDashboard from './pages/admin/AdminDashboard'
@@ -8,13 +10,17 @@ import VendorApplicantReview from './pages/admin/VendorApplicantReview'
 import ItemTypesList from './pages/admin/ItemTypesList'
 import BrandsList from './pages/admin/BrandsList'
 import AdminPayments from './pages/admin/AdminPayments'
+import FraudAlertsPage from './pages/admin/FraudAlerts'
+import DisputesPage from './pages/admin/DisputesPage'
 import KycSettingsPage from './pages/admin/KycSettings'
 import VendorDashboard from './pages/vendor/VendorDashboard'
 import Inventory from './pages/vendor/Inventory'
 import VendorBookings from './pages/vendor/VendorBookings'
+import VendorBookingDetails from './pages/vendor/VendorBookingDetails'
 import Pricing from './pages/vendor/Pricing'
 import MyShop from './pages/vendor/MyShop'
 import VendorPayments from './pages/vendor/VendorPayments'
+import LegalDocumentPage from './pages/LegalDocumentPage'
 
 function ProtectedRoute({ children, role }: { children: React.ReactNode; role?: string }) {
   const { token, user } = useAuthStore()
@@ -31,9 +37,44 @@ function StaffHome() {
 }
 
 export default function App() {
+  const [maintenanceModeEnabled, setMaintenanceModeEnabled] = useState(false)
+
+  useEffect(() => {
+    let isMounted = true
+
+    const applyFeatureFlags = (flags?: Partial<FeatureFlagsSettings>) => {
+      if (!isMounted) return
+      setMaintenanceModeEnabled(Boolean(flags?.maintenanceModeEnabled))
+    }
+
+    getFeatureFlagsSettings()
+      .then(applyFeatureFlags)
+      .catch(() => {
+        applyFeatureFlags({ maintenanceModeEnabled: false })
+      })
+
+    const handleFeatureFlagsUpdated = (event: Event) => {
+      const nextFlags = (event as CustomEvent<Partial<FeatureFlagsSettings>>).detail
+      applyFeatureFlags(nextFlags)
+    }
+
+    window.addEventListener('staff-feature-flags-updated', handleFeatureFlagsUpdated as EventListener)
+
+    return () => {
+      isMounted = false
+      window.removeEventListener('staff-feature-flags-updated', handleFeatureFlagsUpdated as EventListener)
+    }
+  }, [])
+
   return (
     <BrowserRouter>
+      {maintenanceModeEnabled && (
+        <div className="pointer-events-none fixed right-4 top-4 z-[70] rounded-full border border-amber-300 bg-amber-100 px-4 py-2 text-xs font-bold uppercase tracking-[0.18em] text-amber-900 shadow-lg">
+          Maintenance Mode
+        </div>
+      )}
       <Routes>
+        <Route path="/legal/:documentSlug" element={<LegalDocumentPage />} />
         <Route path="/login" element={<Login />} />
         <Route path="/auth/callback" element={<AuthCallback />} />
         <Route path="/admin" element={<ProtectedRoute role="admin"><AdminDashboard /></ProtectedRoute>} />
@@ -42,11 +83,14 @@ export default function App() {
         <Route path="/admin/item-types" element={<ProtectedRoute role="admin"><ItemTypesList /></ProtectedRoute>} />
         <Route path="/admin/brands" element={<ProtectedRoute role="admin"><BrandsList /></ProtectedRoute>} />
         <Route path="/admin/payments" element={<ProtectedRoute role="admin"><AdminPayments /></ProtectedRoute>} />
+        <Route path="/admin/fraud-alerts" element={<ProtectedRoute role="admin"><FraudAlertsPage /></ProtectedRoute>} />
+        <Route path="/admin/disputes" element={<ProtectedRoute role="admin"><DisputesPage /></ProtectedRoute>} />
         <Route path="/admin/settings/feature-flags" element={<ProtectedRoute role="admin"><KycSettingsPage /></ProtectedRoute>} />
         <Route path="/admin/settings/kyc" element={<ProtectedRoute role="admin"><KycSettingsPage /></ProtectedRoute>} />
         <Route path="/vendor" element={<ProtectedRoute role="vendor"><VendorDashboard /></ProtectedRoute>} />
         <Route path="/vendor/inventory" element={<ProtectedRoute role="vendor"><Inventory /></ProtectedRoute>} />
         <Route path="/vendor/bookings" element={<ProtectedRoute role="vendor"><VendorBookings /></ProtectedRoute>} />
+        <Route path="/vendor/bookings/:bookingId" element={<ProtectedRoute role="vendor"><VendorBookingDetails /></ProtectedRoute>} />
         <Route path="/vendor/pricing" element={<ProtectedRoute role="vendor"><Pricing /></ProtectedRoute>} />
         <Route path="/vendor/shop" element={<ProtectedRoute role="vendor"><MyShop /></ProtectedRoute>} />
         <Route path="/vendor/payments" element={<ProtectedRoute role="vendor"><VendorPayments /></ProtectedRoute>} />

@@ -30,6 +30,7 @@ const VENDOR_VERIFICATION_STATUS_VALUES = [
   'verified_business',
   'verified_owner',
   'rejected',
+  'suspended',
 ] as const;
 
 @Entity('vendor_verification_status')

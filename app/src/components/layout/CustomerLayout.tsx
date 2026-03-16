@@ -3,6 +3,7 @@ import { Link, useLocation } from 'react-router-dom';
 import { useAuthStore } from '../../store/authStore';
 import { useTranslation } from 'react-i18next';
 import LanguageSwitcher from '../common/LanguageSwitcher';
+import LegalFooter from '../common/LegalFooter';
 import { clearPostLoginRedirect, getCurrentAppPath, savePostLoginRedirect } from '../../utils/postLoginRedirect';
 
 interface CustomerLayoutProps {
@@ -61,7 +62,7 @@ export default function CustomerLayout({ children, hideHeaderBackground = false 
   ];
 
   return (
-    <div className={`min-h-screen bg-[#f3f5f8] ${hideHeaderBackground ? 'relative' : ''}`}>
+    <div className={`min-h-screen bg-[#f3f5f8] ${hideHeaderBackground ? 'relative flex flex-col' : 'flex flex-col'}`}>
       <header className={headerClassName}>
         <div className="mx-auto max-w-7xl px-3 py-2 sm:px-4 sm:py-3">
           <div className="flex items-center justify-between gap-2">
@@ -139,7 +140,10 @@ export default function CustomerLayout({ children, hideHeaderBackground = false 
           )}
         </div>
       </header>
-      <main>{children}</main>
+      <main className="flex-1">{children}</main>
+      <div className="mx-auto w-full max-w-7xl px-3 pb-6 pt-4 sm:px-4">
+        <LegalFooter />
+      </div>
     </div>
   );
 }

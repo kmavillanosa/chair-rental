@@ -39,6 +39,8 @@ describe('SettingsService', () => {
     process.env.PAYMONGO_VENDOR_ONBOARDING_REQUIRED = 'true';
 
     mocks.settingsRepo.find.mockResolvedValue([
+      { key: 'flags.allowOrdersWithoutPayment', value: 'true' },
+      { key: 'flags.maintenanceModeEnabled', value: 'true' },
       { key: 'flags.defaultPlatformCommissionRatePercent', value: '150' },
       { key: 'flags.launchNoCommissionEnabled', value: 'true' },
       { key: 'flags.launchNoCommissionUntil', value: 'not-a-date' },
@@ -51,7 +53,14 @@ describe('SettingsService', () => {
 
     expect(result).toEqual({
       allowKycWithoutMerchantId: false,
+      allowOrdersWithoutPayment: true,
+      maintenanceModeEnabled: true,
       defaultPlatformCommissionRatePercent: 100,
+      defaultDepositPercent: 30,
+      newVendorCompletedOrdersThreshold: 5,
+      newVendorMaxActiveListings: 40,
+      flaggedVendorMaxActiveListings: 15,
+      payoutDelayDaysForNewVendors: 3,
       launchNoCommissionEnabled: true,
       launchNoCommissionUntil: null,
       cancellationFullRefundMinDays: 0,
@@ -69,6 +78,8 @@ describe('SettingsService', () => {
 
     const result = await service.updateFeatureFlagsSettings({
       allowKycWithoutMerchantId: true,
+      allowOrdersWithoutPayment: true,
+      maintenanceModeEnabled: true,
       defaultPlatformCommissionRatePercent: 999,
       launchNoCommissionEnabled: true,
       launchNoCommissionUntil: 'invalid-date',
@@ -77,12 +88,19 @@ describe('SettingsService', () => {
       cancellationHalfRefundPercent: -1,
     });
 
+    expect(result.allowOrdersWithoutPayment).toBe(true);
+    expect(result.maintenanceModeEnabled).toBe(true);
     expect(result.defaultPlatformCommissionRatePercent).toBe(100);
+    expect(result.defaultDepositPercent).toBe(30);
+    expect(result.newVendorCompletedOrdersThreshold).toBe(5);
+    expect(result.newVendorMaxActiveListings).toBe(40);
+    expect(result.flaggedVendorMaxActiveListings).toBe(15);
+    expect(result.payoutDelayDaysForNewVendors).toBe(3);
     expect(result.cancellationFullRefundMinDays).toBe(0);
     expect(result.cancellationHalfRefundMinDays).toBe(365);
     expect(result.cancellationHalfRefundPercent).toBe(0);
     expect(result.launchNoCommissionUntil).toBeNull();
-    expect(mocks.settingsRepo.save).toHaveBeenCalledTimes(7);
+    expect(mocks.settingsRepo.save).toHaveBeenCalledTimes(14);
   });
 
   it('getKycSettings returns defaults when no settings are stored', async () => {
@@ -133,6 +151,8 @@ describe('SettingsService', () => {
 
     await service.updateFeatureFlagsSettings({
       allowKycWithoutMerchantId: true,
+      allowOrdersWithoutPayment: false,
+      maintenanceModeEnabled: false,
       defaultPlatformCommissionRatePercent: 10,
       launchNoCommissionEnabled: true,
       launchNoCommissionUntil: null,

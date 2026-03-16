@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useParams, useNavigate, useSearchParams, useLocation } from 'react-router-dom';
 import { Button, TextInput } from 'flowbite-react';
 import toast from 'react-hot-toast';
@@ -30,6 +30,12 @@ type Coordinates = {
   lng: number;
 };
 
+type RouteArrowPoint = {
+  id: string;
+  position: [number, number];
+  bearing: number;
+};
+
 const DEFAULT_DELIVERY_MAP_CENTER: [number, number] = [14.5995, 120.9842];
 
 const deliveryPinIcon = L.icon({
@@ -51,6 +57,88 @@ const vendorPinIcon = L.divIcon({
 
 function formatCoordinates(point: Coordinates) {
   return `${point.lat.toFixed(6)}, ${point.lng.toFixed(6)}`;
+}
+
+function areCoordinatesEqual(left: Coordinates, right: Coordinates) {
+  return left.lat === right.lat && left.lng === right.lng;
+}
+
+function parseCoordinateAddress(value: string): Coordinates | null {
+  const match = value.match(/^\s*(-?\d+(?:\.\d+)?)\s*,\s*(-?\d+(?:\.\d+)?)\s*$/);
+  if (!match) return null;
+
+  const lat = Number(match[1]);
+  const lng = Number(match[2]);
+  if (!Number.isFinite(lat) || !Number.isFinite(lng)) return null;
+  if (lat < -90 || lat > 90 || lng < -180 || lng > 180) return null;
+
+  return { lat, lng };
+}
+
+function toRadians(value: number) {
+  return (value * Math.PI) / 180;
+}
+
+function toDegrees(value: number) {
+  return (value * 180) / Math.PI;
+}
+
+function getBearingDegrees(start: [number, number], end: [number, number]) {
+  const [startLat, startLng] = start;
+  const [endLat, endLng] = end;
+
+  const startLatRad = toRadians(startLat);
+  const endLatRad = toRadians(endLat);
+  const deltaLngRad = toRadians(endLng - startLng);
+
+  const y = Math.sin(deltaLngRad) * Math.cos(endLatRad);
+  const x =
+    Math.cos(startLatRad) * Math.sin(endLatRad) -
+    Math.sin(startLatRad) * Math.cos(endLatRad) * Math.cos(deltaLngRad);
+
+  return (toDegrees(Math.atan2(y, x)) + 360) % 360;
+}
+
+function createRouteArrowIcon(bearing: number) {
+  const cssRotation = (bearing - 90 + 360) % 360;
+
+  return L.divIcon({
+    className: 'route-direction-arrow',
+    html: `<span style="display:inline-block;transform:rotate(${cssRotation.toFixed(2)}deg);font-size:14px;color:#ea580c;text-shadow:0 0 2px #ffffff,0 0 4px #ffffff;">➤</span>`,
+    iconSize: [16, 16],
+    iconAnchor: [8, 8],
+  });
+}
+
+function buildRouteArrowPoints(path: [number, number][]) {
+  if (path.length < 3) return [] as RouteArrowPoint[];
+
+  const totalDistanceMeters = path.slice(1).reduce((sum, point, index) => {
+    const previous = path[index];
+    return sum + L.latLng(previous[0], previous[1]).distanceTo(L.latLng(point[0], point[1]));
+  }, 0);
+
+  const preferredArrowCount =
+    totalDistanceMeters < 1200 ? 2 : totalDistanceMeters < 3200 ? 3 : totalDistanceMeters < 8000 ? 4 : 6;
+
+  const step = Math.max(2, Math.floor(path.length / (preferredArrowCount + 1)));
+  const arrows: RouteArrowPoint[] = [];
+
+  for (let index = step; index < path.length - 1; index += step) {
+    const previous = path[Math.max(0, index - 1)];
+    const current = path[index];
+    const next = path[Math.min(path.length - 1, index + 1)];
+
+    arrows.push({
+      id: `${index}:${current[0].toFixed(6)}:${current[1].toFixed(6)}`,
+      position: current,
+      bearing: getBearingDegrees(previous, next),
+    });
+
+    if (arrows.length >= 8) break;
+  }
+
+  return arrows;
 }
 
 function DeliveryLocationPicker({
@@ -175,11 +263,18 @@ export default function BookingFlow() {
   const [availabilityMap, setAvailabilityMap] = useState<Record<string, number>>({});
   const [checkingAvailability, setCheckingAvailability] = useState(false);
   const [hasPredefinedDates, setHasPredefinedDates] = useState(false);
+  const lastAutoResolvedKeyRef = useRef<string | null>(null);
+  const routeRequestRef = useRef<AbortController | null>(null);
+  const routeCacheRef = useRef(
+    new Map<string, { points: [number, number][]; onRoads: boolean }>(),
+  );
   const [platformCommissionRatePercent, setPlatformCommissionRatePercent] =
     useState(10);
   const [launchNoCommissionEnabled, setLaunchNoCommissionEnabled] =
     useState(false);
   const [launchNoCommissionUntil, setLaunchNoCommissionUntil] = useState<string | null>(null);
+  const [deliveryRoutePoints, setDeliveryRoutePoints] = useState<[number, number][]>([]);
+  const [deliveryRouteOnRoads, setDeliveryRouteOnRoads] = useState(false);
 
   const parsedHelpersNeeded = useMemo(() => {
     const parsed = Number(searchParams.get('helpersNeeded'));
@@ -207,9 +302,27 @@ export default function BookingFlow() {
         lng: Number(nextCoordinates.lng.toFixed(6)),
       };
 
-      setDeliveryCoordinates(normalized);
-      setDeliveryMapCenter([normalized.lat, normalized.lng]);
-      setDeliveryCoordinatesMode(mode);
+      setDeliveryCoordinates((current) => {
+        if (current && areCoordinatesEqual(current, normalized)) {
+          return current;
+        }
+
+        return normalized;
+      });
+      setDeliveryMapCenter((current) => {
+        if (current[0] === normalized.lat && current[1] === normalized.lng) {
+          return current;
+        }
+
+        return [normalized.lat, normalized.lng];
+      });
+      setDeliveryCoordinatesMode((current) => {
+        if (current === mode) {
+          return current;
+        }
+
+        return mode;
+      });
     },
     [],
   );
@@ -287,12 +400,14 @@ export default function BookingFlow() {
 
   useEffect(() => {
     if (!vendorCoordinates) {
+      lastAutoResolvedKeyRef.current = null;
       setDeliveryCharge(0);
       setDeliveryDistanceKm(null);
       return;
     }
 
     if (!deliveryRates.length) {
+      lastAutoResolvedKeyRef.current = null;
       setDeliveryCharge(0);
       setDeliveryDistanceKm(null);
       return;
@@ -317,6 +432,7 @@ export default function BookingFlow() {
     };
 
     if (deliveryCoordinatesMode === 'manual' && deliveryCoordinates) {
+      lastAutoResolvedKeyRef.current = null;
       applyEstimate(deliveryCoordinates, {
         persistCoordinates: false,
         mode: 'manual',
@@ -325,15 +441,54 @@ export default function BookingFlow() {
     }
 
     const normalizedAddress = deliveryAddress.trim();
+    const fallbackResolutionKey = fallbackSearchCoordinates
+      ? `fallback:${fallbackSearchCoordinates.lat.toFixed(6)},${fallbackSearchCoordinates.lng.toFixed(6)}`
+      : null;
     if (!normalizedAddress) {
       if (fallbackSearchCoordinates) {
-        applyEstimate(fallbackSearchCoordinates, { mode: 'auto' });
+        if (
+          deliveryCoordinatesMode === 'auto' &&
+          deliveryCoordinates &&
+          lastAutoResolvedKeyRef.current === fallbackResolutionKey
+        ) {
+          applyEstimate(deliveryCoordinates, {
+            persistCoordinates: false,
+            mode: 'auto',
+          });
+        } else {
+          lastAutoResolvedKeyRef.current = fallbackResolutionKey;
+          applyEstimate(fallbackSearchCoordinates, { mode: 'auto' });
+        }
       } else {
+        lastAutoResolvedKeyRef.current = null;
         setDeliveryCharge(0);
         setDeliveryDistanceKm(null);
         setDeliveryCoordinates(null);
         setDeliveryMapCenter(DEFAULT_DELIVERY_MAP_CENTER);
       }
+      return;
+    }
+
+    const coordinateAddress = parseCoordinateAddress(normalizedAddress);
+    const resolutionKey = coordinateAddress
+      ? `coords:${coordinateAddress.lat.toFixed(6)},${coordinateAddress.lng.toFixed(6)}`
+      : `address:${normalizedAddress.toLowerCase()}`;
+
+    if (
+      deliveryCoordinatesMode === 'auto' &&
+      deliveryCoordinates &&
+      lastAutoResolvedKeyRef.current === resolutionKey
+    ) {
+      applyEstimate(deliveryCoordinates, {
+        persistCoordinates: false,
+        mode: 'auto',
+      });
+      return;
+    }
+
+    if (coordinateAddress) {
+      lastAutoResolvedKeyRef.current = resolutionKey;
+      applyEstimate(coordinateAddress, { mode: 'auto' });
       return;
     }
 
@@ -366,13 +521,16 @@ export default function BookingFlow() {
           throw new Error('Could not resolve delivery coordinates');
         }
 
+        lastAutoResolvedKeyRef.current = resolutionKey;
         applyEstimate({ lat, lng }, { mode: 'auto' });
       } catch (error: any) {
         if (error?.name === 'AbortError') return;
 
         if (fallbackSearchCoordinates) {
+          lastAutoResolvedKeyRef.current = fallbackResolutionKey;
           applyEstimate(fallbackSearchCoordinates, { mode: 'auto' });
         } else {
+          lastAutoResolvedKeyRef.current = null;
           setDeliveryCharge(0);
           setDeliveryDistanceKm(null);
           setDeliveryCoordinates(null);
@@ -397,6 +555,106 @@ export default function BookingFlow() {
     setDeliveryCoordinatesWithMode,
     vendorCoordinates,
   ]);
+
+  useEffect(() => {
+    if (!vendorCoordinates || !deliveryCoordinates) {
+      routeRequestRef.current?.abort();
+      setDeliveryRoutePoints([]);
+      setDeliveryRouteOnRoads(false);
+      return;
+    }
+
+    const cacheKey = [
+      vendorCoordinates.lat.toFixed(6),
+      vendorCoordinates.lng.toFixed(6),
+      deliveryCoordinates.lat.toFixed(6),
+      deliveryCoordinates.lng.toFixed(6),
+    ].join(':');
+
+    const cachedRoute = routeCacheRef.current.get(cacheKey);
+    if (cachedRoute) {
+      setDeliveryRoutePoints(cachedRoute.points);
+      setDeliveryRouteOnRoads(cachedRoute.onRoads);
+      return;
+    }
+
+    routeRequestRef.current?.abort();
+
+    const controller = new AbortController();
+    routeRequestRef.current = controller;
+
+    const fallbackPath: [number, number][] = [
+      [vendorCoordinates.lat, vendorCoordinates.lng],
+      [deliveryCoordinates.lat, deliveryCoordinates.lng],
+    ];
+
+    setDeliveryRoutePoints(fallbackPath);
+    setDeliveryRouteOnRoads(false);
+
+    void (async () => {
+      try {
+        const routeUrl = new URL(
+          `https://router.project-osrm.org/route/v1/driving/${vendorCoordinates.lng},${vendorCoordinates.lat};${deliveryCoordinates.lng},${deliveryCoordinates.lat}`,
+        );
+        routeUrl.searchParams.set('overview', 'full');
+        routeUrl.searchParams.set('geometries', 'geojson');
+        routeUrl.searchParams.set('steps', 'false');
+
+        const response = await fetch(routeUrl.toString(), {
+          signal: controller.signal,
+        });
+        if (!response.ok) throw new Error('Route API request failed.');
+
+        const payload = (await response.json()) as {
+          routes?: Array<{
+            geometry?: {
+              coordinates?: [number, number][];
+            };
+          }>;
+        };
+
+        const coordinates = payload.routes?.[0]?.geometry?.coordinates || [];
+        const routePoints = coordinates
+          .map(([pointLng, pointLat]) => {
+            const latValue = Number(pointLat);
+            const lngValue = Number(pointLng);
+            if (!Number.isFinite(latValue) || !Number.isFinite(lngValue)) return null;
+            return [latValue, lngValue] as [number, number];
+          })
+          .filter((point): point is [number, number] => Boolean(point));
+
+        const resolvedPath = routePoints.length > 1 ? routePoints : fallbackPath;
+        const onRoads = routePoints.length > 1;
+
+        routeCacheRef.current.set(cacheKey, {
+          points: resolvedPath,
+          onRoads,
+        });
+
+        setDeliveryRoutePoints(resolvedPath);
+        setDeliveryRouteOnRoads(onRoads);
+      } catch (error: any) {
+        if (error?.name === 'AbortError') return;
+
+        routeCacheRef.current.set(cacheKey, {
+          points: fallbackPath,
+          onRoads: false,
+        });
+
+        setDeliveryRoutePoints(fallbackPath);
+        setDeliveryRouteOnRoads(false);
+      }
+    })();
+
+    return () => {
+      controller.abort();
+    };
+  }, [deliveryCoordinates, vendorCoordinates]);
+
+  const deliveryRouteArrows = useMemo(
+    () => buildRouteArrowPoints(deliveryRoutePoints),
+    [deliveryRoutePoints],
+  );
 
   // Check availability when dates change
   useEffect(() => {
@@ -775,15 +1033,26 @@ export default function BookingFlow() {
                     url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
                     attribution="&copy; OpenStreetMap contributors"
                   />
-                  {vendorCoordinates && deliveryCoordinates && (
+                  {deliveryRoutePoints.length > 1 && (
                     <Polyline
-                      positions={[
-                        [vendorCoordinates.lat, vendorCoordinates.lng],
-                        [deliveryCoordinates.lat, deliveryCoordinates.lng],
-                      ]}
-                      pathOptions={{ color: '#2563eb', weight: 3, dashArray: '6 8', opacity: 0.75 }}
+                      positions={deliveryRoutePoints}
+                      pathOptions={{
+                        color: deliveryRouteOnRoads ? '#ea580c' : '#2563eb',
+                        weight: 4,
+                        opacity: 0.85,
+                        dashArray: deliveryRouteOnRoads ? undefined : '6 8',
+                      }}
                     />
                   )}
+                  {deliveryRouteArrows.map((arrow) => (
+                    <Marker
+                      key={arrow.id}
+                      position={arrow.position}
+                      icon={createRouteArrowIcon(arrow.bearing)}
+                      interactive={false}
+                      keyboard={false}
+                    />
+                  ))}
                   {vendorCoordinates && (
                     <Marker
                       position={[vendorCoordinates.lat, vendorCoordinates.lng]}

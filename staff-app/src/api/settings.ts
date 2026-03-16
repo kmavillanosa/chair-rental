@@ -7,7 +7,14 @@ export type KycSettings = {
 
 export type FeatureFlagsSettings = {
   allowKycWithoutMerchantId: boolean;
+  allowOrdersWithoutPayment: boolean;
+  maintenanceModeEnabled: boolean;
   defaultPlatformCommissionRatePercent: number;
+  defaultDepositPercent: number;
+  newVendorCompletedOrdersThreshold: number;
+  newVendorMaxActiveListings: number;
+  flaggedVendorMaxActiveListings: number;
+  payoutDelayDaysForNewVendors: number;
   launchNoCommissionEnabled: boolean;
   launchNoCommissionUntil: string | null;
   cancellationFullRefundMinDays: number;

@@ -92,3 +92,15 @@ cd api && npm install && npm run start:dev
 # App
 cd app && npm install && npm run dev
 ```
+
+## Legal Docs
+
+The repository now includes draft legal/commercial documents you can adapt for production use:
+
+- [Terms of Service](TERMS_OF_SERVICE.md)
+- [Vendor Agreement](VENDOR_AGREEMENT.md)
+- [Platform Commission Policy](PLATFORM_COMMISSION_POLICY.md)
+- [Liability Disclaimer](LIABILITY_DISCLAIMER.md)
+
+Replace the placeholder values in those files before launch, especially your legal name, contact details, governing law, notice period, and payout timing.
+

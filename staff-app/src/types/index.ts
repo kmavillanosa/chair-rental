@@ -8,7 +8,8 @@ export type VendorVerificationStatus =
   | 'pending_verification'
   | 'verified_business'
   | 'verified_owner'
-  | 'rejected';
+  | 'rejected'
+  | 'suspended';
 export type VendorPayMongoOnboardingStatus =
   | 'not_started'
   | 'processing'
@@ -118,11 +119,15 @@ export interface Vendor {
 }
 
 export type BookingPaymentStatus =
+  | 'pending'
   | 'unpaid'
   | 'checkout_pending'
   | 'paid'
+  | 'held'
+  | 'completed'
   | 'failed'
-  | 'refunded';
+  | 'refunded'
+  | 'disputed';
 
 export interface ItemType {
   id: string;
@@ -173,6 +178,100 @@ export interface BookingItem {
   subtotal: number;
 }
 
+export interface BookingMessage {
+  id: string;
+  bookingId: string;
+  senderUserId: string;
+  senderRole: UserRole;
+  content: string;
+  redactedContent: string;
+  flagReasons?: string | null;
+  isFlagged: boolean;
+  createdAt: string;
+}
+
+export interface BookingReview {
+  id: string;
+  bookingId: string;
+  reviewerUserId: string;
+  revieweeUserId: string;
+  reviewerRole: UserRole;
+  revieweeRole: UserRole;
+  rating: number;
+  comment?: string | null;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface BookingDeliveryProof {
+  id: string;
+  bookingId: string;
+  vendorId: string;
+  photoUrl: string;
+  signatureUrl?: string | null;
+  note?: string | null;
+  capturedAt?: string | null;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export type BookingDocumentType = 'contract' | 'receipt';
+export type BookingDocumentIssuedTo = 'customer' | 'vendor' | 'both';
+
+export interface BookingDocument {
+  id: string;
+  bookingId: string;
+  documentType: BookingDocumentType;
+  issuedTo: BookingDocumentIssuedTo;
+  title: string;
+  fileName: string;
+  fileUrl: string;
+  filePath: string;
+  fileHash: string;
+  signature: string;
+  signatureAlgorithm: string;
+  signaturePayloadHash: string;
+  generatedAt: string;
+  metadata?: string | null;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export type BookingDisputeStatus = 'open' | 'under_review' | 'resolved' | 'rejected';
+export type BookingDisputeOutcome =
+  | 'refund_customer'
+  | 'release_payment_to_vendor'
+  | 'partial_refund';
+
+export interface BookingDisputeEvidence {
+  id: string;
+  disputeId: string;
+  uploadedByUserId: string;
+  uploadedByRole: UserRole;
+  fileUrl: string;
+  note?: string | null;
+  metadata?: string | null;
+  createdAt: string;
+}
+
+export interface BookingDispute {
+  id: string;
+  bookingId: string;
+  openedByUserId: string;
+  openedByRole: UserRole;
+  reason: string;
+  status: BookingDisputeStatus;
+  outcome?: BookingDisputeOutcome | null;
+  refundAmount?: number | null;
+  resolutionNote?: string | null;
+  resolvedByUserId?: string | null;
+  resolvedAt?: string | null;
+  evidence?: BookingDisputeEvidence[];
+  booking?: Booking;
+  createdAt: string;
+  updatedAt: string;
+}
+
 export interface Booking {
   id: string;
   customerId: string;
@@ -189,12 +288,26 @@ export interface Booking {
   deliveryCharge: number;
   serviceCharge: number;
   platformFee: number;
+  depositPercentage?: number;
+  depositAmount?: number;
+  remainingBalanceAmount?: number;
+  totalPaidAmount?: number;
+  escrowHeldAmount?: number;
+  escrowReleasedAmount?: number;
   paymentStatus: BookingPaymentStatus;
   paymentProvider?: string;
   paymentReference?: string;
   paymentCheckoutSessionId?: string;
   paymentCheckoutUrl?: string;
   paymentPaidAt?: string;
+  depositPaidAt?: string;
+  finalPaymentPaidAt?: string;
+  escrowHeldAt?: string;
+  escrowReleasedAt?: string;
+  vendorMarkedDeliveredAt?: string;
+  customerConfirmedDeliveryAt?: string;
+  customerConfirmedDeliveryByUserId?: string;
+  fraudRiskScore?: number;
   cancelledAt?: string;
   cancellationRequestedByUserId?: string;
   cancellationRequestedByRole?: UserRole;
@@ -207,7 +320,75 @@ export interface Booking {
   cancellationRefundAmount?: number;
   notes?: string;
   items?: BookingItem[];
+  messages?: BookingMessage[];
+  reviews?: BookingReview[];
+  deliveryProofs?: BookingDeliveryProof[];
+  documents?: BookingDocument[];
   createdAt: string;
+}
+
+export type VendorPayoutStatus =
+  | 'pending'
+  | 'held'
+  | 'ready'
+  | 'released'
+  | 'refunded'
+  | 'disputed'
+  | 'cancelled';
+
+export interface VendorPayout {
+  id: string;
+  vendorId: string;
+  vendor?: Vendor;
+  bookingId: string;
+  booking?: Booking;
+  grossAmount: number;
+  platformFeeAmount: number;
+  netAmount: number;
+  depositHeldAmount: number;
+  outstandingBalanceAmount: number;
+  status: VendorPayoutStatus;
+  releaseOn?: string | null;
+  heldAt?: string | null;
+  releasedAt?: string | null;
+  disputeLockedAt?: string | null;
+  notes?: string | null;
+  metadata?: string | null;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export type FraudAlertStatus = 'open' | 'under_review' | 'resolved' | 'dismissed';
+export type FraudAlertSeverity = 'low' | 'medium' | 'high' | 'critical';
+export type FraudAlertType =
+  | 'booking_risk'
+  | 'off_platform_message'
+  | 'vendor_kyc'
+  | 'dispute'
+  | 'low_rating_vendor'
+  | 'ip_reuse'
+  | 'cancellation_pattern'
+  | 'unusual_booking_frequency';
+
+export interface FraudAlert {
+  id: string;
+  type: FraudAlertType;
+  severity: FraudAlertSeverity;
+  status: FraudAlertStatus;
+  title: string;
+  description: string;
+  userId?: string | null;
+  vendorId?: string | null;
+  bookingId?: string | null;
+  messageId?: string | null;
+  disputeId?: string | null;
+  metadata?: string | null;
+  reviewedByUserId?: string | null;
+  reviewedAt?: string | null;
+  resolutionNote?: string | null;
+  booking?: Booking;
+  createdAt: string;
+  updatedAt: string;
 }
 
 export type PaymentStatus = 'pending' | 'paid' | 'overdue';

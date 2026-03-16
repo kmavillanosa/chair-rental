@@ -99,6 +99,12 @@ export const en = {
   authCallback: {
     signingIn: 'Signing you in...',
   },
+  maintenanceMode: {
+    badge: 'Maintenance Mode',
+    title: 'We are currently doing maintenance.',
+    message: 'RentalBasic is temporarily unavailable while we apply updates and platform fixes.',
+    submessage: 'Please check back shortly. If you already have a live booking, contact your vendor directly while maintenance is in progress.',
+  },
   adminDashboard: {
     title: 'Dashboard Overview',
     totalVendors: 'Total Vendors',

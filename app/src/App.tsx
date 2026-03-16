@@ -1,5 +1,7 @@
+import { useEffect, useState } from 'react'
 import { BrowserRouter, Routes, Route, Navigate, useLocation } from 'react-router-dom'
 import { useAuthStore } from './store/authStore'
+import { getFeatureFlagsSettings } from './api/settings'
 import Login from './pages/Login'
 import AuthCallback from './pages/AuthCallback'
 import AdminDashboard from './pages/admin/AdminDashboard'
@@ -18,8 +20,13 @@ import CustomerResults from './pages/customer/CustomerResults.tsx'
 import VendorLanding from './pages/customer/VendorLanding'
 import BookingFlow from './pages/customer/BookingFlow'
 import MyBookings from './pages/customer/MyBookings'
+import MyBookingDetails from './pages/customer/MyBookingDetails'
 import BecomeVendor from './pages/customer/BecomeVendor'
+import LegalDocumentPage from './pages/LegalDocumentPage'
+import LoadingSpinner from './components/common/LoadingSpinner'
+import LegalFooter from './components/common/LegalFooter'
 import { savePostLoginRedirect } from './utils/postLoginRedirect'
+import { useTranslation } from 'react-i18next'
 
 const VENDOR_DOMAIN = import.meta.env.VITE_VENDOR_DOMAIN || 'rentalbasic.com';
 const RESERVED_SUBDOMAINS = new Set(['www', 'app', 'vendors', 'api', 'mail', 'phpmyadmin']);
@@ -43,40 +50,124 @@ function ProtectedRoute({ children, role }: { children: React.ReactNode; role?: 
   return <>{children}</>
 }
 
+function MaintenanceModeScreen() {
+  const { t } = useTranslation()
+
+  return (
+    <div className="flex min-h-screen items-center justify-center bg-slate-950 px-6 text-slate-100">
+      <div className="w-full max-w-2xl rounded-3xl border border-white/10 bg-white/5 p-10 text-center shadow-2xl backdrop-blur">
+        <p className="text-sm font-semibold uppercase tracking-[0.25em] text-amber-300">
+          {t('maintenanceMode.badge')}
+        </p>
+        <h1 className="mt-4 text-4xl font-bold text-white">
+          {t('maintenanceMode.title')}
+        </h1>
+        <p className="mt-4 text-lg leading-8 text-slate-300">
+          {t('maintenanceMode.message')}
+        </p>
+        <p className="mt-3 text-sm leading-7 text-slate-400">
+          {t('maintenanceMode.submessage')}
+        </p>
+        <LegalFooter variant="dark" className="mt-8 text-left" />
+      </div>
+    </div>
+  )
+}
+
+function AppRoutes({
+  maintenanceModeEnabled,
+  userRole,
+  vendorSlug,
+}: {
+  maintenanceModeEnabled: boolean
+  userRole?: string
+  vendorSlug: string | null
+}) {
+  const location = useLocation()
+  const isLegalRoute = location.pathname.startsWith('/legal/')
+
+  if (maintenanceModeEnabled && !isLegalRoute) {
+    return <MaintenanceModeScreen />
+  }
+
+  return (
+    <Routes>
+      <Route path="/legal/:documentSlug" element={<LegalDocumentPage />} />
+      <Route path="/login" element={<Login />} />
+      <Route path="/auth/callback" element={<AuthCallback />} />
+      <Route path="/shop/:slug" element={<VendorLanding />} />
+      {!vendorSlug && <Route path="/admin" element={<ProtectedRoute role="admin"><AdminDashboard /></ProtectedRoute>} />}
+      {!vendorSlug && <Route path="/admin/vendors" element={<ProtectedRoute role="admin"><VendorsList /></ProtectedRoute>} />}
+      {!vendorSlug && <Route path="/admin/item-types" element={<ProtectedRoute role="admin"><ItemTypesList /></ProtectedRoute>} />}
+      {!vendorSlug && <Route path="/admin/brands" element={<ProtectedRoute role="admin"><BrandsList /></ProtectedRoute>} />}
+      {!vendorSlug && <Route path="/admin/payments" element={<ProtectedRoute role="admin"><AdminPayments /></ProtectedRoute>} />}
+      {!vendorSlug && <Route path="/vendor" element={<ProtectedRoute role="vendor"><VendorDashboard /></ProtectedRoute>} />}
+      {!vendorSlug && <Route path="/vendor/inventory" element={<ProtectedRoute role="vendor"><Inventory /></ProtectedRoute>} />}
+      {!vendorSlug && <Route path="/vendor/bookings" element={<ProtectedRoute role="vendor"><VendorBookings /></ProtectedRoute>} />}
+      {!vendorSlug && <Route path="/vendor/pricing" element={<ProtectedRoute role="vendor"><Pricing /></ProtectedRoute>} />}
+      {!vendorSlug && <Route path="/vendor/shop" element={<ProtectedRoute role="vendor"><MyShop /></ProtectedRoute>} />}
+      {!vendorSlug && <Route path="/vendor/payments" element={<ProtectedRoute role="vendor"><VendorPayments /></ProtectedRoute>} />}
+      <Route path="/" element={vendorSlug ? <Navigate to={`/shop/${vendorSlug}`} replace /> : <CustomerHome />} />
+      <Route path="/results" element={<CustomerResults />} />
+      <Route path="/book/:slug" element={<BookingFlow />} />
+      <Route path="/my-bookings" element={<ProtectedRoute><MyBookings /></ProtectedRoute>} />
+      <Route path="/my-bookings/:bookingId" element={<ProtectedRoute><MyBookingDetails /></ProtectedRoute>} />
+      <Route path="/become-vendor" element={<ProtectedRoute role="customer"><BecomeVendor /></ProtectedRoute>} />
+      <Route path="*" element={
+        vendorSlug ? <Navigate to={`/shop/${vendorSlug}`} replace /> :
+          userRole === 'admin' ? <Navigate to="/admin" replace /> :
+            userRole === 'vendor' ? <Navigate to="/vendor" replace /> :
+              <Navigate to="/" replace />
+      } />
+    </Routes>
+  )
+}
+
 export default function App() {
+  const [featureFlagsLoading, setFeatureFlagsLoading] = useState(true)
+  const [maintenanceModeEnabled, setMaintenanceModeEnabled] = useState(false)
   const { user } = useAuthStore()
   const vendorSlug = getVendorSlugFromSubdomain();
 
+  useEffect(() => {
+    let isMounted = true
+
+    getFeatureFlagsSettings()
+      .then((flags) => {
+        if (!isMounted) return
+        setMaintenanceModeEnabled(Boolean(flags.maintenanceModeEnabled))
+      })
+      .catch(() => {
+        if (!isMounted) return
+        setMaintenanceModeEnabled(false)
+      })
+      .finally(() => {
+        if (!isMounted) return
+        setFeatureFlagsLoading(false)
+      })
+
+    return () => {
+      isMounted = false
+    }
+  }, [])
+
+  if (featureFlagsLoading) {
+    return (
+      <div className="flex min-h-screen items-center justify-center bg-slate-950 text-slate-100">
+        <div className="text-center">
+          <LoadingSpinner size="lg" />
+        </div>
+      </div>
+    )
+  }
+
   return (
     <BrowserRouter>
-      <Routes>
-        <Route path="/login" element={<Login />} />
-        <Route path="/auth/callback" element={<AuthCallback />} />
-        <Route path="/shop/:slug" element={<VendorLanding />} />
-        {/* Admin and vendor routes are hidden on vendor subdomains */}
-        {!vendorSlug && <Route path="/admin" element={<ProtectedRoute role="admin"><AdminDashboard /></ProtectedRoute>} />}
-        {!vendorSlug && <Route path="/admin/vendors" element={<ProtectedRoute role="admin"><VendorsList /></ProtectedRoute>} />}
-        {!vendorSlug && <Route path="/admin/item-types" element={<ProtectedRoute role="admin"><ItemTypesList /></ProtectedRoute>} />}
-        {!vendorSlug && <Route path="/admin/brands" element={<ProtectedRoute role="admin"><BrandsList /></ProtectedRoute>} />}
-        {!vendorSlug && <Route path="/admin/payments" element={<ProtectedRoute role="admin"><AdminPayments /></ProtectedRoute>} />}
-        {!vendorSlug && <Route path="/vendor" element={<ProtectedRoute role="vendor"><VendorDashboard /></ProtectedRoute>} />}
-        {!vendorSlug && <Route path="/vendor/inventory" element={<ProtectedRoute role="vendor"><Inventory /></ProtectedRoute>} />}
-        {!vendorSlug && <Route path="/vendor/bookings" element={<ProtectedRoute role="vendor"><VendorBookings /></ProtectedRoute>} />}
-        {!vendorSlug && <Route path="/vendor/pricing" element={<ProtectedRoute role="vendor"><Pricing /></ProtectedRoute>} />}
-        {!vendorSlug && <Route path="/vendor/shop" element={<ProtectedRoute role="vendor"><MyShop /></ProtectedRoute>} />}
-        {!vendorSlug && <Route path="/vendor/payments" element={<ProtectedRoute role="vendor"><VendorPayments /></ProtectedRoute>} />}
-        <Route path="/" element={vendorSlug ? <Navigate to={`/shop/${vendorSlug}`} replace /> : <CustomerHome />} />
-        <Route path="/results" element={<CustomerResults />} />
-        <Route path="/book/:slug" element={<BookingFlow />} />
-        <Route path="/my-bookings" element={<ProtectedRoute><MyBookings /></ProtectedRoute>} />
-        <Route path="/become-vendor" element={<ProtectedRoute role="customer"><BecomeVendor /></ProtectedRoute>} />
-        <Route path="*" element={
-          vendorSlug ? <Navigate to={`/shop/${vendorSlug}`} replace /> :
-            user?.role === 'admin' ? <Navigate to="/admin" replace /> :
-              user?.role === 'vendor' ? <Navigate to="/vendor" replace /> :
-                <Navigate to="/" replace />
-        } />
-      </Routes>
+      <AppRoutes
+        maintenanceModeEnabled={maintenanceModeEnabled}
+        userRole={user?.role}
+        vendorSlug={vendorSlug}
+      />
     </BrowserRouter>
   )
 }

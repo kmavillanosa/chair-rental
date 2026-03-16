@@ -1,6 +1,7 @@
 import {
   ForbiddenException,
   Injectable,
+  Logger,
   UnauthorizedException,
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
@@ -13,15 +14,35 @@ import { Vendor } from '../vendors/entities/vendor.entity';
 
 @Injectable()
 export class AuthService {
+  private readonly logger = new Logger(AuthService.name);
+
   constructor(
     private readonly jwtService: JwtService,
     private readonly usersService: UsersService,
+    @InjectRepository(User)
+    private readonly usersRepo: Repository<User>,
     @InjectRepository(Vendor)
     private readonly vendorsRepo: Repository<Vendor>,
   ) {}
 
-  async login(user: User) {
+  async login(user: User, requestIp?: string) {
     const authenticatedUser = await this.validateAuthenticatedUser(user.id, true);
+
+    const normalizedIp = this.normalizeIp(requestIp);
+    if (normalizedIp) {
+      try {
+        await this.usersRepo.update(authenticatedUser.id, {
+          lastLoginIp: normalizedIp,
+        });
+      } catch (error) {
+        this.logger.warn(
+          `Failed to persist last login IP for user ${authenticatedUser.id}: ${
+            error instanceof Error ? error.message : String(error)
+          }`,
+        );
+      }
+    }
+
     const payload = {
       sub: authenticatedUser.id,
       email: authenticatedUser.email,
@@ -79,5 +100,14 @@ export class AuthService {
     }
 
     return user;
+  }
+
+  private normalizeIp(requestIp?: string) {
+    const raw = String(requestIp || '').trim();
+    if (!raw) return null;
+
+    const first = raw.split(',')[0].trim();
+    if (!first) return null;
+    return first.slice(0, 255);
   }
 }

@@ -30,13 +30,13 @@ export default function AdminDashboard() {
 
   return (
     <AdminLayout>
-      <h1 className="mb-8 text-4xl font-bold text-slate-900">Dashboard Overview</h1>
+      <h1 className="mb-5 text-xl font-semibold text-slate-800">Overview</h1>
       {loading ? <LoadingSpinner /> : (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
           {cards.map(c => (
             <div key={c.label} className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
               <p className="text-base font-semibold text-slate-600">{c.label}</p>
-              <p className="mt-2 text-5xl font-bold text-slate-900">{c.value}</p>
+              <p className="mt-1 text-3xl font-bold text-slate-800">{c.value}</p>
             </div>
           ))}
         </div>

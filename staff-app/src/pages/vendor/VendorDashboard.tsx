@@ -108,39 +108,39 @@ export default function VendorDashboard() {
   return (
     <VendorLayout>
       {vendor?.warningCount && vendor.warningCount > 0 && (
-        <div className="bg-red-100 border-l-4 border-red-500 text-red-700 p-4 mb-6 rounded-lg text-xl">
-          ⚠️ You have {vendor.warningCount} warning(s). At 3 warnings, your account will be suspended for 7 days.
+        <div className="mb-4 rounded border-l-4 border-red-400 bg-red-50 p-3 text-sm text-red-700">
+          You have {vendor.warningCount} warning(s). At 3 warnings, your account will be suspended for 7 days.
         </div>
       )}
       {overduePayments.length > 0 && (
-        <div className="bg-orange-100 border-l-4 border-orange-500 text-orange-700 p-4 mb-6 rounded-lg text-xl">
-          💰 You have {overduePayments.length} overdue payment(s). Please pay to continue accepting bookings.
+        <div className="mb-4 rounded border-l-4 border-orange-400 bg-orange-50 p-3 text-sm text-orange-700">
+          You have {overduePayments.length} overdue payment(s). Please pay to continue accepting bookings.
         </div>
       )}
-      <h1 className="text-4xl font-bold text-gray-900 mb-6">👋 Welcome, {vendor?.businessName}</h1>
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
-        <div className="bg-blue-100 rounded-2xl p-6">
-          <p className="text-lg">📅 Today's Active Bookings</p>
-          <p className="text-5xl font-bold text-blue-800 mt-2">{todayBookings.length}</p>
+      <h1 className="mb-4 text-xl font-semibold text-slate-800">Welcome, {vendor?.businessName}</h1>
+      <div className="mb-4 grid grid-cols-1 gap-3 md:grid-cols-3">
+        <div className="rounded border border-slate-200 bg-white p-4">
+          <p className="text-xs text-slate-500">Today's Active Bookings</p>
+          <p className="mt-1 text-2xl font-bold text-slate-800">{todayBookings.length}</p>
         </div>
-        <div className="bg-green-100 rounded-2xl p-6">
-          <p className="text-lg">📋 Total Bookings</p>
-          <p className="text-5xl font-bold text-green-800 mt-2">{bookings.length}</p>
+        <div className="rounded border border-slate-200 bg-white p-4">
+          <p className="text-xs text-slate-500">Total Bookings</p>
+          <p className="mt-1 text-2xl font-bold text-slate-800">{bookings.length}</p>
         </div>
-        <div className="bg-yellow-100 rounded-2xl p-6">
-          <p className="text-lg">⚠️ Warnings</p>
-          <p className="text-5xl font-bold text-yellow-800 mt-2">{vendor?.warningCount || 0}/3</p>
+        <div className="rounded border border-slate-200 bg-white p-4">
+          <p className="text-xs text-slate-500">Warnings</p>
+          <p className="mt-1 text-2xl font-bold text-slate-800">{vendor?.warningCount || 0}/3</p>
         </div>
       </div>
-      <div className="bg-white rounded-2xl shadow p-6 mb-8">
-        <h2 className="text-2xl font-bold mb-4">🏪 Shop: /shop/{vendor?.slug}</h2>
-        <p className="text-gray-600 text-lg">{vendor?.address}</p>
-        <a href={publicShopUrl} target="_blank" rel="noopener noreferrer" className="text-blue-600 text-lg hover:underline mt-2 inline-block">View Public Page →</a>
+      <div className="mb-4 rounded border border-slate-200 bg-white p-4">
+        <h2 className="mb-1 text-sm font-semibold text-slate-700">Shop: /shop/{vendor?.slug}</h2>
+        <p className="text-sm text-gray-600">{vendor?.address}</p>
+        <a href={publicShopUrl} target="_blank" rel="noopener noreferrer" className="mt-1 inline-block text-sm text-blue-600 hover:underline">View Public Page →</a>
       </div>
 
       {/* Equipment Breakdown Section */}
-      <div className="bg-white rounded-2xl shadow p-6">
-        <h2 className="text-xl font-semibold text-slate-700 mb-4">Equipment Breakdown</h2>
+      <div className="rounded border border-slate-200 bg-white p-4">
+        <h2 className="mb-3 text-sm font-semibold text-slate-700">Equipment Breakdown</h2>
         <BreakdownArmy />
       </div>
     </VendorLayout>

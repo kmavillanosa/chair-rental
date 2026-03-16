@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
 import Sidebar from './Sidebar';
+import LegalFooter from '../common/LegalFooter';
 
 export default function VendorLayout({ children }: { children?: React.ReactNode }) {
   const [mobileSidebarOpen, setMobileSidebarOpen] = useState(false);
@@ -47,7 +48,12 @@ export default function VendorLayout({ children }: { children?: React.ReactNode 
           }`}
       />
 
-      <main className="min-w-0 flex-1 overflow-y-auto p-4 pt-16 lg:p-8 lg:pt-8">{children}</main>
+      <main className="min-w-0 flex-1 overflow-y-auto p-4 pt-16 lg:p-8 lg:pt-8">
+        <div className="flex min-h-full flex-col">
+          <div className="flex-1">{children}</div>
+          <LegalFooter className="mt-6" />
+        </div>
+      </main>
     </div>
   );
 }

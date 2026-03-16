@@ -14,6 +14,19 @@ vi.mock('./entities/delivery-rate.entity', () => ({
   DeliveryRate: class DeliveryRate {},
 }));
 
+vi.mock('./entities/vendor-payout.entity', () => ({
+  VendorPayout: class VendorPayout {},
+  VendorPayoutStatus: {
+    PENDING: 'pending',
+    HELD: 'held',
+    READY: 'ready',
+    RELEASED: 'released',
+    REFUNDED: 'refunded',
+    DISPUTED: 'disputed',
+    CANCELLED: 'cancelled',
+  },
+}));
+
 let PaymentsService: any;
 
 function createService() {
@@ -35,8 +48,17 @@ function createService() {
     delete: vi.fn(),
   };
 
+  const payoutsRepo = {
+    find: vi.fn(),
+    save: vi.fn(async (value) => value),
+    create: vi.fn((value) => value),
+    update: vi.fn(),
+    findOne: vi.fn(),
+  };
+
   const service = new PaymentsService(
     paymentsRepo as any,
+    payoutsRepo as any,
     deliveryRatesRepo as any,
   );
 
@@ -44,6 +66,7 @@ function createService() {
     service,
     mocks: {
       paymentsRepo,
+      payoutsRepo,
       deliveryRatesRepo,
     },
   };
@@ -135,6 +158,56 @@ describe('PaymentsService', () => {
       expect.objectContaining({ relations: ['vendor'] }),
     );
     expect(result).toHaveLength(2);
+  });
+
+  it('findAllPayouts returns payouts with vendor and booking relations', async () => {
+    const { service, mocks } = createService();
+    mocks.payoutsRepo.find.mockResolvedValue([{ id: 'payout-1' }]);
+
+    const result = await service.findAllPayouts();
+
+    expect(mocks.payoutsRepo.find).toHaveBeenCalledWith(
+      expect.objectContaining({ relations: ['vendor', 'booking'] }),
+    );
+    expect(result).toHaveLength(1);
+  });
+
+  it('releasePayout throws when payout is not ready', async () => {
+    const { service, mocks } = createService();
+    mocks.payoutsRepo.findOne.mockResolvedValue({
+      id: 'payout-1',
+      status: 'held',
+    });
+
+    await expect(service.releasePayout('payout-1')).rejects.toBeInstanceOf(
+      BadRequestException,
+    );
+  });
+
+  it('releasePayout updates ready payout status to released', async () => {
+    const { service, mocks } = createService();
+    mocks.payoutsRepo.findOne
+      .mockResolvedValueOnce({
+        id: 'payout-1',
+        status: 'ready',
+        notes: null,
+        releaseOn: null,
+      })
+      .mockResolvedValueOnce({
+        id: 'payout-1',
+        status: 'released',
+      });
+
+    const result = await service.releasePayout('payout-1', 'Released by admin');
+
+    expect(mocks.payoutsRepo.update).toHaveBeenCalledWith(
+      'payout-1',
+      expect.objectContaining({
+        status: 'released',
+        notes: 'Released by admin',
+      }),
+    );
+    expect(result).toMatchObject({ id: 'payout-1', status: 'released' });
   });
 
   it('createPayment creates and saves the entity', async () => {

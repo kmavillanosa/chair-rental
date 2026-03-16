@@ -3,11 +3,13 @@ import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { VendorPayment, PaymentStatus } from './entities/vendor-payment.entity';
 import { DeliveryRate } from './entities/delivery-rate.entity';
+import { VendorPayout, VendorPayoutStatus } from './entities/vendor-payout.entity';
 
 @Injectable()
 export class PaymentsService {
   constructor(
     @InjectRepository(VendorPayment) private readonly paymentsRepo: Repository<VendorPayment>,
+    @InjectRepository(VendorPayout) private readonly payoutsRepo: Repository<VendorPayout>,
     @InjectRepository(DeliveryRate) private readonly deliveryRatesRepo: Repository<DeliveryRate>,
   ) {}
 
@@ -17,6 +19,50 @@ export class PaymentsService {
 
   findAllPayments() {
     return this.paymentsRepo.find({ relations: ['vendor'], order: { createdAt: 'DESC' } });
+  }
+
+  findAllPayouts(status?: VendorPayoutStatus) {
+    return this.payoutsRepo.find({
+      where: status ? { status } : {},
+      relations: ['vendor', 'booking'],
+      order: { createdAt: 'DESC' },
+    });
+  }
+
+  findPayoutsByVendor(vendorId: string) {
+    return this.payoutsRepo.find({
+      where: { vendorId },
+      relations: ['booking'],
+      order: { createdAt: 'DESC' },
+    });
+  }
+
+  async releasePayout(id: string, note?: string) {
+    const payout = await this.payoutsRepo.findOne({ where: { id } });
+    if (!payout) {
+      throw new NotFoundException('Vendor payout not found');
+    }
+
+    if (payout.status !== VendorPayoutStatus.READY) {
+      throw new BadRequestException('Only READY payouts can be released');
+    }
+
+    if (payout.releaseOn && new Date(payout.releaseOn).getTime() > Date.now()) {
+      throw new BadRequestException(
+        `This payout is locked until ${new Date(payout.releaseOn).toISOString()}`,
+      );
+    }
+
+    await this.payoutsRepo.update(id, {
+      status: VendorPayoutStatus.RELEASED,
+      releasedAt: new Date(),
+      notes: String(note || '').trim() || payout.notes || null,
+    });
+
+    return this.payoutsRepo.findOne({
+      where: { id },
+      relations: ['vendor', 'booking'],
+    });
   }
 
   async createPayment(data: Partial<VendorPayment>) {

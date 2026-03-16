@@ -12,6 +12,37 @@ import {
     type KycSettings,
 } from '../../api/settings';
 
+function FeatureFlagSwitch({
+    checked,
+    onChange,
+}: {
+    checked: boolean;
+    onChange: (checked: boolean) => void;
+}) {
+    return (
+        <div className="flex items-center gap-3">
+            <button
+                type="button"
+                role="switch"
+                aria-checked={checked}
+                onClick={() => onChange(!checked)}
+                className={`relative inline-flex h-7 w-14 items-center rounded-full border transition ${checked
+                    ? 'border-emerald-600 bg-emerald-500'
+                    : 'border-slate-300 bg-slate-200'
+                    }`}
+            >
+                <span
+                    className={`inline-block h-5 w-5 transform rounded-full bg-white shadow-sm transition ${checked ? 'translate-x-8' : 'translate-x-1'
+                        }`}
+                />
+            </button>
+            <span className="text-sm font-medium text-slate-700">
+                {checked ? 'Enabled' : 'Disabled'}
+            </span>
+        </div>
+    );
+}
+
 const DEFAULT_SETTINGS: KycSettings = {
     vendorRegistrationEnabled: true,
     requireOtpBeforeVendorRegistration: true,
@@ -19,7 +50,14 @@ const DEFAULT_SETTINGS: KycSettings = {
 
 const DEFAULT_FEATURE_FLAGS: FeatureFlagsSettings = {
     allowKycWithoutMerchantId: true,
+    allowOrdersWithoutPayment: false,
+    maintenanceModeEnabled: false,
     defaultPlatformCommissionRatePercent: 10,
+    defaultDepositPercent: 30,
+    newVendorCompletedOrdersThreshold: 5,
+    newVendorMaxActiveListings: 40,
+    flaggedVendorMaxActiveListings: 15,
+    payoutDelayDaysForNewVendors: 3,
     launchNoCommissionEnabled: false,
     launchNoCommissionUntil: null,
     cancellationFullRefundMinDays: 3,
@@ -47,6 +85,7 @@ export default function KycSettingsPage() {
             .then(([kycResponse, featureFlagsResponse]) => {
                 setSettings(kycResponse);
                 setFeatureFlags({
+                    ...DEFAULT_FEATURE_FLAGS,
                     ...featureFlagsResponse,
                     launchNoCommissionUntil: toDateInputValue(
                         featureFlagsResponse.launchNoCommissionUntil,
@@ -76,6 +115,23 @@ export default function KycSettingsPage() {
         const parsedCommissionPercent = Number(
             featureFlags.defaultPlatformCommissionRatePercent,
         );
+        const parsedDepositPercent = Number(featureFlags.defaultDepositPercent);
+        const parsedCompletedThreshold = Math.max(
+            0,
+            Math.round(Number(featureFlags.newVendorCompletedOrdersThreshold)),
+        );
+        const parsedNewVendorMaxListings = Math.max(
+            1,
+            Math.round(Number(featureFlags.newVendorMaxActiveListings)),
+        );
+        const parsedFlaggedVendorMaxListings = Math.max(
+            1,
+            Math.round(Number(featureFlags.flaggedVendorMaxActiveListings)),
+        );
+        const parsedPayoutDelayDays = Math.max(
+            0,
+            Math.round(Number(featureFlags.payoutDelayDaysForNewVendors)),
+        );
 
         if (
             !Number.isFinite(parsedCommissionPercent) ||
@@ -86,13 +142,29 @@ export default function KycSettingsPage() {
             return;
         }
 
+        if (
+            !Number.isFinite(parsedDepositPercent) ||
+            parsedDepositPercent <= 0 ||
+            parsedDepositPercent > 100
+        ) {
+            toast.error('Default deposit percent must be greater than 0 and at most 100.');
+            return;
+        }
+
         setSavingFeatureFlags(true);
         try {
             const updated = await updateFeatureFlagsSettings({
                 allowKycWithoutMerchantId: featureFlags.allowKycWithoutMerchantId,
+                allowOrdersWithoutPayment: featureFlags.allowOrdersWithoutPayment,
+                maintenanceModeEnabled: featureFlags.maintenanceModeEnabled,
                 defaultPlatformCommissionRatePercent: Number(
                     parsedCommissionPercent.toFixed(2),
                 ),
+                defaultDepositPercent: Number(parsedDepositPercent.toFixed(2)),
+                newVendorCompletedOrdersThreshold: parsedCompletedThreshold,
+                newVendorMaxActiveListings: parsedNewVendorMaxListings,
+                flaggedVendorMaxActiveListings: parsedFlaggedVendorMaxListings,
+                payoutDelayDaysForNewVendors: parsedPayoutDelayDays,
                 launchNoCommissionEnabled: featureFlags.launchNoCommissionEnabled,
                 launchNoCommissionUntil: featureFlags.launchNoCommissionUntil || null,
                 cancellationFullRefundMinDays: Math.max(0, Math.round(Number(featureFlags.cancellationFullRefundMinDays))),
@@ -101,11 +173,17 @@ export default function KycSettingsPage() {
             });
 
             setFeatureFlags({
+                ...DEFAULT_FEATURE_FLAGS,
                 ...updated,
                 launchNoCommissionUntil: toDateInputValue(
                     updated.launchNoCommissionUntil,
                 ),
             });
+            window.dispatchEvent(
+                new CustomEvent('staff-feature-flags-updated', {
+                    detail: updated,
+                }),
+            );
 
             toast.success('Feature flags saved.');
         } catch (error: any) {
@@ -147,20 +225,15 @@ export default function KycSettingsPage() {
                                     When enabled, bookings apply 0% platform fee while the launch window is active.
                                 </p>
                             </div>
-                            <label className="inline-flex items-center gap-2 text-sm font-medium text-slate-800">
-                                <input
-                                    type="checkbox"
-                                    className="h-5 w-5 rounded border-slate-300 text-slate-900 focus:ring-slate-500"
-                                    checked={featureFlags.launchNoCommissionEnabled}
-                                    onChange={(event) =>
-                                        setFeatureFlags((current) => ({
-                                            ...current,
-                                            launchNoCommissionEnabled: event.target.checked,
-                                        }))
-                                    }
-                                />
-                                Enabled
-                            </label>
+                            <FeatureFlagSwitch
+                                checked={featureFlags.launchNoCommissionEnabled}
+                                onChange={(checked) =>
+                                    setFeatureFlags((current) => ({
+                                        ...current,
+                                        launchNoCommissionEnabled: checked,
+                                    }))
+                                }
+                            />
                         </div>
                     </div>
 
@@ -172,20 +245,55 @@ export default function KycSettingsPage() {
                                     When enabled, admin can approve KYC even if PayMongo merchant provisioning fails. Merchant ID can be provisioned later from Vendors.
                                 </p>
                             </div>
-                            <label className="inline-flex items-center gap-2 text-sm font-medium text-slate-800">
-                                <input
-                                    type="checkbox"
-                                    className="h-5 w-5 rounded border-slate-300 text-slate-900 focus:ring-slate-500"
-                                    checked={featureFlags.allowKycWithoutMerchantId}
-                                    onChange={(event) =>
-                                        setFeatureFlags((current) => ({
-                                            ...current,
-                                            allowKycWithoutMerchantId: event.target.checked,
-                                        }))
-                                    }
-                                />
-                                Enabled
-                            </label>
+                            <FeatureFlagSwitch
+                                checked={featureFlags.allowKycWithoutMerchantId}
+                                onChange={(checked) =>
+                                    setFeatureFlags((current) => ({
+                                        ...current,
+                                        allowKycWithoutMerchantId: checked,
+                                    }))
+                                }
+                            />
+                        </div>
+                    </div>
+
+                    <div className="rounded-xl border border-slate-200 p-4">
+                        <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+                            <div>
+                                <p className="text-lg font-semibold text-slate-900">Allow Orders Without Paying (Test Mode)</p>
+                                <p className="text-sm text-slate-600">
+                                    When enabled, customers can submit bookings without being forced into checkout, and vendors or admins can confirm unpaid PayMongo bookings. Keep this disabled in live mode.
+                                </p>
+                            </div>
+                            <FeatureFlagSwitch
+                                checked={featureFlags.allowOrdersWithoutPayment}
+                                onChange={(checked) =>
+                                    setFeatureFlags((current) => ({
+                                        ...current,
+                                        allowOrdersWithoutPayment: checked,
+                                    }))
+                                }
+                            />
+                        </div>
+                    </div>
+
+                    <div className="rounded-xl border border-slate-200 p-4">
+                        <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+                            <div>
+                                <p className="text-lg font-semibold text-slate-900">Maintenance Mode</p>
+                                <p className="text-sm text-slate-600">
+                                    When enabled, the customer-facing app shows a maintenance notice while staff users still have access with a visible badge.
+                                </p>
+                            </div>
+                            <FeatureFlagSwitch
+                                checked={featureFlags.maintenanceModeEnabled}
+                                onChange={(checked) =>
+                                    setFeatureFlags((current) => ({
+                                        ...current,
+                                        maintenanceModeEnabled: checked,
+                                    }))
+                                }
+                            />
                         </div>
                     </div>
 
@@ -226,6 +334,108 @@ export default function KycSettingsPage() {
                                     }))
                                 }
                                 helperText="Applied when no-commission mode is disabled or expired."
+                            />
+                        </div>
+
+                        <div>
+                            <label className="mb-2 block text-sm font-semibold text-slate-800">
+                                Default Booking Deposit (%)
+                            </label>
+                            <TextInput
+                                type="number"
+                                min={1}
+                                max={100}
+                                step="0.01"
+                                value={String(featureFlags.defaultDepositPercent)}
+                                onChange={(event) =>
+                                    setFeatureFlags((current) => ({
+                                        ...current,
+                                        defaultDepositPercent: Number(event.target.value),
+                                    }))
+                                }
+                                helperText="Initial payment required at checkout before booking confirmation."
+                            />
+                        </div>
+                    </div>
+
+                    <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
+                        <div>
+                            <label className="mb-2 block text-sm font-semibold text-slate-800">
+                                New Vendor Completion Threshold
+                            </label>
+                            <TextInput
+                                type="number"
+                                min={0}
+                                max={500}
+                                step="1"
+                                value={String(featureFlags.newVendorCompletedOrdersThreshold)}
+                                onChange={(event) =>
+                                    setFeatureFlags((current) => ({
+                                        ...current,
+                                        newVendorCompletedOrdersThreshold: Math.max(0, Math.round(Number(event.target.value))),
+                                    }))
+                                }
+                                helperText="Vendors below this completed-order count are treated as new vendors for controls below."
+                            />
+                        </div>
+
+                        <div>
+                            <label className="mb-2 block text-sm font-semibold text-slate-800">
+                                New Vendor Max Listings
+                            </label>
+                            <TextInput
+                                type="number"
+                                min={1}
+                                max={5000}
+                                step="1"
+                                value={String(featureFlags.newVendorMaxActiveListings)}
+                                onChange={(event) =>
+                                    setFeatureFlags((current) => ({
+                                        ...current,
+                                        newVendorMaxActiveListings: Math.max(1, Math.round(Number(event.target.value))),
+                                    }))
+                                }
+                                helperText="Maximum inventory listings allowed for new vendors."
+                            />
+                        </div>
+
+                        <div>
+                            <label className="mb-2 block text-sm font-semibold text-slate-800">
+                                Flagged Vendor Max Listings
+                            </label>
+                            <TextInput
+                                type="number"
+                                min={1}
+                                max={5000}
+                                step="1"
+                                value={String(featureFlags.flaggedVendorMaxActiveListings)}
+                                onChange={(event) =>
+                                    setFeatureFlags((current) => ({
+                                        ...current,
+                                        flaggedVendorMaxActiveListings: Math.max(1, Math.round(Number(event.target.value))),
+                                    }))
+                                }
+                                helperText="Maximum listings when a vendor is suspicious or low-rated."
+                            />
+                        </div>
+
+                        <div>
+                            <label className="mb-2 block text-sm font-semibold text-slate-800">
+                                New Vendor Payout Delay (Days)
+                            </label>
+                            <TextInput
+                                type="number"
+                                min={0}
+                                max={30}
+                                step="1"
+                                value={String(featureFlags.payoutDelayDaysForNewVendors)}
+                                onChange={(event) =>
+                                    setFeatureFlags((current) => ({
+                                        ...current,
+                                        payoutDelayDaysForNewVendors: Math.max(0, Math.round(Number(event.target.value))),
+                                    }))
+                                }
+                                helperText="How long payouts stay held for vendors still within the new-vendor threshold."
                             />
                         </div>
                     </div>

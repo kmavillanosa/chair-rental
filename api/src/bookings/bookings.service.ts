@@ -13,12 +13,27 @@ import {
   BookingStatus,
 } from './entities/booking.entity';
 import { BookingItem } from './entities/booking-item.entity';
+import { BookingMessage } from './entities/booking-message.entity';
+import { BookingReview } from './entities/booking-review.entity';
+import { BookingDeliveryProof } from './entities/booking-delivery-proof.entity';
+import {
+  BookingDocument,
+  BookingDocumentIssuedTo,
+  BookingDocumentType,
+} from './entities/booking-document.entity';
 import { InventoryItem } from '../inventory/entities/inventory-item.entity';
 import { VendorPayment, PaymentStatus } from '../payments/entities/vendor-payment.entity';
+import { VendorPayout, VendorPayoutStatus } from '../payments/entities/vendor-payout.entity';
 import { differenceInDays } from 'date-fns';
 import { Vendor } from '../vendors/entities/vendor.entity';
 import { SettingsService } from '../settings/settings.service';
-import { UserRole } from '../users/entities/user.entity';
+import { User, UserRole } from '../users/entities/user.entity';
+import { FraudService } from '../fraud/fraud.service';
+import { FraudAlertSeverity, FraudAlertType } from '../fraud/entities/fraud-alert.entity';
+import { RocketChatService } from '../chat/rocketchat.service';
+import { createHash, createHmac } from 'crypto';
+import { promises as fs } from 'fs';
+import { dirname, isAbsolute, join } from 'path';
 
 type CreateBookingPayload = {
   vendorId: string;
@@ -31,6 +46,7 @@ type CreateBookingPayload = {
   deliveryCharge?: number;
   serviceCharge?: number;
   notes?: string;
+  depositPercentage?: number;
 };
 
 type NormalizedBookingItem = {
@@ -85,10 +101,22 @@ export class BookingsService {
     @InjectRepository(Booking) private readonly bookingsRepo: Repository<Booking>,
     @InjectRepository(BookingItem) private readonly bookingItemsRepo: Repository<BookingItem>,
     @InjectRepository(InventoryItem) private readonly inventoryRepo: Repository<InventoryItem>,
+    @InjectRepository(BookingMessage)
+    private readonly bookingMessagesRepo: Repository<BookingMessage>,
+    @InjectRepository(BookingReview)
+    private readonly bookingReviewsRepo: Repository<BookingReview>,
+    @InjectRepository(BookingDeliveryProof)
+    private readonly bookingDeliveryProofRepo: Repository<BookingDeliveryProof>,
+    @InjectRepository(BookingDocument)
+    private readonly bookingDocumentsRepo: Repository<BookingDocument>,
     @InjectRepository(VendorPayment) private readonly paymentsRepo: Repository<VendorPayment>,
+    @InjectRepository(VendorPayout) private readonly vendorPayoutsRepo: Repository<VendorPayout>,
     @InjectRepository(Vendor) private readonly vendorsRepo: Repository<Vendor>,
+    @InjectRepository(User) private readonly usersRepo: Repository<User>,
     private readonly dataSource: DataSource,
     private readonly settingsService: SettingsService,
+    private readonly fraudService: FraudService,
+    private readonly rocketchatService: RocketChatService,
   ) {}
 
   findByVendor(vendorId: string) {
@@ -125,15 +153,17 @@ export class BookingsService {
       relations: [
         'customer',
         'vendor',
+        'vendor.user',
         'items',
         'items.inventoryItem',
         'items.inventoryItem.itemType',
         'items.inventoryItem.brand',
+        'deliveryProofs',
       ],
     });
   }
 
-  async create(customerId: string, data: CreateBookingPayload) {
+  async create(customerId: string, data: CreateBookingPayload, createdFromIp?: string) {
     if (!Array.isArray(data.items) || data.items.length === 0) {
       throw new BadRequestException('At least one booking item is required');
     }
@@ -169,6 +199,15 @@ export class BookingsService {
     const commissionRate = await this.resolveCommissionRateForBooking(
       vendor.commissionRate,
     );
+
+    const fraudSignals = await this.detectFraudSignalsOnCreate({
+      customerId,
+      vendor,
+      totalAmountEstimate: normalizedItems.reduce((sum, item) => sum + Number(item.quantity || 0), 0),
+      createdFromIp,
+    });
+
+    const depositPercentage = await this.resolveDepositPercentage(data.depositPercentage);
 
     const createdBooking = await this.dataSource.transaction(async (manager) => {
       const days = Math.max(1, differenceInDays(endDate, startDate) + 1);
@@ -219,6 +258,8 @@ export class BookingsService {
 
       const platformFee = subtotalItems * commissionRate;
       const totalAmount = subtotalItems + delivery + service;
+      const depositAmount = this.toMoney((totalAmount * depositPercentage) / 100);
+      const remainingBalanceAmount = this.toMoney(totalAmount - depositAmount);
 
       const booking = manager.create(Booking, {
         customerId,
@@ -232,9 +273,20 @@ export class BookingsService {
         serviceCharge: service,
         platformFee,
         totalAmount,
+        depositPercentage,
+        depositAmount,
+        remainingBalanceAmount,
+        totalPaidAmount: 0,
+        escrowHeldAmount: 0,
+        escrowReleasedAmount: 0,
         notes: data.notes,
         status: BookingStatus.PENDING,
-        paymentStatus: BookingPaymentStatus.UNPAID,
+        paymentStatus: this.isPayMongoEnabled()
+          ? BookingPaymentStatus.PENDING
+          : BookingPaymentStatus.UNPAID,
+        paymentProvider: this.isPayMongoEnabled() ? 'paymongo' : null,
+        fraudRiskScore: fraudSignals.score,
+        createdFromIp: createdFromIp || null,
       });
       const savedBooking = await manager.save(booking);
 
@@ -246,9 +298,36 @@ export class BookingsService {
       return savedBooking;
     });
 
-    if (this.isPayMongoEnabled()) {
+    await this.ensureVendorPayoutRecord(createdBooking.id);
+
+    if (fraudSignals.score >= 45) {
+      await this.fraudService.createAlert({
+        type: FraudAlertType.BOOKING_RISK,
+        severity: fraudSignals.score >= 75 ? FraudAlertSeverity.CRITICAL : FraudAlertSeverity.HIGH,
+        title: 'High-risk booking detected',
+        description: `Booking ${createdBooking.id} triggered fraud checks: ${fraudSignals.reasons.join(', ')}`,
+        userId: customerId,
+        vendorId: createdBooking.vendorId,
+        bookingId: createdBooking.id,
+        metadata: {
+          score: fraudSignals.score,
+          reasons: fraudSignals.reasons,
+          createdFromIp: createdFromIp || null,
+        },
+      });
+    }
+
+    if (
+      this.isPayMongoEnabled() &&
+      !(await this.allowOrdersWithoutPayment())
+    ) {
       try {
-        await this.createPayMongoCheckoutForBooking(createdBooking.id, customerId);
+        await this.createPayMongoCheckoutForBooking(
+          createdBooking.id,
+          customerId,
+          false,
+          false,
+        );
       } catch (error) {
         this.logger.error(
           `PayMongo checkout failed for booking ${createdBooking.id}`,
@@ -264,7 +343,63 @@ export class BookingsService {
       }
     }
 
-    return this.findById(createdBooking.id);
+    const createdBookingWithRelations = await this.findById(createdBooking.id);
+    if (createdBookingWithRelations) {
+      await this.tryEnsureBookingDocuments(createdBookingWithRelations.id);
+    }
+
+    // Provision Rocket.Chat room — fire-and-forget so RC downtime never
+    // blocks booking creation.
+    this.provisionBookingChatRoom(
+      createdBooking.id,
+      customerId,
+      vendor.userId,
+    ).catch((err: unknown) => {
+      this.logger.warn(
+        `RC room provisioning failed for booking ${createdBooking.id}: ${
+          err instanceof Error ? err.message : String(err)
+        }`,
+      );
+    });
+
+    return createdBookingWithRelations;
+  }
+
+  private async provisionBookingChatRoom(
+    bookingId: string,
+    customerId: string,
+    vendorUserId: string,
+  ): Promise<void> {
+    const [customer, vendorUser] = await Promise.all([
+      this.usersRepo.findOne({ where: { id: customerId } }),
+      this.usersRepo.findOne({ where: { id: vendorUserId } }),
+    ]);
+
+    if (!customer || !vendorUser) {
+      this.logger.warn(
+        `Cannot provision RC room for booking ${bookingId}: user(s) not found`,
+      );
+      return;
+    }
+
+    const roomId = await this.rocketchatService.ensureBookingRoom(
+      bookingId,
+      customerId,
+      customer.name,
+      customer.email,
+      vendorUserId,
+      vendorUser.name,
+      vendorUser.email,
+    );
+
+    await this.bookingsRepo.update(bookingId, { rocketchatRoomId: roomId });
+    this.logger.log(
+      `RC room provisioned for booking ${bookingId}: roomId=${roomId}`,
+    );
+  }
+
+  async setRocketchatRoomId(bookingId: string, roomId: string): Promise<void> {
+    await this.bookingsRepo.update(bookingId, { rocketchatRoomId: roomId });
   }
 
   async createOrRefreshCheckout(bookingId: string, customerId: string) {
@@ -285,8 +420,42 @@ export class BookingsService {
       return booking;
     }
 
-    await this.createPayMongoCheckoutForBooking(booking.id, customerId, true);
-    return this.findById(booking.id);
+    await this.createPayMongoCheckoutForBooking(booking.id, customerId, true, false);
+    const verifiedBooking = await this.findById(booking.id);
+    if (verifiedBooking) {
+      await this.tryEnsureBookingDocuments(verifiedBooking.id);
+    }
+
+    return verifiedBooking;
+  }
+
+  async createRemainingBalanceCheckout(bookingId: string, customerId: string) {
+    const booking = await this.findById(bookingId);
+    if (!booking || booking.customerId !== customerId) {
+      throw new NotFoundException('Booking not found');
+    }
+
+    if (booking.totalPaidAmount <= 0) {
+      throw new BadRequestException(
+        'Deposit payment must be completed before paying the remaining balance',
+      );
+    }
+
+    if (booking.remainingBalanceAmount <= 0) {
+      throw new BadRequestException('There is no remaining balance for this booking');
+    }
+
+    if (!this.isPayMongoEnabled()) {
+      throw new BadRequestException('Online payment checkout is not enabled');
+    }
+
+    await this.createPayMongoCheckoutForBooking(booking.id, customerId, true, true);
+    const cancelledBooking = await this.findById(booking.id);
+    if (cancelledBooking) {
+      await this.tryEnsureBookingDocuments(cancelledBooking.id);
+    }
+
+    return cancelledBooking;
   }
 
   async verifyPayMongoCheckout(
@@ -301,6 +470,14 @@ export class BookingsService {
 
     if ([BookingStatus.CANCELLED, BookingStatus.COMPLETED].includes(booking.status)) {
       throw new BadRequestException('Payment verification is unavailable for this booking status');
+    }
+
+    if (
+      [BookingPaymentStatus.HELD, BookingPaymentStatus.COMPLETED].includes(
+        booking.paymentStatus,
+      )
+    ) {
+      return booking;
     }
 
     if (booking.paymentStatus === BookingPaymentStatus.PAID) {
@@ -339,16 +516,64 @@ export class BookingsService {
       throw new BadRequestException('Payment is not completed yet');
     }
 
+    const paymentReference =
+      this.extractPayMongoPaymentReference(sessionPayload) ||
+      booking.paymentReference ||
+      storedSessionId;
+
+    const paidAt = new Date();
+    const payingRemainingBalance =
+      booking.totalPaidAmount >= booking.depositAmount &&
+      booking.remainingBalanceAmount > 0;
+
+    const initialPaymentAmount = this.toMoney(
+      booking.depositAmount > 0 ? booking.depositAmount : booking.totalAmount,
+    );
+
+    const nextTotalPaid = payingRemainingBalance
+      ? this.toMoney(booking.totalPaidAmount + booking.remainingBalanceAmount)
+      : this.toMoney(booking.totalPaidAmount + initialPaymentAmount);
+
+    const nextEscrowHeldAmount = this.toMoney(nextTotalPaid);
+    const nextRemainingBalance = this.toMoney(
+      Math.max(0, booking.totalAmount - nextTotalPaid),
+    );
+
     await this.bookingsRepo.update(booking.id, {
-      paymentStatus: BookingPaymentStatus.PAID,
-      paymentPaidAt: new Date(),
-      paymentReference:
-        this.extractPayMongoPaymentReference(sessionPayload) ||
-        booking.paymentReference ||
-        storedSessionId,
+      paymentStatus:
+        nextRemainingBalance > 0
+          ? BookingPaymentStatus.PAID
+          : BookingPaymentStatus.HELD,
+      paymentPaidAt: paidAt,
+      paymentReference,
+      totalPaidAmount: nextTotalPaid,
+      escrowHeldAmount: nextEscrowHeldAmount,
+      remainingBalanceAmount: nextRemainingBalance,
+      depositPaidAt: booking.depositPaidAt || paidAt,
+      finalPaymentPaidAt: nextRemainingBalance > 0 ? null : paidAt,
+      escrowHeldAt: paidAt,
+      paymentCheckoutSessionId: null,
+      paymentCheckoutUrl: null,
     });
 
+    await this.vendorPayoutsRepo.update(
+      { bookingId: booking.id },
+      {
+        status: VendorPayoutStatus.HELD,
+        heldAt: paidAt,
+        outstandingBalanceAmount: nextRemainingBalance,
+      },
+    );
+
     return this.findById(booking.id);
+  }
+
+  async verifyRemainingBalancePayment(
+    bookingId: string,
+    customerId: string,
+    checkoutSessionId?: string,
+  ) {
+    return this.verifyPayMongoCheckout(bookingId, customerId, checkoutSessionId);
   }
 
   async getCancellationPreview(
@@ -390,15 +615,440 @@ export class BookingsService {
     if (
       status === BookingStatus.CONFIRMED &&
       (booking.paymentProvider || '').toLowerCase() === 'paymongo' &&
-      booking.paymentStatus !== BookingPaymentStatus.PAID
+      ![
+        BookingPaymentStatus.PAID,
+        BookingPaymentStatus.HELD,
+        BookingPaymentStatus.COMPLETED,
+      ].includes(booking.paymentStatus) &&
+      !(await this.allowOrdersWithoutPayment())
     ) {
       throw new BadRequestException(
         'Booking cannot be confirmed until payment is completed',
       );
     }
 
+    if (status === BookingStatus.COMPLETED) {
+      const proofCount = await this.bookingDeliveryProofRepo.count({
+        where: { bookingId: id },
+      });
+      if (!proofCount) {
+        throw new BadRequestException(
+          'Delivery proof must be uploaded before marking booking as completed',
+        );
+      }
+
+      if (
+        booking.remainingBalanceAmount > 0 &&
+        !(await this.allowOrdersWithoutPayment())
+      ) {
+        throw new BadRequestException(
+          'Remaining balance must be paid before completing this booking',
+        );
+      }
+    }
+
     await this.bookingsRepo.update(id, { status });
-    return this.findById(id);
+
+    if (status === BookingStatus.COMPLETED) {
+      if (booking.customerConfirmedDeliveryAt) {
+        await this.vendorPayoutsRepo.update(
+          { bookingId: id },
+          {
+            status: VendorPayoutStatus.READY,
+            releaseOn: await this.computeVendorPayoutReleaseOn(booking.vendorId),
+          },
+        );
+      } else {
+        await this.vendorPayoutsRepo.update(
+          { bookingId: id },
+          {
+            status: VendorPayoutStatus.HELD,
+            heldAt: booking.escrowHeldAt || new Date(),
+          },
+        );
+      }
+    }
+
+    const updatedBooking = await this.findById(id);
+    if (updatedBooking) {
+      await this.tryEnsureBookingDocuments(updatedBooking.id);
+    }
+
+    return updatedBooking;
+  }
+
+  async uploadDeliveryProof(
+    bookingId: string,
+    vendorUserId: string,
+    payload: {
+      photoUrl?: string;
+      signatureUrl?: string;
+      note?: string;
+      capturedAt?: string;
+    },
+  ) {
+    const booking = await this.findById(bookingId);
+    if (!booking || booking.vendor?.userId !== vendorUserId) {
+      throw new NotFoundException('Booking not found');
+    }
+
+    if ([BookingStatus.CANCELLED].includes(booking.status)) {
+      throw new BadRequestException('Cannot upload delivery proof for cancelled booking');
+    }
+
+    if (
+      ![BookingStatus.CONFIRMED, BookingStatus.COMPLETED].includes(booking.status)
+    ) {
+      throw new BadRequestException(
+        'Delivery proof can only be uploaded after booking is confirmed',
+      );
+    }
+
+    const photoUrl = String(payload.photoUrl || '').trim();
+    if (!photoUrl) {
+      throw new BadRequestException('Delivery proof photo is required');
+    }
+
+    const capturedAt = payload.capturedAt ? new Date(payload.capturedAt) : new Date();
+    if (Number.isNaN(capturedAt.getTime())) {
+      throw new BadRequestException('capturedAt must be a valid datetime');
+    }
+
+    await this.bookingDeliveryProofRepo.save(
+      this.bookingDeliveryProofRepo.create({
+        bookingId,
+        vendorId: booking.vendorId,
+        photoUrl,
+        signatureUrl: payload.signatureUrl || null,
+        note: payload.note || null,
+        capturedAt,
+      }),
+    );
+
+    await this.bookingsRepo.update(bookingId, {
+      vendorMarkedDeliveredAt: new Date(),
+    });
+
+    const confirmedBooking = await this.findById(bookingId);
+    if (confirmedBooking) {
+      await this.tryEnsureBookingDocuments(confirmedBooking.id);
+    }
+
+    return confirmedBooking;
+  }
+
+  async confirmDelivery(
+    bookingId: string,
+    actorUserId: string,
+    actorRole: UserRole,
+  ) {
+    const booking = await this.findById(bookingId);
+    if (!booking) {
+      throw new NotFoundException('Booking not found');
+    }
+
+    this.assertCanAccessBooking(booking, actorUserId, actorRole);
+    if (actorRole !== UserRole.CUSTOMER || booking.customerId !== actorUserId) {
+      throw new ForbiddenException('Only the booking customer can confirm delivery');
+    }
+
+    if (booking.status === BookingStatus.CANCELLED) {
+      throw new BadRequestException('Cancelled bookings cannot be confirmed');
+    }
+
+    if (booking.customerConfirmedDeliveryAt) {
+      return booking;
+    }
+
+    const allowUnpaidOrders = await this.allowOrdersWithoutPayment();
+    if (booking.remainingBalanceAmount > 0 && !allowUnpaidOrders) {
+      throw new BadRequestException(
+        'Remaining balance must be settled before delivery can be confirmed',
+      );
+    }
+
+    const markPaymentCompleted =
+      booking.remainingBalanceAmount <= 0 || !allowUnpaidOrders;
+
+    const proofCount = await this.bookingDeliveryProofRepo.count({
+      where: { bookingId },
+    });
+    if (!proofCount) {
+      throw new BadRequestException('Vendor delivery proof is required before confirmation');
+    }
+
+    await this.bookingsRepo.update(bookingId, {
+      status: BookingStatus.COMPLETED,
+      customerConfirmedDeliveryAt: new Date(),
+      customerConfirmedDeliveryByUserId: actorUserId,
+      paymentStatus: markPaymentCompleted
+        ? BookingPaymentStatus.COMPLETED
+        : booking.paymentStatus,
+      totalPaidAmount: markPaymentCompleted
+        ? this.toMoney(booking.totalAmount)
+        : booking.totalPaidAmount,
+      remainingBalanceAmount: markPaymentCompleted ? 0 : booking.remainingBalanceAmount,
+      escrowReleasedAt: new Date(),
+      escrowReleasedAmount: booking.escrowHeldAmount,
+    });
+
+    await this.vendorPayoutsRepo.update(
+      { bookingId },
+      {
+        status: VendorPayoutStatus.READY,
+        releaseOn: await this.computeVendorPayoutReleaseOn(booking.vendorId),
+        outstandingBalanceAmount: allowUnpaidOrders
+          ? booking.remainingBalanceAmount
+          : 0,
+      },
+    );
+
+    await this.vendorsRepo.increment(
+      { id: booking.vendorId },
+      'successfulCompletedOrders',
+      1,
+    );
+
+    return this.findById(bookingId);
+  }
+
+  async listMessages(bookingId: string, actorUserId: string, actorRole: UserRole) {
+    const booking = await this.findById(bookingId);
+    if (!booking) {
+      throw new NotFoundException('Booking not found');
+    }
+    this.assertCanAccessBooking(booking, actorUserId, actorRole);
+
+    return this.bookingMessagesRepo.find({
+      where: { bookingId },
+      order: { createdAt: 'ASC' },
+    });
+  }
+
+  async sendMessage(
+    bookingId: string,
+    actorUserId: string,
+    actorRole: UserRole,
+    contentInput: string,
+  ) {
+    const booking = await this.findById(bookingId);
+    if (!booking) {
+      throw new NotFoundException('Booking not found');
+    }
+    this.assertCanAccessBooking(booking, actorUserId, actorRole);
+
+    const content = String(contentInput || '').trim();
+    if (!content) {
+      throw new BadRequestException('Message content is required');
+    }
+
+    const analysis = this.fraudService.analyzeMessageContent(content);
+    const saved = await this.bookingMessagesRepo.save(
+      this.bookingMessagesRepo.create({
+        bookingId,
+        senderUserId: actorUserId,
+        senderRole: actorRole,
+        content,
+        redactedContent: analysis.redactedContent,
+        isFlagged: analysis.isFlagged,
+        flagReasons: analysis.reasons.length
+          ? JSON.stringify(analysis.reasons)
+          : null,
+      }),
+    );
+
+    if (analysis.isFlagged) {
+      await this.fraudService.createAlert({
+        type: FraudAlertType.OFF_PLATFORM_MESSAGE,
+        severity: FraudAlertSeverity.HIGH,
+        title: 'Potential off-platform transaction attempt',
+        description: `Flagged message in booking ${bookingId}: ${analysis.reasons.join(', ')}`,
+        userId: actorUserId,
+        vendorId: booking.vendorId,
+        bookingId,
+        messageId: saved.id,
+        metadata: {
+          reasons: analysis.reasons,
+        },
+      });
+    }
+
+    return saved;
+  }
+
+  async listReviews(bookingId: string, actorUserId: string, actorRole: UserRole) {
+    const booking = await this.findById(bookingId);
+    if (!booking) {
+      throw new NotFoundException('Booking not found');
+    }
+    this.assertCanAccessBooking(booking, actorUserId, actorRole);
+
+    return this.bookingReviewsRepo.find({
+      where: { bookingId },
+      relations: ['reviewerUser', 'revieweeUser'],
+      order: { createdAt: 'ASC' },
+    });
+  }
+
+  async submitReview(
+    bookingId: string,
+    actorUserId: string,
+    actorRole: UserRole,
+    ratingInput: number,
+    commentInput?: string,
+  ) {
+    const booking = await this.findById(bookingId);
+    if (!booking) {
+      throw new NotFoundException('Booking not found');
+    }
+
+    this.assertCanAccessBooking(booking, actorUserId, actorRole);
+
+    if (booking.status !== BookingStatus.COMPLETED) {
+      throw new BadRequestException('Reviews are allowed only after booking completion');
+    }
+
+    const rating = Math.round(Number(ratingInput));
+    if (!Number.isInteger(rating) || rating < 1 || rating > 5) {
+      throw new BadRequestException('rating must be between 1 and 5');
+    }
+
+    let revieweeUserId: string;
+    let revieweeRole: UserRole;
+
+    if (actorRole === UserRole.CUSTOMER && booking.customerId === actorUserId) {
+      revieweeUserId = booking.vendor?.userId;
+      revieweeRole = UserRole.VENDOR;
+    } else if (actorRole === UserRole.VENDOR && booking.vendor?.userId === actorUserId) {
+      revieweeUserId = booking.customerId;
+      revieweeRole = UserRole.CUSTOMER;
+    } else {
+      throw new ForbiddenException('Only booking customer/vendor can review each other');
+    }
+
+    if (!revieweeUserId) {
+      throw new BadRequestException('Unable to determine review recipient');
+    }
+
+    const existingReview = await this.bookingReviewsRepo.findOne({
+      where: {
+        bookingId,
+        reviewerUserId: actorUserId,
+      },
+    });
+
+    if (existingReview) {
+      existingReview.rating = rating;
+      existingReview.comment = String(commentInput || '').trim() || null;
+      existingReview.revieweeUserId = revieweeUserId;
+      existingReview.revieweeRole = revieweeRole;
+      await this.bookingReviewsRepo.save(existingReview);
+    } else {
+      await this.bookingReviewsRepo.save(
+        this.bookingReviewsRepo.create({
+          bookingId,
+          reviewerUserId: actorUserId,
+          reviewerRole: actorRole,
+          revieweeUserId,
+          revieweeRole,
+          rating,
+          comment: String(commentInput || '').trim() || null,
+        }),
+      );
+    }
+
+    await this.refreshReputationForReviewee(revieweeUserId, revieweeRole);
+    return this.listReviews(bookingId, actorUserId, actorRole);
+  }
+
+  async listDocuments(
+    bookingId: string,
+    actorUserId: string,
+    actorRole: UserRole,
+  ) {
+    const booking = await this.findById(bookingId);
+    if (!booking) {
+      throw new NotFoundException('Booking not found');
+    }
+
+    this.assertCanAccessBooking(booking, actorUserId, actorRole);
+
+    await this.tryEnsureBookingDocuments(booking.id);
+
+    const documents = await this.bookingDocumentsRepo.find({
+      where: { bookingId },
+      order: { generatedAt: 'DESC' },
+    });
+
+    if (actorRole === UserRole.ADMIN) {
+      return documents;
+    }
+
+    if (actorRole === UserRole.CUSTOMER) {
+      return documents.filter((document) =>
+        [BookingDocumentIssuedTo.CUSTOMER, BookingDocumentIssuedTo.BOTH].includes(
+          document.issuedTo,
+        ),
+      );
+    }
+
+    return documents.filter((document) =>
+      [BookingDocumentIssuedTo.VENDOR, BookingDocumentIssuedTo.BOTH].includes(
+        document.issuedTo,
+      ),
+    );
+  }
+
+  async generateDocumentsForBooking(
+    bookingId: string,
+    actorUserId: string,
+    actorRole: UserRole,
+  ) {
+    const booking = await this.findById(bookingId);
+    if (!booking) {
+      throw new NotFoundException('Booking not found');
+    }
+
+    this.assertCanAccessBooking(booking, actorUserId, actorRole);
+
+    await this.ensureBookingDocuments(booking.id, true);
+    return this.listDocuments(booking.id, actorUserId, actorRole);
+  }
+
+  async getDocumentDownloadPayload(
+    bookingId: string,
+    documentId: string,
+    actorUserId: string,
+    actorRole: UserRole,
+  ) {
+    const booking = await this.findById(bookingId);
+    if (!booking) {
+      throw new NotFoundException('Booking not found');
+    }
+
+    this.assertCanAccessBooking(booking, actorUserId, actorRole);
+
+    const document = await this.bookingDocumentsRepo.findOne({
+      where: { id: documentId, bookingId },
+    });
+    if (!document) {
+      throw new NotFoundException('Booking document not found');
+    }
+
+    this.assertCanAccessDocument(document, actorRole);
+
+    const absolutePath = this.resolveAbsoluteDocumentPath(document.filePath);
+    try {
+      await fs.access(absolutePath);
+    } catch {
+      throw new NotFoundException('Booking document file is unavailable');
+    }
+
+    return {
+      absolutePath,
+      fileName: document.fileName,
+      mimeType: 'application/pdf',
+    };
   }
 
   async checkAvailability(vendorId: string, startDate: string, endDate: string) {
@@ -495,13 +1145,14 @@ export class BookingsService {
     }
 
     const preview = await this.buildCancellationPreview(booking, actorRole);
+    const paidAmount = this.resolvePaidAmountForRefund(booking);
     const shouldMarkFullyRefunded =
-      booking.paymentStatus === BookingPaymentStatus.PAID &&
-      preview.refundAmount >= this.toMoney(booking.totalAmount);
+      paidAmount > 0 &&
+      preview.refundAmount >= paidAmount;
 
     // Attempt PayMongo refund (best-effort — booking is cancelled regardless of refund outcome)
     if (
-      booking.paymentStatus === BookingPaymentStatus.PAID &&
+      paidAmount > 0 &&
       preview.refundAmount > 0
     ) {
       await this.executePayMongoRefund(booking, preview.refundAmount);
@@ -522,6 +1173,18 @@ export class BookingsService {
       paymentCheckoutUrl: null,
     });
 
+    await this.vendorPayoutsRepo.update(
+      { bookingId: booking.id },
+      {
+        status: shouldMarkFullyRefunded
+          ? VendorPayoutStatus.REFUNDED
+          : VendorPayoutStatus.CANCELLED,
+        notes: preview.refundAmount > 0
+          ? `Cancelled with refund ${preview.refundAmount} (${preview.refundPercent}%).`
+          : 'Cancelled without refund.',
+      },
+    );
+
     return this.findById(booking.id);
   }
 
@@ -533,11 +1196,12 @@ export class BookingsService {
     const today = this.toDateOnly(new Date());
     const daysBeforeStartDate = this.diffCalendarDays(startDate, today);
     const isSameDayBooking = daysBeforeStartDate <= 0;
-    const isPaidBooking = booking.paymentStatus === BookingPaymentStatus.PAID;
+    const paidAmount = this.resolvePaidAmountForRefund(booking);
+    const isPaidBooking = paidAmount > 0;
 
     const policy = await this.resolveCancellationPolicy(actorRole, daysBeforeStartDate);
     const refundAmount = isPaidBooking
-      ? this.toMoney((this.toMoney(booking.totalAmount) * policy.refundPercent) / 100)
+      ? this.toMoney((paidAmount * policy.refundPercent) / 100)
       : 0;
 
     return {
@@ -720,6 +1384,27 @@ export class BookingsService {
     return new Date(date.getFullYear(), date.getMonth(), date.getDate());
   }
 
+  private resolvePaidAmountForRefund(booking: Booking) {
+    const totalPaid = this.toMoney(booking.totalPaidAmount);
+    if (totalPaid > 0) {
+      return totalPaid;
+    }
+
+    if (
+      [
+        BookingPaymentStatus.PAID,
+        BookingPaymentStatus.HELD,
+        BookingPaymentStatus.COMPLETED,
+        BookingPaymentStatus.REFUNDED,
+        BookingPaymentStatus.DISPUTED,
+      ].includes(booking.paymentStatus)
+    ) {
+      return this.toMoney(booking.totalAmount);
+    }
+
+    return 0;
+  }
+
   private diffCalendarDays(laterDate: Date, earlierDate: Date) {
     const msPerDay = 24 * 60 * 60 * 1000;
     return Math.floor((laterDate.getTime() - earlierDate.getTime()) / msPerDay);
@@ -736,10 +1421,25 @@ export class BookingsService {
     return ['1', 'true', 'yes', 'on'].includes(flag);
   }
 
+  private async allowOrdersWithoutPayment() {
+    try {
+      const flags = await this.settingsService.getFeatureFlagsSettings();
+      return Boolean(flags.allowOrdersWithoutPayment);
+    } catch (error) {
+      this.logger.warn(
+        `Failed to resolve unpaid-order feature flag, defaulting to payment required: ${
+          error instanceof Error ? error.message : String(error)
+        }`,
+      );
+      return false;
+    }
+  }
+
   private async createPayMongoCheckoutForBooking(
     bookingId: string,
     customerId: string,
     forceNew = false,
+    forRemainingBalance = false,
   ) {
     const booking = await this.findById(bookingId);
     if (!booking || booking.customerId !== customerId) {
@@ -761,6 +1461,20 @@ export class BookingsService {
       throw new BadRequestException('Booking customer details are unavailable');
     }
 
+    if (forRemainingBalance && booking.remainingBalanceAmount <= 0) {
+      throw new BadRequestException('There is no remaining balance to pay');
+    }
+
+    if (
+      !forRemainingBalance &&
+      booking.totalPaidAmount > 0 &&
+      booking.remainingBalanceAmount > 0
+    ) {
+      throw new BadRequestException(
+        'Deposit is already paid. Use the remaining-balance checkout endpoint.',
+      );
+    }
+
     const vendorMerchantId = String(
       booking.vendor.paymongoMerchantId || '',
     ).trim();
@@ -780,8 +1494,16 @@ export class BookingsService {
       );
     }
 
-    const amountMinor = this.toMinorUnits(booking.totalAmount);
-    if (amountMinor <= 0) {
+    const payableAmount = forRemainingBalance
+      ? this.toMoney(booking.remainingBalanceAmount)
+      : this.toMoney(
+          booking.totalPaidAmount > 0
+            ? booking.depositAmount
+            : booking.depositAmount || booking.totalAmount,
+        );
+
+    const payableMinor = this.toMinorUnits(payableAmount);
+    if (payableMinor <= 0) {
       throw new BadRequestException('Booking amount must be greater than zero');
     }
 
@@ -789,6 +1511,8 @@ export class BookingsService {
       booking,
       vendorMerchantId,
       platformMerchantId,
+      payableAmount,
+      forRemainingBalance,
     );
 
     const baseApi = String(process.env.PAYMONGO_API_BASE_URL || 'https://api.paymongo.com/v1').replace(/\/$/, '');
@@ -820,9 +1544,9 @@ export class BookingsService {
           payment_method_types: methodTypes,
           line_items: [
             {
-              amount: amountMinor,
+              amount: payableMinor,
               quantity: 1,
-              name: `Rental Booking - ${booking.vendor.businessName}`,
+              name: `${forRemainingBalance ? 'Remaining Balance' : 'Booking Deposit'} - ${booking.vendor.businessName}`,
               description: `Booking #${booking.id}`,
               currency: 'PHP',
             },
@@ -877,10 +1601,16 @@ export class BookingsService {
     booking: Booking,
     transferToMerchantId: string,
     platformMerchantId: string,
+    payableAmount: number,
+    forRemainingBalance: boolean,
   ) {
     const recipients: PayMongoRecipient[] = [];
 
-    const platformBps = this.computePlatformCommissionBps(booking);
+    const platformBps = this.computePlatformCommissionBps(
+      booking,
+      payableAmount,
+      forRemainingBalance,
+    );
     if (platformBps > 0) {
       recipients.push({
         merchant_id: platformMerchantId,
@@ -892,7 +1622,11 @@ export class BookingsService {
     const deliveryMerchantId = String(
       process.env.PAYMONGO_DELIVERY_MERCHANT_ID || '',
     ).trim();
-    const deliveryFixed = this.toMinorUnits(booking.deliveryCharge);
+    const deliveryFixed = this.toMinorUnits(
+      !forRemainingBalance && payableAmount >= Number(booking.totalAmount || 0)
+        ? booking.deliveryCharge
+        : 0,
+    );
     if (deliveryMerchantId && deliveryFixed > 0) {
       recipients.push({
         merchant_id: deliveryMerchantId,
@@ -901,7 +1635,7 @@ export class BookingsService {
       });
     }
 
-    this.assertFixedSplitsWithinSafeNet(booking.totalAmount, recipients);
+    this.assertFixedSplitsWithinSafeNet(payableAmount, recipients);
 
     return {
       transfer_to: transferToMerchantId,
@@ -909,17 +1643,32 @@ export class BookingsService {
     };
   }
 
-  private computePlatformCommissionBps(booking: Booking) {
+  private computePlatformCommissionBps(
+    booking: Booking,
+    payableAmount: number,
+    forRemainingBalance = false,
+  ) {
     const total = Number(booking.totalAmount || 0);
-    const delivery = Number(booking.deliveryCharge || 0);
-    const service = Number(booking.serviceCharge || 0);
     const platformFee = Number(booking.platformFee || 0);
-    const itemsSubtotal = total - delivery - service;
+    const checkoutAmount = Number(payableAmount || 0);
 
     if (!Number.isFinite(platformFee) || platformFee <= 0) return 0;
-    if (!Number.isFinite(itemsSubtotal) || itemsSubtotal <= 0) return 0;
+    if (!Number.isFinite(total) || total <= 0) return 0;
+    if (!Number.isFinite(checkoutAmount) || checkoutAmount <= 0) return 0;
 
-    const bps = Math.round((platformFee / itemsSubtotal) * 10000);
+    const baseRatio = platformFee / total;
+    let platformShareAmount = checkoutAmount * baseRatio;
+
+    if (forRemainingBalance) {
+      const priorCheckoutAmount = Math.max(0, Number(booking.totalPaidAmount || 0));
+      const alreadyAllocated = priorCheckoutAmount * baseRatio;
+      platformShareAmount = Math.max(0, platformFee - alreadyAllocated);
+      platformShareAmount = Math.min(platformShareAmount, checkoutAmount);
+    }
+
+    if (platformShareAmount <= 0) return 0;
+
+    const bps = Math.round((platformShareAmount / checkoutAmount) * 10000);
     return Math.max(1, Math.min(10000, bps));
   }
 
@@ -1071,6 +1820,673 @@ export class BookingsService {
       : null;
 
     return firstPaymentId || attributes.payment_intent?.id || null;
+  }
+
+  private async resolveDepositPercentage(input?: number) {
+    const explicit = Number(input);
+    if (Number.isFinite(explicit) && explicit > 0 && explicit <= 100) {
+      return Number(explicit.toFixed(2));
+    }
+
+    try {
+      const flags = await this.settingsService.getFeatureFlagsSettings();
+      const configured = Number(flags.defaultDepositPercent);
+      if (Number.isFinite(configured) && configured > 0 && configured <= 100) {
+        return Number(configured.toFixed(2));
+      }
+    } catch {
+      // Default fallback below.
+    }
+
+    return 30;
+  }
+
+  private async ensureVendorPayoutRecord(bookingId: string) {
+    const booking = await this.findById(bookingId);
+    if (!booking) return;
+
+    const existing = await this.vendorPayoutsRepo.findOne({ where: { bookingId } });
+    if (existing) return;
+
+    const gross = this.toMoney(booking.totalAmount - booking.platformFee);
+    await this.vendorPayoutsRepo.save(
+      this.vendorPayoutsRepo.create({
+        vendorId: booking.vendorId,
+        bookingId,
+        grossAmount: this.toMoney(booking.totalAmount),
+        platformFeeAmount: this.toMoney(booking.platformFee),
+        netAmount: gross,
+        depositHeldAmount: this.toMoney(booking.depositAmount),
+        outstandingBalanceAmount: this.toMoney(booking.remainingBalanceAmount),
+        status: VendorPayoutStatus.PENDING,
+      }),
+    );
+  }
+
+  private async detectFraudSignalsOnCreate(input: {
+    customerId: string;
+    vendor: Vendor;
+    totalAmountEstimate: number;
+    createdFromIp?: string;
+  }) {
+    let score = 0;
+    const reasons: string[] = [];
+
+    const recentBookings = await this.bookingsRepo.find({
+      where: { customerId: input.customerId },
+      order: { createdAt: 'DESC' },
+      take: 15,
+    });
+
+    if (recentBookings.length <= 1 && input.totalAmountEstimate >= 8) {
+      score += 20;
+      reasons.push('new_account_high_volume_order');
+    }
+
+    const cancellations = recentBookings.filter(
+      (booking) => booking.status === BookingStatus.CANCELLED,
+    ).length;
+    if (cancellations >= 3) {
+      score += 20;
+      reasons.push('repeated_cancellations');
+    }
+
+    const now = Date.now();
+    const sameDayBookings = recentBookings.filter((booking) => {
+      const ts = new Date(booking.createdAt).getTime();
+      return Number.isFinite(ts) && now - ts <= 24 * 60 * 60 * 1000;
+    }).length;
+    if (sameDayBookings >= 4) {
+      score += 25;
+      reasons.push('unusual_booking_frequency');
+    }
+
+    const ip = String(input.createdFromIp || '').trim();
+    if (ip) {
+      const otherBookingsSameIp = await this.bookingsRepo.count({
+        where: { createdFromIp: ip },
+      });
+      if (otherBookingsSameIp >= 4) {
+        score += 25;
+        reasons.push('multiple_accounts_same_ip');
+      }
+    }
+
+    return { score, reasons };
+  }
+
+  private async computeVendorPayoutReleaseOn(vendorId: string) {
+    const vendor = await this.vendorsRepo.findOne({ where: { id: vendorId } });
+    if (!vendor) return null;
+
+    const completedOrders = Number(vendor.successfulCompletedOrders || 0);
+    const releaseOn = new Date();
+
+    let completedThreshold = 5;
+    let delayDays = 3;
+    try {
+      const flags = await this.settingsService.getFeatureFlagsSettings();
+      completedThreshold = Number(flags.newVendorCompletedOrdersThreshold);
+      delayDays = Number(flags.payoutDelayDaysForNewVendors);
+    } catch {
+      // Use defaults when flags are unavailable.
+    }
+
+    if (completedOrders < completedThreshold) {
+      releaseOn.setDate(releaseOn.getDate() + Math.max(0, Math.round(delayDays)));
+      return releaseOn;
+    }
+
+    return releaseOn;
+  }
+
+  private async refreshReputationForReviewee(
+    revieweeUserId: string,
+    revieweeRole: UserRole,
+  ) {
+    const reviews = await this.bookingReviewsRepo.find({
+      where: { revieweeUserId, revieweeRole },
+    });
+
+    const total = reviews.length;
+    const average = total
+      ? Number(
+          (
+            reviews.reduce((sum, review) => sum + Number(review.rating || 0), 0) /
+            total
+          ).toFixed(2),
+        )
+      : 0;
+
+    if (revieweeRole === UserRole.VENDOR) {
+      const vendor = await this.vendorsRepo.findOne({ where: { userId: revieweeUserId } });
+      if (!vendor) return;
+
+      await this.vendorsRepo.update(vendor.id, {
+        averageRating: average,
+        totalRatings: total,
+        lowRatingFlag: total >= 3 && average < 3,
+      });
+
+      if (total >= 3 && average < 3) {
+        await this.fraudService.createAlert({
+          type: FraudAlertType.LOW_RATING_VENDOR,
+          severity: FraudAlertSeverity.MEDIUM,
+          title: 'Vendor flagged for low ratings',
+          description: `${vendor.businessName} has an average rating of ${average} (${total} ratings).`,
+          vendorId: vendor.id,
+          userId: revieweeUserId,
+          metadata: { averageRating: average, totalRatings: total },
+        });
+      }
+
+      return;
+    }
+
+    await this.usersRepo.update(revieweeUserId, {
+      averageCustomerRating: average,
+      totalCustomerRatings: total,
+    });
+  }
+
+  private async tryEnsureBookingDocuments(bookingId: string) {
+    try {
+      await this.ensureBookingDocuments(bookingId);
+    } catch (error) {
+      this.logger.error(
+        `Failed to generate booking documents for ${bookingId}: ${
+          error instanceof Error ? error.message : String(error)
+        }`,
+      );
+    }
+  }
+
+  private async ensureBookingDocuments(
+    bookingId: string,
+    forceRegenerate = false,
+  ) {
+    const booking = await this.findById(bookingId);
+    if (!booking) return;
+
+    await this.upsertSignedBookingDocument({
+      booking,
+      documentType: BookingDocumentType.CONTRACT,
+      issuedTo: BookingDocumentIssuedTo.BOTH,
+      title: 'Letter of Agreement',
+      forceRegenerate,
+    });
+
+    await this.upsertSignedBookingDocument({
+      booking,
+      documentType: BookingDocumentType.RECEIPT,
+      issuedTo: BookingDocumentIssuedTo.CUSTOMER,
+      title: 'Customer Receipt',
+      forceRegenerate,
+    });
+
+    await this.upsertSignedBookingDocument({
+      booking,
+      documentType: BookingDocumentType.RECEIPT,
+      issuedTo: BookingDocumentIssuedTo.VENDOR,
+      title: 'Vendor Receipt',
+      forceRegenerate,
+    });
+  }
+
+  private async upsertSignedBookingDocument(input: {
+    booking: Booking;
+    documentType: BookingDocumentType;
+    issuedTo: BookingDocumentIssuedTo;
+    title: string;
+    forceRegenerate?: boolean;
+  }) {
+    const booking = input.booking;
+    const existing = await this.bookingDocumentsRepo.findOne({
+      where: {
+        bookingId: booking.id,
+        documentType: input.documentType,
+        issuedTo: input.issuedTo,
+      },
+    });
+
+    const signaturePayload = {
+      // Bump this value whenever document layout/terms are changed.
+      version: 2,
+      bookingId: booking.id,
+      vendorId: booking.vendorId,
+      customerId: booking.customerId,
+      documentType: input.documentType,
+      issuedTo: input.issuedTo,
+      bookingStatus: booking.status,
+      paymentStatus: booking.paymentStatus,
+      startDate: this.formatDate(booking.startDate),
+      endDate: this.formatDate(booking.endDate),
+      totalAmount: this.toMoney(booking.totalAmount),
+      totalPaidAmount: this.toMoney(booking.totalPaidAmount),
+      remainingBalanceAmount: this.toMoney(booking.remainingBalanceAmount),
+    };
+    const signaturePayloadText = JSON.stringify(signaturePayload);
+    const signaturePayloadHash = this.hashContent(signaturePayloadText);
+
+    if (
+      existing &&
+      !input.forceRegenerate &&
+      existing.signaturePayloadHash === signaturePayloadHash
+    ) {
+      return existing;
+    }
+
+    const signature = this.signContent(signaturePayloadText);
+    const generatedAt = new Date();
+
+    const pdfBuffer = this.buildBookingPdf({
+      title: input.title,
+      docType: input.documentType,
+      issuedTo: input.issuedTo,
+      booking,
+      signature,
+      signaturePayloadHash,
+      generatedAt,
+    });
+    const fileHash = this.hashContent(pdfBuffer);
+
+    const fileName = `booking-${booking.id}-${input.documentType}-${input.issuedTo}.pdf`;
+    const filePath = `booking-documents/${booking.id}/${input.documentType}-${input.issuedTo}.pdf`;
+    const absolutePath = this.resolveAbsoluteDocumentPath(filePath);
+    await fs.mkdir(dirname(absolutePath), { recursive: true });
+    await fs.writeFile(absolutePath, pdfBuffer);
+
+    const fileUrl = `/uploads/${filePath.replace(/\\/g, '/')}`;
+    const metadata = JSON.stringify({ signaturePayload });
+
+    if (existing) {
+      existing.title = input.title;
+      existing.fileName = fileName;
+      existing.filePath = filePath;
+      existing.fileUrl = fileUrl;
+      existing.fileHash = fileHash;
+      existing.signature = signature;
+      existing.signatureAlgorithm = 'HMAC-SHA256';
+      existing.signaturePayloadHash = signaturePayloadHash;
+      existing.generatedAt = generatedAt;
+      existing.metadata = metadata;
+      return this.bookingDocumentsRepo.save(existing);
+    }
+
+    return this.bookingDocumentsRepo.save(
+      this.bookingDocumentsRepo.create({
+        bookingId: booking.id,
+        documentType: input.documentType,
+        issuedTo: input.issuedTo,
+        title: input.title,
+        fileName,
+        filePath,
+        fileUrl,
+        fileHash,
+        signature,
+        signatureAlgorithm: 'HMAC-SHA256',
+        signaturePayloadHash,
+        generatedAt,
+        metadata,
+      }),
+    );
+  }
+
+  private buildBookingPdf(params: {
+    title: string;
+    docType: BookingDocumentType;
+    issuedTo: BookingDocumentIssuedTo;
+    booking: Booking;
+    signature: string;
+    signaturePayloadHash: string;
+    generatedAt: Date;
+  }): Buffer {
+    const { docType, issuedTo, booking, signature, signaturePayloadHash, generatedAt } = params;
+    const margin = 50;
+    const contentWidth = 512;
+    const pageW = 612;
+    const pageH = 792;
+    const ops: string[] = [];
+
+    const esc = (s: unknown) =>
+      this.escapePdfText(this.sanitizePdfText(String(s ?? '')));
+
+    const money = (v: number | string | null | undefined) =>
+      `PHP ${this.toMoney(Number(v ?? 0)).toFixed(2)}`;
+
+    const txt = (
+      text: string,
+      x: number,
+      yPos: number,
+      font: number,
+      size: number,
+      r: number,
+      g: number,
+      b: number,
+    ) => {
+      ops.push(
+        `BT /F${font} ${size} Tf ${r} ${g} ${b} rg 1 0 0 1 ${x} ${yPos} Tm (${text}) Tj ET`,
+      );
+    };
+
+    const vendorName = booking.vendor?.businessName || booking.vendorId;
+    const customerName = booking.customer?.name || booking.customerId;
+    const customerEmail = booking.customer?.email || 'n/a';
+    const rentalPeriod = `${this.formatDate(booking.startDate)} to ${this.formatDate(booking.endDate)}`;
+
+    ops.push(`q 0.12 0.25 0.39 rg 0 ${pageH - 45} ${pageW} 45 re f Q`);
+    txt(esc('RENTALBASIC PLATFORM'), margin, pageH - 28, 2, 13, 1, 1, 1);
+
+    const docLabel =
+      docType === BookingDocumentType.CONTRACT
+        ? 'LETTER OF AGREEMENT'
+        : issuedTo === BookingDocumentIssuedTo.CUSTOMER
+          ? 'CUSTOMER RECEIPT'
+          : 'VENDOR RECEIPT';
+    txt(esc(docLabel), 380, pageH - 28, 1, 9, 0.8, 0.9, 1);
+
+    ops.push(`q 0.20 0.35 0.52 rg 0 ${pageH - 61} ${pageW} 16 re f Q`);
+    txt(`Booking ID: ${esc(booking.id)}`, margin, pageH - 57, 1, 7.5, 0.85, 0.92, 1);
+
+    let y = pageH - 80;
+
+    const divider = () => {
+      ops.push(
+        `q 0.78 0.78 0.78 RG 0.4 w ${margin} ${y + 3} m ${margin + contentWidth} ${y + 3} l S Q`,
+      );
+    };
+
+    const sectionLabel = (text: string) => {
+      if (y < 65) return;
+      divider();
+      txt(esc(text), margin, y, 2, 9, 0.1, 0.24, 0.42);
+      y -= 15;
+    };
+
+    const kv = (label: string, value: string) => {
+      if (y < 65) return;
+      txt(`${esc(label)}:`, margin, y, 2, 8, 0.35, 0.35, 0.35);
+      txt(esc(value), margin + 145, y, 1, 8, 0, 0, 0);
+      y -= 13;
+    };
+
+    const writeParagraph = (text: string, maxChars = 98) => {
+      const normalized = this.sanitizePdfText(text).replace(/\s+/g, ' ').trim();
+      if (!normalized) return;
+
+      const words = normalized.split(' ');
+      let line = '';
+      const lines: string[] = [];
+
+      for (const word of words) {
+        const candidate = line ? `${line} ${word}` : word;
+        if (candidate.length > maxChars) {
+          if (line) lines.push(line);
+          line = word;
+        } else {
+          line = candidate;
+        }
+      }
+      if (line) lines.push(line);
+
+      for (const lineText of lines) {
+        if (y < 65) return;
+        txt(esc(lineText), margin, y, 1, 8, 0, 0, 0);
+        y -= 12;
+      }
+    };
+
+    if (docType === BookingDocumentType.CONTRACT) {
+      sectionLabel('LETTER OF AGREEMENT');
+      writeParagraph(
+        'This Letter of Agreement is entered into by the Vendor and Customer identified below for the booking reference on this document.',
+      );
+      y -= 4;
+
+      sectionLabel('PARTIES AND BOOKING DETAILS');
+      kv('Vendor', vendorName.slice(0, 72));
+      kv('Customer', `${customerName} (${customerEmail})`.slice(0, 72));
+      kv('Rental Period', rentalPeriod);
+      kv('Booking Status', String(booking.status || '').toUpperCase());
+      if (booking.deliveryAddress) kv('Delivery Address', booking.deliveryAddress.slice(0, 70));
+      y -= 4;
+
+      sectionLabel('AGREEMENT TERMS');
+      writeParagraph(
+        '1. Vendor agrees to provide the listed rental items in usable condition for the agreed rental period.',
+      );
+      writeParagraph(
+        '2. Customer agrees to pay the booking amount and any remaining balance according to the platform payment schedule.',
+      );
+      writeParagraph(
+        '3. Customer agrees to use and return rented items in substantially the same condition, except for normal wear.',
+      );
+      writeParagraph(
+        '4. Cancellations, refunds, and disputes follow the policies shown at checkout and applicable platform terms.',
+      );
+      writeParagraph(
+        '5. Loss, damage, or service issues must be raised through the platform dispute workflow with supporting evidence.',
+      );
+      writeParagraph(
+        '6. This agreement is executed electronically and authenticated by the digital signature section below.',
+      );
+      y -= 4;
+
+      if (Array.isArray(booking.items) && booking.items.length > 0) {
+        sectionLabel('ITEMS COVERED');
+        for (const item of booking.items.slice(0, 8)) {
+          if (y < 65) break;
+          const itemName = this.sanitizePdfText(item.inventoryItem?.itemType?.name || item.inventoryItemId);
+          const brandName = this.sanitizePdfText(item.inventoryItem?.brand?.name || '');
+          const itemLine = `${item.quantity} x ${itemName}${brandName ? ` (${brandName})` : ''}`;
+          writeParagraph(itemLine, 95);
+        }
+        y -= 4;
+      }
+
+      sectionLabel('CONSIDERATION');
+      kv('Total Contract Amount', money(booking.totalAmount));
+      kv('Required Deposit', money(booking.depositAmount));
+      kv(
+        'Deposit Settlement Status',
+        booking.totalPaidAmount >= booking.depositAmount && booking.depositAmount > 0
+          ? 'SETTLED'
+          : 'NOT YET SETTLED',
+      );
+      kv('Amount Paid to Date', money(booking.totalPaidAmount));
+      kv('Remaining Balance Due', money(booking.remainingBalanceAmount));
+      kv('Payment Status', String(booking.paymentStatus || '').toUpperCase());
+      y -= 4;
+
+      sectionLabel('ACKNOWLEDGEMENT');
+      writeParagraph(`Vendor Representative: ${vendorName}`);
+      writeParagraph(`Customer: ${customerName}`);
+      writeParagraph(
+        'By confirming this booking through RentalBasic, both parties acknowledge and agree to the terms stated in this Letter of Agreement.',
+      );
+    } else {
+      sectionLabel('RECEIPT DETAILS');
+      kv(
+        'Issued To',
+        issuedTo === BookingDocumentIssuedTo.CUSTOMER ? 'Customer' : 'Vendor',
+      );
+      kv('Vendor', vendorName.slice(0, 72));
+      kv('Customer', `${customerName} (${customerEmail})`.slice(0, 72));
+      kv('Rental Period', rentalPeriod);
+      kv('Booking Status', String(booking.status || '').toUpperCase());
+      kv('Payment Status', String(booking.paymentStatus || '').toUpperCase());
+      if (booking.deliveryAddress) kv('Delivery Address', booking.deliveryAddress.slice(0, 70));
+      y -= 4;
+
+      sectionLabel('PAYMENT SUMMARY');
+      kv('Total Amount', money(booking.totalAmount));
+      kv('Deposit', money(booking.depositAmount));
+      kv('Total Paid', money(booking.totalPaidAmount));
+      kv('Remaining Balance', money(booking.remainingBalanceAmount));
+      kv('Platform Fee', money(booking.platformFee));
+      y -= 4;
+
+      if (Array.isArray(booking.items) && booking.items.length > 0) {
+        sectionLabel('RENTAL ITEMS');
+        for (const item of booking.items.slice(0, 8)) {
+          if (y < 65) break;
+          const itemName = esc(item.inventoryItem?.itemType?.name || item.inventoryItemId);
+          const brandPart = item.inventoryItem?.brand?.name
+            ? ` | ${esc(item.inventoryItem.brand.name)}`
+            : '';
+          txt(`${itemName}${brandPart}`, margin, y, 1, 8, 0, 0, 0);
+          txt(
+            `Qty: ${item.quantity}    Subtotal: ${money(item.subtotal)}`,
+            margin + 260,
+            y,
+            1,
+            8,
+            0.35,
+            0.35,
+            0.35,
+          );
+          y -= 13;
+        }
+        y -= 4;
+      }
+
+      sectionLabel('RECEIPT NOTE');
+      writeParagraph(
+        issuedTo === BookingDocumentIssuedTo.CUSTOMER
+          ? 'This receipt summarizes the booking charges and payments recorded on the customer account.'
+          : 'This receipt summarizes the booking charges and payment status relevant to the vendor account.',
+      );
+    }
+
+    sectionLabel('DIGITAL SIGNATURE');
+    kv('Algorithm', 'HMAC-SHA256');
+    kv('Generated At', generatedAt.toISOString());
+    if (y >= 60) {
+      txt('Signature:', margin, y, 2, 8, 0.35, 0.35, 0.35);
+      y -= 12;
+      txt(esc(signature), margin, y, 1, 7, 0.4, 0.4, 0.4);
+      y -= 12;
+    }
+    if (y >= 60) {
+      txt('Payload Hash:', margin, y, 2, 8, 0.35, 0.35, 0.35);
+      y -= 12;
+      txt(esc(signaturePayloadHash), margin, y, 1, 7, 0.4, 0.4, 0.4);
+    }
+
+    ops.push(`q 0.93 0.93 0.93 rg 0 0 ${pageW} 28 re f Q`);
+    txt(
+      'This document is digitally signed by the RentalBasic platform. Verify authenticity with the signature hash above.',
+      margin,
+      10,
+      1,
+      7,
+      0.4,
+      0.4,
+      0.4,
+    );
+
+    const contentStream = ops.join('\n');
+    const streamLen = Buffer.byteLength(contentStream, 'utf8');
+
+    const objects = [
+      '<< /Type /Catalog /Pages 2 0 R >>',
+      '<< /Type /Pages /Kids [3 0 R] /Count 1 >>',
+      `<< /Type /Page /Parent 2 0 R /MediaBox [0 0 612 792] /Resources << /Font << /F1 5 0 R /F2 6 0 R >> >> /Contents 4 0 R >>`,
+      `<< /Length ${streamLen} >>\nstream\n${contentStream}\nendstream`,
+      '<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica >>',
+      '<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica-Bold >>',
+    ];
+
+    let pdf = '%PDF-1.4\n';
+    const offsets: number[] = [0];
+    for (let i = 0; i < objects.length; i += 1) {
+      offsets.push(Buffer.byteLength(pdf, 'utf8'));
+      pdf += `${i + 1} 0 obj\n${objects[i]}\nendobj\n`;
+    }
+    const xrefOffset = Buffer.byteLength(pdf, 'utf8');
+    pdf += `xref\n0 ${objects.length + 1}\n`;
+    pdf += '0000000000 65535 f \n';
+    for (let i = 1; i < offsets.length; i += 1) {
+      pdf += `${String(offsets[i]).padStart(10, '0')} 00000 n \n`;
+    }
+    pdf += `trailer\n<< /Size ${objects.length + 1} /Root 1 0 R >>\n`;
+    pdf += `startxref\n${xrefOffset}\n%%EOF`;
+
+    return Buffer.from(pdf, 'utf8');
+  }
+
+  private sanitizePdfText(input: string) {
+    return String(input || '')
+      .normalize('NFKD')
+      .replace(/[^\x20-\x7E]/g, '?');
+  }
+
+  private escapePdfText(input: string) {
+    return String(input || '')
+      .replace(/\\/g, '\\\\')
+      .replace(/\(/g, '\\(')
+      .replace(/\)/g, '\\)');
+  }
+
+  private formatDate(value: Date | string | null | undefined) {
+    if (!value) return 'n/a';
+    const date = new Date(value);
+    if (Number.isNaN(date.getTime())) return 'n/a';
+    return date.toISOString().slice(0, 10);
+  }
+
+  private resolveUploadRootPath() {
+    const configured = String(process.env.UPLOAD_DIR || '').trim();
+    const pathValue = configured || join(process.cwd(), 'uploads');
+    return isAbsolute(pathValue) ? pathValue : join(process.cwd(), pathValue);
+  }
+
+  private resolveAbsoluteDocumentPath(filePath: string) {
+    const normalized = String(filePath || '')
+      .replace(/\\/g, '/')
+      .replace(/^\/+/, '');
+    if (!normalized || normalized.includes('..')) {
+      throw new BadRequestException('Invalid document path');
+    }
+
+    return join(this.resolveUploadRootPath(), ...normalized.split('/'));
+  }
+
+  private hashContent(content: Buffer | string) {
+    return createHash('sha256').update(content).digest('hex');
+  }
+
+  private signContent(content: string) {
+    const secret = String(
+      process.env.BOOKING_DOCUMENT_SIGNATURE_SECRET ||
+        process.env.JWT_SECRET ||
+        'booking-documents-dev-secret',
+    ).trim();
+    return createHmac('sha256', secret).update(content).digest('hex');
+  }
+
+  private assertCanAccessDocument(
+    document: BookingDocument,
+    actorRole: UserRole,
+  ) {
+    if (actorRole === UserRole.ADMIN) return;
+    if (document.issuedTo === BookingDocumentIssuedTo.BOTH) return;
+
+    if (
+      actorRole === UserRole.CUSTOMER &&
+      document.issuedTo === BookingDocumentIssuedTo.CUSTOMER
+    ) {
+      return;
+    }
+
+    if (
+      actorRole === UserRole.VENDOR &&
+      document.issuedTo === BookingDocumentIssuedTo.VENDOR
+    ) {
+      return;
+    }
+
+    throw new ForbiddenException('You do not have access to this booking document');
   }
 
   private parseBookingDateRange(startDateRaw: string, endDateRaw: string) {

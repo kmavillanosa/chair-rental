@@ -76,7 +76,7 @@ dig +short kmavillanosa.rentalbasic.com
 ## Step 3 — Clone the Repository
 
 ```bash
-git clone https://github.com/YOUR_ORG/chair-rental.git
+git clone https://github.com/kmavillanosa/chair-rental.git
 cd chair-rental
 ```
 
@@ -348,3 +348,102 @@ ssh -L 8080:localhost:8080 user@<SERVER_IP>
 | `api.rentalbasic.com` | NestJS REST API | `api` |
 | `vendors.rentalbasic.com` | Vendor + admin dashboard | `staff_app` |
 | `*.rentalbasic.com` | Individual vendor shops | `app` |
+
+---
+
+## CI/CD — GitHub Actions Automatic Deployment
+
+Once the server is running, connect GitHub Actions so every push to `main` automatically deploys.
+
+### How it works
+
+```
+git push to main
+      │
+      ▼
+GitHub Actions
+      ├── Run unit tests (app, staff-app, api) ── if FAIL → stop
+      └── Deploy (only if all tests pass)
+            └── SSH into VPS
+                  ├── git pull origin main
+                  └── docker compose up -d --build
+```
+
+The `.env` file lives **only on the VPS** and is never committed to git.
+
+---
+
+### Step A — Generate a Deploy SSH Key
+
+**On the VPS**, generate a dedicated key pair for GitHub Actions (no passphrase):
+
+```bash
+ssh-keygen -t ed25519 -C "github-deploy" -f ~/.ssh/github_deploy -N ""
+```
+
+Authorize it:
+
+```bash
+cat ~/.ssh/github_deploy.pub >> ~/.ssh/authorized_keys
+```
+
+Print the private key — copy the full output for the next step:
+
+```bash
+cat ~/.ssh/github_deploy
+```
+
+---
+
+### Step B — Add GitHub Secrets
+
+In your GitHub repo go to:  
+**Settings → Secrets and variables → Actions → New repository secret**
+
+| Secret Name | Value |
+|---|---|
+| `VPS_HOST` | `72.62.125.235` |
+| `VPS_USER` | `root` |
+| `VPS_SSH_KEY` | Full contents of `~/.ssh/github_deploy` (include `-----BEGIN...` and `-----END...` lines) |
+
+---
+
+### Step C — Push the Workflow File
+
+The workflow file is at `.github/workflows/deploy.yml`. Push it to activate:
+
+```bash
+git add .github/workflows/deploy.yml
+git commit -m "ci: add deploy workflow"
+git push origin main
+```
+
+Watch the run under the **Actions** tab in GitHub.
+
+---
+
+### Workflow Trigger Summary
+
+| Trigger | Branch | What happens |
+|---|---|---|
+| `push` | `main` / `master` | Tests run → if pass, SSH deploy |
+| `pull_request` | any | Tests run only (no deploy) |
+
+---
+
+### CI/CD Troubleshooting
+
+**SSH permission denied**
+- Confirm the public key is in `~/.ssh/authorized_keys` on the VPS
+- Confirm the private key in GitHub Secrets has no extra whitespace
+
+**Docker compose not found on VPS**
+```bash
+docker compose version
+```
+
+**Container not updating after deploy**
+```bash
+cd /root/chair-rental
+docker compose up -d --build
+```

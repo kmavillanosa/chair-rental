@@ -1,10 +1,11 @@
 import { Link } from 'react-router-dom';
 import { useAuthStore } from '../../store/authStore';
+import LegalFooter from '../common/LegalFooter';
 
 export default function CustomerLayout({ children }: { children?: React.ReactNode }) {
   const { user, logout } = useAuthStore();
   return (
-    <div className="min-h-screen bg-gray-50">
+    <div className="min-h-screen bg-gray-50 flex flex-col">
       <header className="bg-blue-700 text-white shadow-md">
         <div className="max-w-7xl mx-auto px-4 py-4 flex items-center justify-between">
           <Link to="/" className="text-2xl font-bold">🪑 RentalBasic</Link>
@@ -21,7 +22,10 @@ export default function CustomerLayout({ children }: { children?: React.ReactNod
           </nav>
         </div>
       </header>
-      <main>{children}</main>
+      <main className="flex-1">{children}</main>
+      <div className="max-w-7xl mx-auto w-full px-4 py-6">
+        <LegalFooter />
+      </div>
     </div>
   );
 }

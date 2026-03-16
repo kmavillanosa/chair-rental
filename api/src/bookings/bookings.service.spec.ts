@@ -10,16 +10,45 @@ vi.mock('./entities/booking.entity', () => ({
     COMPLETED: 'completed',
   },
   BookingPaymentStatus: {
+    PENDING: 'pending',
     UNPAID: 'unpaid',
     CHECKOUT_PENDING: 'checkout_pending',
     PAID: 'paid',
+    HELD: 'held',
+    COMPLETED: 'completed',
     FAILED: 'failed',
     REFUNDED: 'refunded',
+    DISPUTED: 'disputed',
   },
 }));
 
 vi.mock('./entities/booking-item.entity', () => ({
   BookingItem: class BookingItem {},
+}));
+
+vi.mock('./entities/booking-message.entity', () => ({
+  BookingMessage: class BookingMessage {},
+}));
+
+vi.mock('./entities/booking-review.entity', () => ({
+  BookingReview: class BookingReview {},
+}));
+
+vi.mock('./entities/booking-delivery-proof.entity', () => ({
+  BookingDeliveryProof: class BookingDeliveryProof {},
+}));
+
+vi.mock('./entities/booking-document.entity', () => ({
+  BookingDocument: class BookingDocument {},
+  BookingDocumentType: {
+    CONTRACT: 'contract',
+    RECEIPT: 'receipt',
+  },
+  BookingDocumentIssuedTo: {
+    CUSTOMER: 'customer',
+    VENDOR: 'vendor',
+    BOTH: 'both',
+  },
 }));
 
 vi.mock('../inventory/entities/inventory-item.entity', () => ({
@@ -35,15 +64,48 @@ vi.mock('../payments/entities/vendor-payment.entity', () => ({
   },
 }));
 
+vi.mock('../payments/entities/vendor-payout.entity', () => ({
+  VendorPayout: class VendorPayout {},
+  VendorPayoutStatus: {
+    PENDING: 'pending',
+    HELD: 'held',
+    READY: 'ready',
+    RELEASED: 'released',
+    REFUNDED: 'refunded',
+    DISPUTED: 'disputed',
+    CANCELLED: 'cancelled',
+  },
+}));
+
 vi.mock('../vendors/entities/vendor.entity', () => ({
   Vendor: class Vendor {},
 }));
 
 vi.mock('../users/entities/user.entity', () => ({
+  User: class User {},
   UserRole: {
     ADMIN: 'admin',
     VENDOR: 'vendor',
     CUSTOMER: 'customer',
+  },
+}));
+
+vi.mock('../fraud/entities/fraud-alert.entity', () => ({
+  FraudAlertSeverity: {
+    LOW: 'low',
+    MEDIUM: 'medium',
+    HIGH: 'high',
+    CRITICAL: 'critical',
+  },
+  FraudAlertType: {
+    BOOKING_RISK: 'booking_risk',
+    OFF_PLATFORM_MESSAGE: 'off_platform_message',
+    VENDOR_KYC: 'vendor_kyc',
+    DISPUTE: 'dispute',
+    LOW_RATING_VENDOR: 'low_rating_vendor',
+    IP_REUSE: 'ip_reuse',
+    CANCELLATION_PATTERN: 'cancellation_pattern',
+    UNUSUAL_BOOKING_FREQUENCY: 'unusual_booking_frequency',
   },
 }));
 
@@ -53,15 +115,53 @@ function createService() {
   const bookingsRepo = {
     findOne: vi.fn(),
     update: vi.fn(),
+    find: vi.fn().mockResolvedValue([]),
+    count: vi.fn().mockResolvedValue(0),
+  };
+  const bookingItemsRepo = {
     find: vi.fn(),
   };
-  const bookingItemsRepo = {};
-  const inventoryRepo = {};
+  const inventoryRepo = {
+    findOne: vi.fn(),
+  };
+  const bookingMessagesRepo = {
+    find: vi.fn(),
+    save: vi.fn(async (value) => value),
+    create: vi.fn((value) => value),
+  };
+  const bookingReviewsRepo = {
+    find: vi.fn().mockResolvedValue([]),
+    findOne: vi.fn(),
+    save: vi.fn(async (value) => value),
+    create: vi.fn((value) => value),
+  };
+  const bookingDeliveryProofRepo = {
+    count: vi.fn().mockResolvedValue(0),
+    save: vi.fn(async (value) => value),
+    create: vi.fn((value) => value),
+  };
+  const bookingDocumentsRepo = {
+    find: vi.fn().mockResolvedValue([]),
+    findOne: vi.fn().mockResolvedValue(null),
+    save: vi.fn(async (value) => value),
+    create: vi.fn((value) => value),
+  };
   const paymentsRepo = {
     findOne: vi.fn(),
   };
+  const vendorPayoutsRepo = {
+    findOne: vi.fn(),
+    update: vi.fn(),
+    save: vi.fn(async (value) => value),
+    create: vi.fn((value) => value),
+  };
   const vendorsRepo = {
     findOne: vi.fn(),
+    increment: vi.fn(),
+    update: vi.fn(),
+  };
+  const usersRepo = {
+    update: vi.fn(),
   };
   const dataSource = {
     transaction: vi.fn(),
@@ -69,25 +169,47 @@ function createService() {
   const settingsService = {
     getFeatureFlagsSettings: vi.fn(),
   };
+  const fraudService = {
+    analyzeMessageContent: vi.fn(() => ({
+      redactedContent: '',
+      isFlagged: false,
+      reasons: [],
+    })),
+    createAlert: vi.fn(),
+  };
 
   const service = new BookingsService(
     bookingsRepo as any,
     bookingItemsRepo as any,
     inventoryRepo as any,
+    bookingMessagesRepo as any,
+    bookingReviewsRepo as any,
+    bookingDeliveryProofRepo as any,
+    bookingDocumentsRepo as any,
     paymentsRepo as any,
+    vendorPayoutsRepo as any,
     vendorsRepo as any,
+    usersRepo as any,
     dataSource as any,
     settingsService as any,
+    fraudService as any,
   );
 
   return {
     service,
     mocks: {
       bookingsRepo,
+      bookingMessagesRepo,
+      bookingReviewsRepo,
+      bookingDeliveryProofRepo,
+      bookingDocumentsRepo,
       paymentsRepo,
+      vendorPayoutsRepo,
       vendorsRepo,
+      usersRepo,
       dataSource,
       settingsService,
+      fraudService,
     },
   };
 }
@@ -214,6 +336,11 @@ describe('BookingsService', () => {
       paymentProvider: 'paymongo',
       paymentCheckoutSessionId: 'cs_test_123',
       paymentReference: null,
+      totalAmount: 1000,
+      depositAmount: 300,
+      totalPaidAmount: 0,
+      remainingBalanceAmount: 700,
+      depositPaidAt: null,
     };
 
     vi.spyOn(service, 'findById')
@@ -426,6 +553,114 @@ describe('BookingsService', () => {
 
     expect(mocks.bookingsRepo.update).toHaveBeenCalledWith('booking-1', { status: 'confirmed' });
     expect(result.status).toBe('confirmed');
+  });
+
+  it('updateStatus allows confirming an unpaid PayMongo booking when test mode flag is enabled', async () => {
+    const { service, mocks } = createService();
+    const booking = {
+      id: 'booking-1',
+      customerId: 'customer-1',
+      status: 'pending',
+      paymentStatus: 'unpaid',
+      paymentProvider: 'paymongo',
+      vendor: null,
+    };
+
+    mocks.settingsService.getFeatureFlagsSettings.mockResolvedValue({
+      allowOrdersWithoutPayment: true,
+    });
+
+    vi.spyOn(service, 'findById')
+      .mockResolvedValueOnce(booking as any)
+      .mockResolvedValueOnce({ ...booking, status: 'confirmed' } as any);
+
+    const result = await service.updateStatus('booking-1', 'confirmed' as any, 'admin-1', 'admin' as any);
+
+    expect(mocks.bookingsRepo.update).toHaveBeenCalledWith('booking-1', { status: 'confirmed' });
+    expect(result.status).toBe('confirmed');
+  });
+
+  it('updateStatus keeps blocking unpaid PayMongo confirmation when test mode flag is disabled', async () => {
+    const { service, mocks } = createService();
+    const booking = {
+      id: 'booking-1',
+      customerId: 'customer-1',
+      status: 'pending',
+      paymentStatus: 'unpaid',
+      paymentProvider: 'paymongo',
+      vendor: null,
+    };
+
+    mocks.settingsService.getFeatureFlagsSettings.mockResolvedValue({
+      allowOrdersWithoutPayment: false,
+    });
+
+    vi.spyOn(service, 'findById').mockResolvedValue(booking as any);
+
+    await expect(
+      service.updateStatus('booking-1', 'confirmed' as any, 'admin-1', 'admin' as any),
+    ).rejects.toBeInstanceOf(BadRequestException);
+  });
+
+  it('create skips automatic checkout when unpaid-order test mode is enabled', async () => {
+    const { service, mocks } = createService();
+    const manager = {
+      findOne: vi.fn().mockResolvedValue({
+        id: 'inv-1',
+        quantity: 10,
+        ratePerDay: 100,
+      }),
+      createQueryBuilder: vi.fn(() => ({
+        innerJoin: vi.fn().mockReturnThis(),
+        where: vi.fn().mockReturnThis(),
+        andWhere: vi.fn().mockReturnThis(),
+        select: vi.fn().mockReturnThis(),
+        getRawOne: vi.fn().mockResolvedValue({ total: 0 }),
+      })),
+      create: vi.fn((_: unknown, value: any) => value),
+      save: vi
+        .fn()
+        .mockImplementationOnce(async (value: any) => ({ ...value, id: 'booking-1' }))
+        .mockImplementation(async (value: any) => value),
+    };
+
+    mocks.vendorsRepo.findOne.mockResolvedValue({
+      id: 'vendor-1',
+      commissionRate: 0.1,
+    });
+    mocks.paymentsRepo.findOne.mockResolvedValue(null);
+    mocks.settingsService.getFeatureFlagsSettings.mockResolvedValue({
+      allowOrdersWithoutPayment: true,
+      launchNoCommissionEnabled: false,
+      launchNoCommissionUntil: null,
+      defaultPlatformCommissionRatePercent: 10,
+    });
+    mocks.dataSource.transaction.mockImplementation(async (callback: any) =>
+      callback(manager),
+    );
+
+    vi.spyOn(service, 'findById').mockResolvedValue({
+      id: 'booking-1',
+      paymentProvider: 'paymongo',
+      paymentStatus: 'unpaid',
+    } as any);
+
+    const checkoutSpy = vi.spyOn(service as any, 'createPayMongoCheckoutForBooking');
+
+    await service.create('customer-1', {
+      vendorId: 'vendor-1',
+      startDate: '2026-05-09',
+      endDate: '2026-05-10',
+      items: [{ inventoryItemId: 'inv-1', quantity: 1 }],
+    });
+
+    expect(checkoutSpy).not.toHaveBeenCalled();
+    expect(manager.create.mock.calls[0]?.[1]).toEqual(
+      expect.objectContaining({
+        paymentProvider: 'paymongo',
+        paymentStatus: 'pending',
+      }),
+    );
   });
 
   it('assertCanAccessBooking throws ForbiddenException for unrelated customer', () => {

@@ -8,11 +8,12 @@ import { GoogleStrategy } from './google.strategy';
 import { JwtStrategy } from './jwt.strategy';
 import { UsersModule } from '../users/users.module';
 import { Vendor } from '../vendors/entities/vendor.entity';
+import { User } from '../users/entities/user.entity';
 
 @Module({
   imports: [
     UsersModule,
-    TypeOrmModule.forFeature([Vendor]),
+    TypeOrmModule.forFeature([Vendor, User]),
     PassportModule,
     JwtModule.register({
       secret: process.env.JWT_SECRET || 'fallback_secret_change_in_production',

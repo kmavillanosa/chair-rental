@@ -99,6 +99,12 @@ export const tl = {
   authCallback: {
     signingIn: 'Nilologin ka na...',
   },
+  maintenanceMode: {
+    badge: 'Maintenance Mode',
+    title: 'May kasalukuyan kaming maintenance.',
+    message: 'Pansamantalang hindi available ang RentalBasic habang nag-a-apply kami ng updates at platform fixes.',
+    submessage: 'Paki-check ulit mamaya. Kung may live booking ka na, makipag-ugnayan muna diretso sa vendor habang may maintenance.',
+  },
   adminDashboard: {
     title: 'Dashboard Overview',
     totalVendors: 'Total Vendors',

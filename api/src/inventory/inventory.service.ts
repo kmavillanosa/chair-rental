@@ -5,6 +5,8 @@ import { InventoryItem } from './entities/inventory-item.entity';
 import { ItemType } from '../item-types/entities/item-type.entity';
 import { Booking, BookingStatus } from '../bookings/entities/booking.entity';
 import { BookingItem } from '../bookings/entities/booking-item.entity';
+import { Vendor, VendorVerificationStatus } from '../vendors/entities/vendor.entity';
+import { SettingsService } from '../settings/settings.service';
 
 
 @Injectable()
@@ -18,7 +20,10 @@ export class InventoryService {
     private readonly bookingsRepo: Repository<Booking>,
     @InjectRepository(BookingItem)
     private readonly bookingItemsRepo: Repository<BookingItem>,
+    @InjectRepository(Vendor)
+    private readonly vendorsRepo: Repository<Vendor>,
     private readonly dataSource: DataSource,
+    private readonly settingsService: SettingsService,
   ) {}
 
   /**
@@ -82,6 +87,12 @@ export class InventoryService {
   }
 
   async create(data: Partial<InventoryItem>) {
+    if (!data.vendorId) {
+      throw new BadRequestException('vendorId is required');
+    }
+
+    await this.assertVendorCanCreateListing(data.vendorId);
+
     if (!data.itemTypeId) {
       throw new BadRequestException('itemTypeId is required');
     }
@@ -165,5 +176,49 @@ export class InventoryService {
   private normalizeOptionalText(input: unknown): string | null {
     const value = String(input ?? '').trim();
     return value || null;
+  }
+
+  private async assertVendorCanCreateListing(vendorId: string) {
+    const vendor = await this.vendorsRepo.findOne({ where: { id: vendorId } });
+    if (!vendor) {
+      throw new NotFoundException('Vendor not found');
+    }
+
+    if (!vendor.isActive || vendor.verificationStatus === VendorVerificationStatus.SUSPENDED) {
+      throw new BadRequestException(
+        'Your vendor account is restricted from creating new listings. Please contact support.',
+      );
+    }
+
+    const currentListings = await this.repo.count({ where: { vendorId } });
+
+    let completedOrdersThreshold = 5;
+    let newVendorMaxActiveListings = 40;
+    let flaggedVendorMaxActiveListings = 15;
+    try {
+      const flags = await this.settingsService.getFeatureFlagsSettings();
+      completedOrdersThreshold = Number(flags.newVendorCompletedOrdersThreshold);
+      newVendorMaxActiveListings = Number(flags.newVendorMaxActiveListings);
+      flaggedVendorMaxActiveListings = Number(flags.flaggedVendorMaxActiveListings);
+    } catch {
+      // Fall back to safe defaults.
+    }
+
+    const isFlagged = Boolean(vendor.isSuspicious || vendor.lowRatingFlag);
+    const maxListings = isFlagged
+      ? flaggedVendorMaxActiveListings
+      : Number(vendor.successfulCompletedOrders || 0) < completedOrdersThreshold
+        ? newVendorMaxActiveListings
+        : Number.MAX_SAFE_INTEGER;
+
+    if (currentListings >= maxListings) {
+      const reason = isFlagged
+        ? 'your account is currently flagged for additional review'
+        : 'your account is still in the new-vendor monitoring stage';
+
+      throw new BadRequestException(
+        `Listing limit reached (${maxListings} items) because ${reason}. Please contact admin for manual review.`,
+      );
+    }
   }
 }

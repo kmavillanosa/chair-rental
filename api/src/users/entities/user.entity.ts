@@ -32,6 +32,15 @@ export class User {
   @Column({ default: true })
   isActive: boolean;
 
+  @Column({ nullable: true })
+  lastLoginIp: string;
+
+  @Column({ type: 'decimal', precision: 3, scale: 2, default: 0 })
+  averageCustomerRating: number;
+
+  @Column({ type: 'int', default: 0 })
+  totalCustomerRatings: number;
+
   @CreateDateColumn()
   createdAt: Date;
 

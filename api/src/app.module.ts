@@ -17,7 +17,12 @@ import { ProductBrand } from './brands/entities/product-brand.entity';
 import { InventoryItem } from './inventory/entities/inventory-item.entity';
 import { Booking } from './bookings/entities/booking.entity';
 import { BookingItem } from './bookings/entities/booking-item.entity';
+import { BookingMessage } from './bookings/entities/booking-message.entity';
+import { BookingReview } from './bookings/entities/booking-review.entity';
+import { BookingDeliveryProof } from './bookings/entities/booking-delivery-proof.entity';
+import { BookingDocument } from './bookings/entities/booking-document.entity';
 import { VendorPayment } from './payments/entities/vendor-payment.entity';
+import { VendorPayout } from './payments/entities/vendor-payout.entity';
 import { DeliveryRate } from './payments/entities/delivery-rate.entity';
 import { VendorDocument } from './vendors/entities/vendor-document.entity';
 import { VendorVerificationStatusEntry } from './vendors/entities/vendor-verification-status.entity';
@@ -27,6 +32,12 @@ import { VendorPhoneOtpChallenge } from './vendors/entities/vendor-phone-otp-cha
 import { SeedsModule } from './seeds/seeds.module';
 import { SettingsModule } from './settings/settings.module';
 import { PlatformSetting } from './settings/entities/platform-setting.entity';
+import { FraudModule } from './fraud/fraud.module';
+import { FraudAlert } from './fraud/entities/fraud-alert.entity';
+import { DisputesModule } from './disputes/disputes.module';
+import { BookingDispute } from './disputes/entities/booking-dispute.entity';
+import { BookingDisputeEvidence } from './disputes/entities/booking-dispute-evidence.entity';
+import { ChatModule } from './chat/chat.module';
 
 const uploadRootPath = process.env.UPLOAD_DIR || join(process.cwd(), 'uploads');
 
@@ -53,8 +64,16 @@ const uploadRootPath = process.env.UPLOAD_DIR || join(process.cwd(), 'uploads');
         InventoryItem,
         Booking,
         BookingItem,
+        BookingMessage,
+        BookingReview,
+        BookingDeliveryProof,
+        BookingDocument,
         VendorPayment,
+        VendorPayout,
         DeliveryRate,
+        FraudAlert,
+        BookingDispute,
+        BookingDisputeEvidence,
       ],
       synchronize:
         typeof process.env.DB_SYNC === 'string'
@@ -75,7 +94,10 @@ const uploadRootPath = process.env.UPLOAD_DIR || join(process.cwd(), 'uploads');
     BookingsModule,
     PaymentsModule,
     SettingsModule,
+    FraudModule,
+    DisputesModule,
     SeedsModule,
+    ChatModule,
   ],
 })
 export class AppModule {}

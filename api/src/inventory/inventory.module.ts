@@ -7,9 +7,21 @@ import { VendorsModule } from '../vendors/vendors.module';
 import { ItemType } from '../item-types/entities/item-type.entity';
 import { Booking } from '../bookings/entities/booking.entity';
 import { BookingItem } from '../bookings/entities/booking-item.entity';
+import { Vendor } from '../vendors/entities/vendor.entity';
+import { SettingsModule } from '../settings/settings.module';
 
 @Module({
-  imports: [TypeOrmModule.forFeature([InventoryItem, ItemType, Booking, BookingItem]), VendorsModule],
+  imports: [
+    TypeOrmModule.forFeature([
+      InventoryItem,
+      ItemType,
+      Booking,
+      BookingItem,
+      Vendor,
+    ]),
+    VendorsModule,
+    SettingsModule,
+  ],
   providers: [InventoryService],
   controllers: [InventoryController],
   exports: [InventoryService],

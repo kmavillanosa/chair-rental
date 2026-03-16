@@ -7,6 +7,8 @@ const adminLinks = [
   { to: '/admin/item-types', label: 'Item Types' },
   { to: '/admin/brands', label: 'Brands' },
   { to: '/admin/payments', label: 'Payments' },
+  { to: '/admin/fraud-alerts', label: 'Fraud Alerts' },
+  { to: '/admin/disputes', label: 'Disputes' },
   { to: '/admin/settings/feature-flags', label: 'Feature Flags' },
 ];
 
@@ -33,7 +35,7 @@ export default function Sidebar({ role, className = '', onNavigate }: Props) {
   return (
     <aside className={`flex h-full min-h-0 w-64 shrink-0 flex-col border-r border-[#2d3f63] bg-[#1f2944] text-slate-100 shadow-lg ${className}`.trim()}>
       <div className="border-b border-[#2d3f63] p-6">
-        <h1 className="text-2xl font-bold">RentalBasic</h1>
+        <h1 className="text-base font-bold">RentalBasic</h1>
         <p className="mt-1 text-sm text-slate-300">{role === 'admin' ? 'Admin Panel' : 'Vendor Panel'}</p>
       </div>
       <nav className="flex-1 min-h-0 overflow-y-auto p-4 space-y-1">
@@ -44,7 +46,7 @@ export default function Sidebar({ role, className = '', onNavigate }: Props) {
               key={to}
               to={to}
               onClick={() => onNavigate?.()}
-              className={`flex items-center px-4 py-3 rounded-lg text-lg font-medium transition-colors ${active ? 'bg-[#b7e92f] text-[#1f2944]' : 'text-slate-100 hover:bg-[#2d3f63]'
+              className={`flex items-center px-3 py-2 rounded text-sm font-medium transition-colors ${active ? 'bg-[#b7e92f] text-[#1f2944]' : 'text-slate-100 hover:bg-[#2d3f63]'
                 }`}
             >
               {label}

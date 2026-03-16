@@ -9,6 +9,7 @@ const UserRole = {
 
 vi.mock('../users/entities/user.entity', () => ({
   UserRole,
+  User: class User {},
 }));
 
 vi.mock('../vendors/entities/vendor.entity', () => ({
@@ -61,6 +62,10 @@ describe('AuthService', () => {
     findOne: vi.fn(),
   };
 
+  const usersRepo = {
+    update: vi.fn(async () => ({ affected: 1 })),
+  };
+
   let service: any;
 
   beforeEach(() => {
@@ -68,6 +73,7 @@ describe('AuthService', () => {
     service = new AuthService(
       jwtService as any,
       usersService as any,
+      usersRepo as any,
       vendorsRepo as any,
     );
   });
@@ -151,6 +157,18 @@ describe('AuthService', () => {
         role: user.role,
         avatar: user.avatar,
       },
+    });
+    expect(usersRepo.update).not.toHaveBeenCalled();
+  });
+
+  it('persists normalized request IP during login when provided', async () => {
+    const user = buildUser({ id: 'user-99', role: UserRole.CUSTOMER });
+    usersService.findById.mockResolvedValue(user);
+
+    await service.login(user, ' 203.0.113.9 , 10.0.0.1 ');
+
+    expect(usersRepo.update).toHaveBeenCalledWith(user.id, {
+      lastLoginIp: '203.0.113.9',
     });
   });
 

@@ -19,7 +19,16 @@ export class AuthController {
     const staffFrontendUrl = process.env.STAFF_FRONTEND_URL || 'http://localhost:5174';
 
     try {
-      const { access_token, user } = await this.authService.login(req.user);
+      const forwardedFor = String(req.headers['x-forwarded-for'] || '').trim();
+      const firstForwardedIp = forwardedFor
+        ? forwardedFor.split(',')[0].trim()
+        : '';
+      const requestIp = firstForwardedIp || req.ip || null;
+
+      const { access_token, user } = await this.authService.login(
+        req.user,
+        requestIp || undefined,
+      );
       const frontendUrl = user.role === 'admin' || user.role === 'vendor'
         ? staffFrontendUrl
         : customerFrontendUrl;

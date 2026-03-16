@@ -43,6 +43,7 @@ export enum VendorVerificationStatus {
   VERIFIED_BUSINESS = 'verified_business',
   VERIFIED_OWNER = 'verified_owner',
   REJECTED = 'rejected',
+  SUSPENDED = 'suspended',
 }
 
 export enum VendorPayMongoOnboardingStatus {
@@ -60,6 +61,8 @@ export enum VendorPayMongoOnboardingStatus {
 @Index('IDX_vendors_government_id_number', ['governmentIdNumber'])
 @Index('IDX_vendors_phone', ['phone'])
 @Index('IDX_vendors_device_fingerprint', ['deviceFingerprintHash'])
+@Index('IDX_vendors_bank_account_hash', ['bankAccountHash'])
+@Index('IDX_vendors_low_rating_flag', ['lowRatingFlag'])
 export class Vendor {
   @PrimaryColumn({ type: 'varchar', length: 36 })
   id: string;
@@ -123,6 +126,21 @@ export class Vendor {
 
   @Column({ nullable: true })
   socialMediaLink: string;
+
+  @Column({ nullable: true })
+  bankName: string;
+
+  @Column({ nullable: true })
+  bankAccountName: string;
+
+  @Column({ nullable: true })
+  bankAccountNumberMasked: string;
+
+  @Column({ nullable: true, length: 4 })
+  bankAccountLast4: string;
+
+  @Column({ nullable: true })
+  bankAccountHash: string;
 
   @Column({ nullable: true })
   logoUrl: string;
@@ -215,6 +233,18 @@ export class Vendor {
 
   @Column({ default: false })
   isVerified: boolean;
+
+  @Column({ type: 'decimal', precision: 3, scale: 2, default: 0 })
+  averageRating: number;
+
+  @Column({ type: 'int', default: 0 })
+  totalRatings: number;
+
+  @Column({ default: false })
+  lowRatingFlag: boolean;
+
+  @Column({ type: 'int', default: 0 })
+  successfulCompletedOrders: number;
 
   @Column({ type: 'decimal', precision: 5, scale: 2, default: 10.00 })
   commissionRate: number;

@@ -168,10 +168,13 @@ describe('BookingsController (e2e)', () => {
       'customer-1',
       expect.objectContaining({
         vendorId: 'vendor-1',
-        items: [{ inventoryItemId: 'inv-1', quantity: 2 }],
+        items: expect.arrayContaining([
+          expect.objectContaining({ inventoryItemId: 'inv-1', quantity: 2 }),
+        ]),
         deliveryCharge: 250.75,
         serviceCharge: 50,
       }),
+      expect.any(String),
     );
   });
 
