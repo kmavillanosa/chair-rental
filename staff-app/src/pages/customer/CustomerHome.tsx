@@ -20,7 +20,7 @@ export default function CustomerHome() {
   const [vendors, setVendors] = useState<Vendor[]>([]);
   const [loading, setLoading] = useState(false);
   const [searched, setSearched] = useState(false);
-  const [center, setCenter] = useState<[number, number]>([14.5995, 120.9842]);
+  const [center, setCenter] = useState<[number, number]>([9.7392, 118.7353]);
   const navigate = useNavigate();
 
   const findNearMe = useCallback(() => {
@@ -34,8 +34,8 @@ export default function CustomerHome() {
           .finally(() => setLoading(false));
       },
       () => {
-        // Fallback to Metro Manila
-        getNearbyVendors(14.5995, 120.9842)
+        // Fallback to Puerto Princesa City, Palawan
+        getNearbyVendors(9.7392, 118.7353)
           .then(v => { setVendors(v); setSearched(true); })
           .finally(() => setLoading(false));
       }

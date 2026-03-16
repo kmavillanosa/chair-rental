@@ -11,20 +11,22 @@ import { DeliveryRate } from '../payments/entities/delivery-rate.entity';
 export interface VendorDistanceSeedResult {
   vendorsUpdated: number;
   deliveryRatesCreated: number;
+  deliveryRatesUpdated: number;
+  deliveryRatesDeleted: number;
   vendorsTotal: number;
   deliveryRatesTotal: number;
 }
 
 const DEFAULT_COORDS = [
-  { lat: 14.5995, lng: 120.9842 }, // Manila
-  { lat: 14.6760, lng: 121.0437 }, // Quezon City
-  { lat: 14.5547, lng: 121.0244 }, // Makati
-  { lat: 14.5764, lng: 121.0851 }, // Pasig
-  { lat: 14.4500, lng: 121.0360 }, // Muntinlupa
-  { lat: 14.4793, lng: 120.8969 }, // Bacoor
+  { lat: 9.7392, lng: 118.7353 }, // Puerto Princesa City
+  { lat: 9.3073, lng: 118.4241 }, // Narra, Palawan
+  { lat: 10.3229, lng: 119.3456 }, // Roxas, Palawan
+  { lat: 10.5507, lng: 119.2740 }, // San Vicente, Palawan
+  { lat: 11.2026, lng: 119.4170 }, // El Nido, Palawan
+  { lat: 12.0010, lng: 120.2040 }, // Coron, Palawan
 ];
 
-const DISTANCE_TIERS = [5, 10, 20, 50];
+const DISTANCE_TIERS = [3, 5, 8, 10, 15, 20, 30, 40, 50];
 const HELPER_COUNTS = [0, 1, 2, 3];
 
 @Injectable()
@@ -40,6 +42,8 @@ export class VendorDistanceSeedService {
     const vendors = await this.vendorsRepo.find();
     let vendorsUpdated = 0;
     let deliveryRatesCreated = 0;
+    let deliveryRatesUpdated = 0;
+    let deliveryRatesDeleted = 0;
 
     for (let index = 0; index < vendors.length; index += 1) {
       const vendor = vendors[index];
@@ -70,43 +74,81 @@ export class VendorDistanceSeedService {
       const existingRates = await this.deliveryRatesRepo.find({
         where: { vendorId: vendor.id },
       });
-      const existingRateKeys = new Set(
-        existingRates.map(
-          (rate) =>
-            `${Number(rate.helpersCount)}|${Number(rate.distanceKm).toFixed(2)}`,
-        ),
-      );
+      const existingRatesByKey = new Map<string, DeliveryRate>();
+      for (const rate of existingRates) {
+        existingRatesByKey.set(
+          `${Number(rate.helpersCount)}|${Number(rate.distanceKm).toFixed(2)}`,
+          rate,
+        );
+      }
+
+      const desiredRateKeys = new Set<string>();
 
       for (const helpersCount of HELPER_COUNTS) {
         for (const distanceKm of DISTANCE_TIERS) {
           const key = `${helpersCount}|${distanceKm.toFixed(2)}`;
-          if (existingRateKeys.has(key)) continue;
+          desiredRateKeys.add(key);
+          const chargeAmount = this.computeCharge(distanceKm, helpersCount);
+          const existingRate = existingRatesByKey.get(key);
+
+          if (existingRate) {
+            if (Number(existingRate.chargeAmount) !== chargeAmount) {
+              await this.deliveryRatesRepo.update(existingRate.id, {
+                chargeAmount,
+              });
+              deliveryRatesUpdated += 1;
+            }
+            continue;
+          }
 
           await this.deliveryRatesRepo.save(
             this.deliveryRatesRepo.create({
               vendorId: vendor.id,
               helpersCount,
               distanceKm,
-              chargeAmount: this.computeCharge(distanceKm, helpersCount),
+              chargeAmount,
             }),
           );
           deliveryRatesCreated += 1;
-          existingRateKeys.add(key);
         }
+      }
+
+      for (const [existingKey, existingRate] of existingRatesByKey) {
+        if (desiredRateKeys.has(existingKey)) continue;
+        await this.deliveryRatesRepo.delete(existingRate.id);
+        deliveryRatesDeleted += 1;
       }
     }
 
     return {
       vendorsUpdated,
       deliveryRatesCreated,
+      deliveryRatesUpdated,
+      deliveryRatesDeleted,
       vendorsTotal: await this.vendorsRepo.count(),
       deliveryRatesTotal: await this.deliveryRatesRepo.count(),
     };
   }
 
   private computeCharge(distanceKm: number, helpersCount: number) {
-    const base = 250 + helpersCount * 140;
-    const perKm = 12 + helpersCount * 5;
-    return Number((base + distanceKm * perKm).toFixed(2));
+    const normalizedHelpers = Math.max(0, Math.min(3, helpersCount));
+
+    const baseByHelper = [120, 220, 320, 420];
+    const perKmByHelper = [20, 24, 28, 32];
+
+    let charge =
+      baseByHelper[normalizedHelpers] +
+      distanceKm * perKmByHelper[normalizedHelpers];
+
+    if (distanceKm > 20) {
+      charge += (distanceKm - 20) * 6;
+    }
+
+    if (distanceKm > 35) {
+      charge += (distanceKm - 35) * 8;
+    }
+
+    // Round to nearest PHP 10 for cleaner pricing tiers.
+    return Math.max(120, Math.round(charge / 10) * 10);
   }
 }

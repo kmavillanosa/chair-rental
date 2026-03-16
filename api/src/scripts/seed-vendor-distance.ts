@@ -11,6 +11,8 @@ async function bootstrap() {
     console.log('Vendor distance seed completed.');
     console.log(`Vendors updated: ${result.vendorsUpdated}`);
     console.log(`Delivery rates created: ${result.deliveryRatesCreated}`);
+    console.log(`Delivery rates updated: ${result.deliveryRatesUpdated}`);
+    console.log(`Delivery rates deleted: ${result.deliveryRatesDeleted}`);
     console.log(`Vendors total: ${result.vendorsTotal}`);
     console.log(`Delivery rates total: ${result.deliveryRatesTotal}`);
   } catch (error) {

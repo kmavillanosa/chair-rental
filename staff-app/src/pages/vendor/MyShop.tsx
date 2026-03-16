@@ -18,7 +18,7 @@ type VendorForm = {
   longitude: number | null;
 };
 
-const DEFAULT_CENTER: [number, number] = [14.5995, 120.9842];
+const DEFAULT_CENTER: [number, number] = [9.7392, 118.7353];
 
 const vendorPinIcon = L.icon({
   iconRetinaUrl: 'https://unpkg.com/leaflet@1.9.4/dist/images/marker-icon-2x.png',

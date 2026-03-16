@@ -28,7 +28,7 @@ L.Icon.Default.mergeOptions({
     shadowUrl: 'https://unpkg.com/leaflet@1.9.4/dist/images/marker-shadow.png',
 });
 
-const DEFAULT_VENDOR_LOCATION: [number, number] = [14.5995, 120.9842];
+const DEFAULT_VENDOR_LOCATION: [number, number] = [9.7392, 118.7353];
 
 function normalizeSlugInput(value: string) {
     return value.trim().toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)/g, '');

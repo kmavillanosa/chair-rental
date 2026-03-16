@@ -13,6 +13,7 @@
     "migration:run": "npm run build && node ./node_modules/typeorm/cli.js migration:run -d dist/src/database/data-source.js",
     "migration:revert": "node ./node_modules/typeorm/cli.js migration:revert -d dist/src/database/data-source.js",
     "seed:catalog": "node dist/src/scripts/seed-catalog.js",
+    "seed:master": "node dist/src/scripts/seed-master-data.js",
     "seed:vendors": "node dist/src/scripts/seed-vendor-distance.js",
     "test": "vitest run",
     "test:watch": "vitest",
