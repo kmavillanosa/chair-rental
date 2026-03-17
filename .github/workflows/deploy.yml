@@ -157,6 +157,7 @@ jobs:
           export GIT_TERMINAL_PROMPT=0
           git pull --ff-only origin ${DEPLOY_BRANCH}
           docker compose up -d --build
+          docker compose exec -T api npm run db:migrate
           docker compose exec -T api node dist/scripts/seed-catalog.js
           docker compose ps
           REMOTE
