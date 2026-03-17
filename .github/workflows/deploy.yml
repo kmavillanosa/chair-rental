@@ -96,6 +96,7 @@ jobs:
           STAFF_FRONTEND_URL: ${{ secrets.STAFF_FRONTEND_URL }}
           VENDOR_DOMAIN: ${{ secrets.VENDOR_DOMAIN }}
           VITE_API_URL: ${{ secrets.VITE_API_URL }}
+          VITE_VENDOR_LOGIN_URL: ${{ secrets.VITE_VENDOR_LOGIN_URL }}
         run: |
           set -euo pipefail
           SSH_OPTS="-o StrictHostKeyChecking=no -o ConnectTimeout=90 -o ConnectionAttempts=5 -o ServerAliveInterval=15 -o ServerAliveCountMax=60 -o TCPKeepAlive=yes"
@@ -117,6 +118,7 @@ jobs:
           FRONTEND_URL=${FRONTEND_URL}
           STAFF_FRONTEND_URL=${STAFF_FRONTEND_URL}
           VITE_API_URL=${VITE_API_URL}
+          VITE_VENDOR_LOGIN_URL=${VITE_VENDOR_LOGIN_URL}
           VENDOR_DOMAIN=${VENDOR_DOMAIN}
           API_PORT=${API_PORT}
           PROXY_PORT=${PROXY_PORT}

@@ -154,6 +154,7 @@ services:
       args:
         VITE_VENDOR_DOMAIN: ${VENDOR_DOMAIN}
         VITE_API_URL: ${VITE_API_URL}
+        VITE_VENDOR_LOGIN_URL: ${VITE_VENDOR_LOGIN_URL}
     container_name: chair_rental_app
     restart: unless-stopped
     ports:
