@@ -158,5 +158,6 @@ jobs:
           git pull --ff-only origin ${DEPLOY_BRANCH}
           docker compose up -d --build
           docker compose exec -T api node ./node_modules/typeorm/cli.js migration:run -d dist/src/database/data-source.js
+          docker compose exec -T api node dist/scripts/seed-catalog.js
           docker compose ps
           REMOTE

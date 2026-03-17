@@ -1,9 +1,9 @@
 import { MigrationInterface, QueryRunner } from 'typeorm';
 
-export class AddTrustSafetyInfrastructure202603150001
+export class AddTrustSafetyInfrastructure2026031500010
   implements MigrationInterface
 {
-  name = 'AddTrustSafetyInfrastructure202603150001';
+  name = 'AddTrustSafetyInfrastructure2026031500010';
 
   public async up(queryRunner: QueryRunner): Promise<void> {
     await queryRunner.query(`

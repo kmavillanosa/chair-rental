@@ -1,7 +1,7 @@
 import { MigrationInterface, QueryRunner } from 'typeorm';
 
-export class AddRocketchatRoomId202603150003 implements MigrationInterface {
-  name = 'AddRocketchatRoomId202603150003';
+export class AddRocketchatRoomId2026031500030 implements MigrationInterface {
+  name = 'AddRocketchatRoomId2026031500030';
 
   public async up(queryRunner: QueryRunner): Promise<void> {
     await queryRunner.query(`
