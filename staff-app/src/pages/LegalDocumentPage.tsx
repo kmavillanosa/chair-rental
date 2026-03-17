@@ -76,10 +76,6 @@ export default function LegalDocumentPage() {
                             {activeDocument.summary}
                         </p>
 
-                        <div className="mt-6 rounded-2xl border border-amber-200 bg-amber-50 px-5 py-4 text-sm leading-7 text-amber-900">
-                            Replace all bracketed placeholders before publishing. This draft is meant to be reviewed and finalized with legal counsel for your jurisdiction.
-                        </div>
-
                         <div className="mt-8 space-y-8">
                             {activeDocument.sections.map((section) => (
                                 <section key={section.heading} className="border-t border-slate-100 pt-8 first:border-t-0 first:pt-0">
