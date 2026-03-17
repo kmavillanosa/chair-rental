@@ -1,11 +1,7 @@
-name: Unit Tests
+name: Unit Tests (Manual)
 
 on:
-  push:
-    branches:
-      - main
-      - master
-  pull_request:
+  workflow_dispatch:
 
 jobs:
   test:
