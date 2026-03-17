@@ -43,16 +43,12 @@ jobs:
       - name: Run unit tests with coverage thresholds
         run: npm run test:coverage
 
-  deploy:
+  sync:
     runs-on: ubuntu-latest
-    timeout-minutes: 40
-    needs: test
+    timeout-minutes: 10
     if: github.event_name == 'push'
 
     steps:
-      - name: Checkout
-        uses: actions/checkout@v4
-
       - name: Install SSH key
         uses: webfactory/ssh-agent@v0.9.1
         with:
@@ -61,7 +57,7 @@ jobs:
       - name: Verify loaded SSH key
         run: ssh-add -l
 
-      - name: Deploy to VPS
+      - name: Pull latest code on VPS
         env:
           VPS_HOST: ${{ secrets.VPS_HOST }}
           VPS_USER: ${{ secrets.VPS_USER }}
@@ -156,6 +152,34 @@ jobs:
           chmod 600 .env
           export GIT_TERMINAL_PROMPT=0
           git pull --ff-only origin ${DEPLOY_BRANCH}
+          REMOTE
+
+  deploy:
+    runs-on: ubuntu-latest
+    timeout-minutes: 40
+    needs: [test, sync]
+    if: github.event_name == 'push'
+
+    steps:
+      - name: Install SSH key
+        uses: webfactory/ssh-agent@v0.9.1
+        with:
+          ssh-private-key: ${{ secrets.VPS_SSH_KEY }}
+
+      - name: Verify loaded SSH key
+        run: ssh-add -l
+
+      - name: Deploy to VPS
+        env:
+          VPS_HOST: ${{ secrets.VPS_HOST }}
+          VPS_USER: ${{ secrets.VPS_USER }}
+        run: |
+          set -euo pipefail
+          SSH_OPTS="-o BatchMode=yes -o StrictHostKeyChecking=no -o ConnectTimeout=90 -o ConnectionAttempts=5 -o ServerAliveInterval=15 -o ServerAliveCountMax=60 -o TCPKeepAlive=yes"
+
+          ssh $SSH_OPTS "$VPS_USER@$VPS_HOST" "bash -s" <<REMOTE
+          set -euo pipefail
+          cd /root/chair-rental
           docker compose up -d --build
           docker compose exec -T api npm run db:migrate
           docker compose exec -T api node dist/scripts/seed-catalog.js
