@@ -13,6 +13,7 @@ on:
 jobs:
   test:
     runs-on: ubuntu-latest
+    timeout-minutes: 30
     strategy:
       fail-fast: false
       matrix:
@@ -44,6 +45,7 @@ jobs:
 
   deploy:
     runs-on: ubuntu-latest
+    timeout-minutes: 40
     needs: test
     if: github.event_name == 'push'
 
@@ -104,7 +106,7 @@ jobs:
           VITE_VENDOR_LOGIN_URL: ${{ secrets.VITE_VENDOR_LOGIN_URL }}
         run: |
           set -euo pipefail
-          SSH_OPTS="-o StrictHostKeyChecking=no -o ConnectTimeout=90 -o ConnectionAttempts=5 -o ServerAliveInterval=15 -o ServerAliveCountMax=60 -o TCPKeepAlive=yes"
+          SSH_OPTS="-o BatchMode=yes -o StrictHostKeyChecking=no -o ConnectTimeout=90 -o ConnectionAttempts=5 -o ServerAliveInterval=15 -o ServerAliveCountMax=60 -o TCPKeepAlive=yes"
 
           ssh $SSH_OPTS "$VPS_USER@$VPS_HOST" "bash -s" <<REMOTE
           set -euo pipefail
@@ -152,7 +154,9 @@ jobs:
           ENVVARS
 
           chmod 600 .env
-          git pull origin ${DEPLOY_BRANCH}
+          export GIT_TERMINAL_PROMPT=0
+          git pull --ff-only origin ${DEPLOY_BRANCH}
           docker compose up -d --build
+          docker compose exec -T api node ./node_modules/typeorm/cli.js migration:run -d dist/src/database/data-source.js
           docker compose ps
           REMOTE
