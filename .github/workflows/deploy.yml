@@ -106,6 +106,10 @@ jobs:
 
           ssh $SSH_OPTS "$VPS_USER@$VPS_HOST" "bash -s" <<REMOTE
           set -euo pipefail
+          export GIT_TERMINAL_PROMPT=0
+          if [ ! -d /root/chair-rental/.git ]; then
+            git clone --branch ${DEPLOY_BRANCH} https://github.com/kmavillanosa/chair-rental.git /root/chair-rental
+          fi
           cd /root/chair-rental
 
           cat > .env <<'ENVVARS'
@@ -150,7 +154,6 @@ jobs:
           ENVVARS
 
           chmod 600 .env
-          export GIT_TERMINAL_PROMPT=0
           git pull --ff-only origin ${DEPLOY_BRANCH}
           REMOTE
 
