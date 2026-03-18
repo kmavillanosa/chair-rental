@@ -7,7 +7,7 @@ import {
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { createHash, randomInt } from 'crypto';
-import { In, MoreThan, Repository } from 'typeorm';
+import { DataSource, In, MoreThan, Repository } from 'typeorm';
 import {
   BusinessRegistrationType,
   Vendor,
@@ -153,6 +153,7 @@ export class VendorsService {
     private readonly deliveryRatesRepo: Repository<DeliveryRate>,
     @InjectRepository(Booking)
     private readonly bookingsRepo: Repository<Booking>,
+    private readonly dataSource: DataSource,
     private readonly usersService: UsersService,
     private readonly emailService: EmailService,
     private readonly settingsService: SettingsService,
@@ -1533,6 +1534,203 @@ export class VendorsService {
     }
 
     return this.findById(id, true);
+  }
+
+  async hardDeleteVendor(id: string, deletedByUserId?: string) {
+    const vendor = await this.findByIdRaw(id, true);
+    if (!vendor) throw new NotFoundException('Vendor not found');
+
+    const userId = vendor.userId;
+
+    const deletedCounts = await this.dataSource.transaction(async (manager) => {
+      const bookingRows = await manager
+        .createQueryBuilder(Booking, 'booking')
+        .select('booking.id', 'id')
+        .where('booking.vendorId = :vendorId', { vendorId: id })
+        .getRawMany<{ id: string }>();
+      const bookingIds = bookingRows.map((row) => row.id);
+
+      const inventoryRows = await manager
+        .createQueryBuilder(InventoryItem, 'inventoryItem')
+        .select('inventoryItem.id', 'id')
+        .where('inventoryItem.vendorId = :vendorId', { vendorId: id })
+        .getRawMany<{ id: string }>();
+      const inventoryItemIds = inventoryRows.map((row) => row.id);
+
+      const vendorItemRows = await manager
+        .createQueryBuilder(VendorItem, 'vendorItem')
+        .select('vendorItem.id', 'id')
+        .where('vendorItem.vendorId = :vendorId', { vendorId: id })
+        .getRawMany<{ id: string }>();
+      const vendorItemIds = vendorItemRows.map((row) => row.id);
+
+      const disputeIds = bookingIds.length
+        ? (
+            await manager
+              .createQueryBuilder()
+              .from('booking_disputes', 'bookingDispute')
+              .select('bookingDispute.id', 'id')
+              .where('bookingDispute.bookingId IN (:...bookingIds)', {
+                bookingIds,
+              })
+              .getRawMany<{ id: string }>()
+          ).map((row) => row.id)
+        : [];
+
+      const deleteWhereEquals = async (
+        tableName: string,
+        column: string,
+        value: string,
+      ): Promise<number> => {
+        const result = await manager
+          .createQueryBuilder()
+          .delete()
+          .from(tableName)
+          .where(`${column} = :value`, { value })
+          .execute();
+        return result.affected || 0;
+      };
+
+      const deleteWhereIn = async (
+        tableName: string,
+        column: string,
+        values: string[],
+      ): Promise<number> => {
+        if (!values.length) return 0;
+        const result = await manager
+          .createQueryBuilder()
+          .delete()
+          .from(tableName)
+          .where(`${column} IN (:...values)`, { values })
+          .execute();
+        return result.affected || 0;
+      };
+
+      const deletedFraudAlerts = bookingIds.length
+        ? (
+            await manager
+              .createQueryBuilder()
+              .delete()
+              .from('fraud_alerts')
+              .where('vendorId = :vendorId', { vendorId: id })
+              .orWhere('bookingId IN (:...bookingIds)', { bookingIds })
+              .execute()
+          ).affected || 0
+        : await deleteWhereEquals('fraud_alerts', 'vendorId', id);
+
+      const deletedDisputeEvidence = disputeIds.length
+        ? await deleteWhereIn('booking_dispute_evidence', 'disputeId', disputeIds)
+        : 0;
+
+      const deletedDisputes = bookingIds.length
+        ? await deleteWhereIn('booking_disputes', 'bookingId', bookingIds)
+        : 0;
+
+      const deletedPayouts = bookingIds.length
+        ? (
+            await manager
+              .createQueryBuilder()
+              .delete()
+              .from('vendor_payouts')
+              .where('vendorId = :vendorId', { vendorId: id })
+              .orWhere('bookingId IN (:...bookingIds)', { bookingIds })
+              .execute()
+          ).affected || 0
+        : await deleteWhereEquals('vendor_payouts', 'vendorId', id);
+
+      const deletedBookingDocuments = bookingIds.length
+        ? await deleteWhereIn('booking_documents', 'bookingId', bookingIds)
+        : 0;
+
+      const deletedDeliveryProofs = bookingIds.length
+        ? (
+            await manager
+              .createQueryBuilder()
+              .delete()
+              .from('booking_delivery_proofs')
+              .where('vendorId = :vendorId', { vendorId: id })
+              .orWhere('bookingId IN (:...bookingIds)', { bookingIds })
+              .execute()
+          ).affected || 0
+        : await deleteWhereEquals('booking_delivery_proofs', 'vendorId', id);
+
+      const deletedBookingMessages = bookingIds.length
+        ? await deleteWhereIn('booking_messages', 'bookingId', bookingIds)
+        : 0;
+
+      const deletedBookingReviews = bookingIds.length
+        ? await deleteWhereIn('booking_reviews', 'bookingId', bookingIds)
+        : 0;
+
+      const deletedBookingItemsByBooking = bookingIds.length
+        ? await deleteWhereIn('booking_items', 'bookingId', bookingIds)
+        : 0;
+
+      const deletedBookings = await deleteWhereEquals('bookings', 'vendorId', id);
+
+      const deletedBookingItemsByInventory = inventoryItemIds.length
+        ? await deleteWhereIn('booking_items', 'inventoryItemId', inventoryItemIds)
+        : 0;
+
+      const deletedVendorItemPhotos = vendorItemIds.length
+        ? await deleteWhereIn('vendor_item_photos', 'vendorItemId', vendorItemIds)
+        : 0;
+
+      const deletedVendorItems = await deleteWhereEquals('vendor_items', 'vendorId', id);
+      const deletedInventoryItems = await deleteWhereEquals('inventory_items', 'vendorId', id);
+      const deletedDeliveryRates = await deleteWhereEquals('delivery_rates', 'vendorId', id);
+      const deletedVendorPayments = await deleteWhereEquals('vendor_payments', 'vendorId', id);
+      const deletedVendorDocuments = await deleteWhereEquals('vendor_documents', 'vendorId', id);
+      const deletedVerificationHistory = await deleteWhereEquals('vendor_verification_status', 'vendorId', id);
+      const deletedOtpChallenges = userId
+        ? await deleteWhereEquals('vendor_phone_otp_challenges', 'userId', userId)
+        : 0;
+      const deletedVendor = await deleteWhereEquals('vendors', 'id', id);
+
+      if (userId) {
+        await manager
+          .createQueryBuilder()
+          .update('users')
+          .set({ role: UserRole.CUSTOMER })
+          .where('id = :userId', { userId })
+          .andWhere('role = :vendorRole', { vendorRole: UserRole.VENDOR })
+          .execute();
+      }
+
+      return {
+        bookingDisputeEvidence: deletedDisputeEvidence,
+        bookingDisputes: deletedDisputes,
+        fraudAlerts: deletedFraudAlerts,
+        vendorPayouts: deletedPayouts,
+        bookingDocuments: deletedBookingDocuments,
+        bookingDeliveryProofs: deletedDeliveryProofs,
+        bookingMessages: deletedBookingMessages,
+        bookingReviews: deletedBookingReviews,
+        bookingItemsByBooking: deletedBookingItemsByBooking,
+        bookings: deletedBookings,
+        bookingItemsByInventory: deletedBookingItemsByInventory,
+        vendorItemPhotos: deletedVendorItemPhotos,
+        vendorItems: deletedVendorItems,
+        inventoryItems: deletedInventoryItems,
+        deliveryRates: deletedDeliveryRates,
+        vendorPayments: deletedVendorPayments,
+        vendorDocuments: deletedVendorDocuments,
+        vendorVerificationStatusEntries: deletedVerificationHistory,
+        vendorOtpChallenges: deletedOtpChallenges,
+        vendor: deletedVendor,
+      };
+    });
+
+    this.logger.warn(
+      `Hard-deleted vendor ${id} by admin ${deletedByUserId || 'unknown-admin'}`,
+    );
+
+    return {
+      vendorId: id,
+      userId,
+      deletedByUserId: deletedByUserId || null,
+      deletedCounts,
+    };
   }
 
   async setActive(

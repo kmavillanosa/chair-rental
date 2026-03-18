@@ -85,6 +85,9 @@ export const clearVendorWarnings = (id: string) =>
 export const setVendorActive = (id: string, isActive: boolean) =>
   api.patch<Vendor>(`/vendors/${id}/active`, { isActive }).then(r => mapVendor(r.data));
 
+export const hardDeleteVendor = (id: string) =>
+  api.delete(`/vendors/${id}/hard`).then((r) => r.data);
+
 export const createVendor = (data: CreateVendorPayload) =>
   api.post<Vendor>('/vendors', data).then(r => mapVendor(r.data));
 

@@ -1,6 +1,7 @@
 import {
   Body,
   Controller,
+  Delete,
   Get,
   Patch,
   Post,
@@ -421,5 +422,16 @@ export class VendorsController {
     @Body('suspendedUntil') suspendedUntil?: string,
   ) {
     return this.vendorsService.suspend(id, reason, suspendedUntil, req.user.id);
+  }
+
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles(UserRole.ADMIN)
+  @ApiBearerAuth()
+  @Delete(':id/hard')
+  hardDelete(
+    @Request() req,
+    @Param('id') id: string,
+  ) {
+    return this.vendorsService.hardDeleteVendor(id, req.user.id);
   }
 }

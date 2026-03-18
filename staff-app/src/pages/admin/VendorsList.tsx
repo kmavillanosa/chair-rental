@@ -9,6 +9,7 @@ import {
   flagVendorSuspicious,
   getAllVendors,
   getVendorRequests,
+  hardDeleteVendor,
   provisionVendorMerchantId,
   setVendorActive,
   suspendVendor,
@@ -29,6 +30,7 @@ export default function VendorsList() {
   const [suspendTargetVendor, setSuspendTargetVendor] = useState<Vendor | null>(null);
   const [suspendingVendor, setSuspendingVendor] = useState(false);
   const [provisioningVendorId, setProvisioningVendorId] = useState<string | null>(null);
+  const [hardDeletingVendorId, setHardDeletingVendorId] = useState<string | null>(null);
   const [createForm, setCreateForm] = useState({
     userEmail: '',
     businessName: '',
@@ -85,6 +87,35 @@ export default function VendorsList() {
     await setVendorActive(vendor.id, !vendor.isActive);
     toast.success(`Vendor ${vendor.isActive ? 'suspended' : 'activated'}!`);
     load();
+  };
+
+  const handleHardDelete = async (vendor: Vendor) => {
+    const confirmation = window.prompt(
+      [
+        `Type DELETE to permanently remove ${vendor.businessName}.`,
+        'This will hard-delete vendor-related bookings, payouts, inventory, KYC docs, and verification history.',
+        'This action cannot be undone.',
+      ].join('\n'),
+      '',
+    );
+
+    if (confirmation !== 'DELETE') {
+      if (confirmation !== null) {
+        toast.error('Hard delete cancelled. Type DELETE exactly to confirm.');
+      }
+      return;
+    }
+
+    setHardDeletingVendorId(vendor.id);
+    try {
+      await hardDeleteVendor(vendor.id);
+      toast.success(`${vendor.businessName} hard-deleted.`);
+      load();
+    } catch (error: any) {
+      toast.error(error?.response?.data?.message || 'Failed to hard-delete vendor.');
+    } finally {
+      setHardDeletingVendorId(null);
+    }
   };
 
   const handleProvisionMerchant = async (vendor: Vendor) => {
@@ -417,6 +448,16 @@ export default function VendorsList() {
                         onClick={() => handleToggleActive(vendor)}
                       >
                         {vendor.isActive ? 'Deactivate' : 'Activate'}
+                      </Button>
+                      <Button
+                        size="xs"
+                        color="light"
+                        className={dangerActionClass}
+                        onClick={() => handleHardDelete(vendor)}
+                        isProcessing={hardDeletingVendorId === vendor.id}
+                        disabled={hardDeletingVendorId === vendor.id}
+                      >
+                        Hard Delete
                       </Button>
                     </div>
                   </Table.Cell>

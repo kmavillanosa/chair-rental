@@ -189,6 +189,9 @@ function createService() {
   const bookingsRepo = {
     createQueryBuilder: vi.fn(),
   };
+  const dataSource = {
+    transaction: vi.fn(),
+  };
   const usersService = {
     findByEmail: vi.fn(),
     findById: vi.fn(),
@@ -213,6 +216,7 @@ function createService() {
     inventoryRepo as any,
     deliveryRatesRepo as any,
     bookingsRepo as any,
+    dataSource as any,
     usersService as any,
     emailService as any,
     settingsService as any,
