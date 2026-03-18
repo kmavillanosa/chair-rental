@@ -66,6 +66,8 @@ def request_json(
     headers = {
         "Authorization": f"Bearer {token}",
         "Content-Type": "application/json",
+        "Accept": "application/json",
+        "User-Agent": "chair-rental-certbot-hook/1.0 (+https://rentalbasic.com)",
     }
 
     if payload is not None:
@@ -81,6 +83,12 @@ def request_json(
             return json.loads(raw)
     except urllib.error.HTTPError as exc:
         error_text = exc.read().decode("utf-8", errors="replace")
+        if exc.code == 403 and "1010" in error_text:
+            raise RuntimeError(
+                "Hostinger API access denied (HTTP 403, code 1010). "
+                "Verify HOSTINGER_API_TOKEN belongs to the same Hostinger account that owns the zone, "
+                "and regenerate the token if needed."
+            ) from exc
         raise RuntimeError(f"Hostinger API {method} {path} failed: HTTP {exc.code}: {error_text}") from exc
     except urllib.error.URLError as exc:
         raise RuntimeError(f"Hostinger API {method} {path} failed: {exc}") from exc
