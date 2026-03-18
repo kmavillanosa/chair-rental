@@ -256,6 +256,7 @@ jobs:
             api/package-lock.json \
             api/Dockerfile.release \
             api/dist \
+            api/uploads \
             app/nginx.conf \
             app/Dockerfile.release \
             app/dist \
@@ -310,6 +311,7 @@ jobs:
           rm -rf api/dist app/dist staff-app/dist
           tar -xzf /tmp/chair-rental-deploy-bundle.tgz -C /root/chair-rental
           rm -f /tmp/chair-rental-deploy-bundle.tgz
+          mkdir -p api/uploads
 
           set -a
           . ./.env
