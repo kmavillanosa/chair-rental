@@ -135,6 +135,16 @@ docker compose run --rm --entrypoint certbot "${CERTBOT_RUN_ENV_ARGS[@]}" certbo
 # ── Step 4: Reload nginx with the real certificate ───────────────────────────
 echo ""
 echo "→ [4/4] Reloading nginx with the real certificate…"
+# Wait up to 30s for nginx_proxy container to be in running state before reloading.
+for i in $(seq 1 30); do
+  STATUS=$(docker inspect --format '{{.State.Status}}' chair_rental_proxy 2>/dev/null || echo "missing")
+  if [[ "$STATUS" == "running" ]]; then
+    break
+  fi
+  echo "   Waiting for nginx_proxy to be running (status: $STATUS)…"
+  sleep 1
+done
+
 docker compose exec nginx_proxy nginx -s reload
 
 if ! is_lets_encrypt_cert "$CERT_FILE"; then
