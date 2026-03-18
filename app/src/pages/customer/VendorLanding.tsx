@@ -35,9 +35,10 @@ function UnitCell({ bgClass, label }: { bgClass: string; label: string }) {
   );
 }
 
-export default function VendorLanding() {
+export default function VendorLanding({ slugOverride }: { slugOverride?: string | null } = {}) {
   const { t } = useTranslation();
   const { slug } = useParams<{ slug: string }>();
+  const resolvedSlug = slugOverride || slug;
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
   const [vendor, setVendor] = useState<Vendor | null>(null);
@@ -47,15 +48,24 @@ export default function VendorLanding() {
   const [breakdownLoading, setBreakdownLoading] = useState(false);
 
   useEffect(() => {
-    if (!slug) return;
-    getVendorBySlug(slug)
+    if (!resolvedSlug) {
+      setLoading(false);
+      return;
+    }
+
+    setLoading(true);
+    getVendorBySlug(resolvedSlug)
       .then((v) => {
         setVendor(v);
         return getInventory(v.id);
       })
       .then(setInventory)
+      .catch(() => {
+        setVendor(null);
+        setInventory([]);
+      })
       .finally(() => setLoading(false));
-  }, [slug]);
+  }, [resolvedSlug]);
 
   useEffect(() => {
     if (vendor) {
@@ -92,8 +102,8 @@ export default function VendorLanding() {
     });
 
     const bookingUrl = params.toString()
-      ? `/book/${slug}?${params.toString()}`
-      : `/book/${slug}`;
+      ? `/book/${resolvedSlug}?${params.toString()}`
+      : `/book/${resolvedSlug}`;
     navigate(bookingUrl);
   };
 

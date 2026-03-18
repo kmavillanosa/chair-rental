@@ -19,9 +19,50 @@ async function bootstrap() {
     'http://localhost:5174',
   ];
   const allowedOrigins = [...new Set([...configuredOrigins, ...devOrigins])];
+  const vendorDomain = (process.env.VENDOR_DOMAIN || '')
+    .replace(/^https?:\/\//i, '')
+    .replace(/^\*\./, '')
+    .replace(/\/$/, '')
+    .toLowerCase();
+
+  const wildcardDomains = new Set<string>();
+  if (vendorDomain) {
+    wildcardDomains.add(vendorDomain);
+  }
+
+  if (process.env.FRONTEND_URL) {
+    try {
+      const hostname = new URL(process.env.FRONTEND_URL).hostname.toLowerCase();
+      wildcardDomains.add(hostname.replace(/^www\./, ''));
+    } catch {
+      // Ignore invalid FRONTEND_URL values and fall back to exact origin allowlist.
+    }
+  }
 
   app.enableCors({
-    origin: allowedOrigins,
+    origin: (origin, callback) => {
+      if (!origin) {
+        callback(null, true);
+        return;
+      }
+
+      if (allowedOrigins.includes(origin)) {
+        callback(null, true);
+        return;
+      }
+
+      try {
+        const requestOrigin = new URL(origin);
+        const hostname = requestOrigin.hostname.toLowerCase();
+        const matchesWildcardDomain = [...wildcardDomains].some((domain) => (
+          hostname === domain || hostname.endsWith(`.${domain}`)
+        ));
+
+        callback(null, matchesWildcardDomain);
+      } catch {
+        callback(null, false);
+      }
+    },
     credentials: true,
   });
 
