@@ -120,6 +120,16 @@ if [[ "$FORCE_RENEWAL" == "true" ]]; then
   CERTBOT_ARGS+=(--force-renewal)
 fi
 
+# If the live dir exists but is NOT a real LE cert (e.g. temp self-signed),
+# delete it so certbot does not refuse to issue thinking one already exists.
+LIVE_DIR="./nginx/certbot/conf/live/$DOMAIN"
+if [[ -d "$LIVE_DIR" ]] && ! is_lets_encrypt_cert "$LIVE_DIR/fullchain.pem"; then
+  echo "   Removing stale/self-signed cert dir so certbot can issue a fresh cert…"
+  rm -rf "$LIVE_DIR" \
+         "./nginx/certbot/conf/archive/$DOMAIN" \
+         "./nginx/certbot/conf/renewal/$DOMAIN.conf"
+fi
+
 docker compose run --rm --entrypoint certbot "${CERTBOT_RUN_ENV_ARGS[@]}" certbot "${CERTBOT_ARGS[@]}"
 
 # ── Step 4: Reload nginx with the real certificate ───────────────────────────
