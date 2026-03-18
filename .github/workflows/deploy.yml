@@ -62,6 +62,7 @@ jobs:
           VPS_HOST: ${{ secrets.VPS_HOST }}
           VPS_USER: ${{ secrets.VPS_USER }}
           DEPLOY_BRANCH: ${{ github.ref_name }}
+          DEPLOY_SHA: ${{ github.sha }}
           API_PORT: ${{ secrets.API_PORT }}
           DB_SYNC: ${{ secrets.DB_SYNC }}
           FRONTEND_URL: ${{ secrets.FRONTEND_URL }}
@@ -170,7 +171,30 @@ jobs:
           ENVVARS
 
           chmod 600 .env
-          git pull --ff-only origin ${DEPLOY_BRANCH}
+
+          if [ -n "$(git status --porcelain --untracked-files=no)" ]; then
+            echo "ERROR: VPS repo has local tracked changes. Clean /root/chair-rental before deploying." >&2
+            git status --short >&2
+            exit 1
+          fi
+
+          git fetch --prune origin ${DEPLOY_BRANCH}
+
+          if git show-ref --verify --quiet "refs/heads/${DEPLOY_BRANCH}"; then
+            git checkout ${DEPLOY_BRANCH}
+          else
+            git checkout -b ${DEPLOY_BRANCH} --track origin/${DEPLOY_BRANCH}
+          fi
+
+          git merge --ff-only origin/${DEPLOY_BRANCH}
+
+          CURRENT_SHA=$(git rev-parse HEAD)
+          echo "Synced /root/chair-rental to ${CURRENT_SHA} on branch ${DEPLOY_BRANCH}"
+
+          if [ -n "${DEPLOY_SHA:-}" ] && [ "$CURRENT_SHA" != "${DEPLOY_SHA}" ]; then
+            echo "ERROR: Expected commit ${DEPLOY_SHA} but VPS is at ${CURRENT_SHA}." >&2
+            exit 1
+          fi
           REMOTE
 
   deploy:
