@@ -14,8 +14,11 @@ export default function VendorDashboard() {
   const [loading, setLoading] = useState(true);
   const [breakdown, setBreakdown] = useState<any[]>([]);
   const [breakdownLoading, setBreakdownLoading] = useState(false);
-  const customerAppUrl = (import.meta.env.VITE_CUSTOMER_APP_URL || 'http://127.0.0.1:43171').replace(/\/$/, '');
-  const publicShopUrl = `${customerAppUrl}/shop/${vendor?.slug || ''}`;
+  const vendorDomain = (import.meta.env.VITE_VENDOR_DOMAIN || 'rentalbasic.com')
+    .replace(/^https?:\/\//, '')
+    .replace(/\/$/, '');
+  const publicShopHost = vendor?.slug ? `${vendor.slug}.${vendorDomain}` : vendorDomain;
+  const publicShopUrl = `https://${publicShopHost}`;
 
   useEffect(() => {
     Promise.all([getMyVendor(), getVendorBookings(), getMyPayments()])
@@ -133,7 +136,7 @@ export default function VendorDashboard() {
         </div>
       </div>
       <div className="mb-4 rounded border border-slate-200 bg-white p-4">
-        <h2 className="mb-1 text-sm font-semibold text-slate-700">Shop: /shop/{vendor?.slug}</h2>
+        <h2 className="mb-1 text-sm font-semibold text-slate-700">Shop: {publicShopHost}</h2>
         <p className="text-sm text-gray-600">{vendor?.address}</p>
         <a href={publicShopUrl} target="_blank" rel="noopener noreferrer" className="mt-1 inline-block text-sm text-blue-600 hover:underline">View Public Page →</a>
       </div>

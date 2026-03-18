@@ -65,8 +65,11 @@ export default function MyShop() {
   const [mapCenter, setMapCenter] = useState<[number, number]>(DEFAULT_CENTER);
   const [saving, setSaving] = useState(false);
   const [locating, setLocating] = useState(false);
-  const customerAppUrl = (import.meta.env.VITE_CUSTOMER_APP_URL || 'http://127.0.0.1:43171').replace(/\/$/, '');
-  const publicShopUrl = `${customerAppUrl}/shop/${vendor?.slug || ''}`;
+  const vendorDomain = (import.meta.env.VITE_VENDOR_DOMAIN || 'rentalbasic.com')
+    .replace(/^https?:\/\//, '')
+    .replace(/\/$/, '');
+  const publicShopHost = vendor?.slug ? `${vendor.slug}.${vendorDomain}` : vendorDomain;
+  const publicShopUrl = `https://${publicShopHost}`;
 
   const setLocation = useCallback((latitude: number, longitude: number) => {
     const normalizedLat = Number(latitude.toFixed(6));
