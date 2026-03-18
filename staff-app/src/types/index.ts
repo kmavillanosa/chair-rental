@@ -81,6 +81,7 @@ export interface VendorItemPhoto {
   vendorItemId: string;
   photoType: 'item_only' | 'with_vendor_name_and_date';
   fileUrl: string;
+  metadata?: string | null;
   createdAt: string;
 }
 

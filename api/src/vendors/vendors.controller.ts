@@ -273,6 +273,17 @@ export class VendorsController {
     );
   }
 
+  @UseGuards(JwtAuthGuard)
+  @ApiBearerAuth()
+  @Delete('my/items/:itemId/photos/:photoId')
+  deleteVendorItemPhoto(
+    @Request() req,
+    @Param('itemId') itemId: string,
+    @Param('photoId') photoId: string,
+  ) {
+    return this.vendorsService.deleteVendorItemPhoto(req.user.id, itemId, photoId);
+  }
+
   @UseGuards(JwtAuthGuard, RolesGuard)
   @Roles(UserRole.ADMIN)
   @ApiBearerAuth()

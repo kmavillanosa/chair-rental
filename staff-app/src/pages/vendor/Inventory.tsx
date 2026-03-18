@@ -1,12 +1,24 @@
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { type ChangeEvent, useEffect, useMemo, useRef, useState } from 'react';
 import { Button, Modal, TextInput, Select } from 'flowbite-react';
 import { HiCheck, HiChevronDown, HiSearch, HiX } from 'react-icons/hi';
 import toast from 'react-hot-toast';
 import VendorLayout from '../../components/layout/VendorLayout';
 import { getInventory, createInventoryItem, updateInventoryItem, deleteInventoryItem } from '../../api/items';
 import { getItemTypes, getBrands } from '../../api/items';
-import { getMyVendor } from '../../api/vendors';
-import type { InventoryItem, ItemType, ProductBrand } from '../../types';
+import {
+  createMyVendorVerificationItem,
+  deleteMyVendorItemPhoto,
+  getMyVendor,
+  listMyVendorVerificationItems,
+  uploadMyVendorItemPhoto,
+} from '../../api/vendors';
+import type {
+  InventoryItem,
+  ItemType,
+  ProductBrand,
+  VendorItemPhoto,
+  VendorItemVerification,
+} from '../../types';
 import LoadingSpinner from '../../components/common/LoadingSpinner';
 import { formatCurrency } from '../../utils/format';
 
@@ -26,6 +38,41 @@ const EMPTY_FORM: InventoryFormState = {
   quantity: '',
   ratePerDay: '',
   condition: '',
+};
+
+const VENDOR_GALLERY_LIMIT = 10;
+
+const parsePhotoMetadata = (metadataRaw?: string | null): Record<string, unknown> | null => {
+  if (!metadataRaw) return null;
+
+  try {
+    const parsed = JSON.parse(metadataRaw);
+    if (parsed && typeof parsed === 'object' && !Array.isArray(parsed)) {
+      return parsed as Record<string, unknown>;
+    }
+  } catch {
+    return null;
+  }
+
+  return null;
+};
+
+const isGalleryPhoto = (photo: VendorItemPhoto) => {
+  const metadata = parsePhotoMetadata(photo.metadata);
+  return String(metadata?.category || '').trim().toLowerCase() === 'gallery';
+};
+
+const buildVendorItemMap = (items: VendorItemVerification[]) => {
+  const map: Record<string, VendorItemVerification> = {};
+
+  for (const item of items) {
+    if (!item.inventoryItemId) continue;
+    if (!map[item.inventoryItemId]) {
+      map[item.inventoryItemId] = item;
+    }
+  }
+
+  return map;
 };
 
 function SearchableItemTypeField({
@@ -336,30 +383,51 @@ export default function Inventory() {
   const [items, setItems] = useState<InventoryItem[]>([]);
   const [itemTypes, setItemTypes] = useState<ItemType[]>([]);
   const [brands, setBrands] = useState<ProductBrand[]>([]);
+  const [vendorItemsByInventoryId, setVendorItemsByInventoryId] = useState<Record<string, VendorItemVerification>>({});
   const [vendorId, setVendorId] = useState('');
   const [loading, setLoading] = useState(true);
   const [showModal, setShowModal] = useState(false);
   const [editingItem, setEditingItem] = useState<InventoryItem | null>(null);
+  const [galleryModalItem, setGalleryModalItem] = useState<InventoryItem | null>(null);
+  const [galleryUploading, setGalleryUploading] = useState(false);
+  const [galleryDeletingPhotoId, setGalleryDeletingPhotoId] = useState<string | null>(null);
   const [form, setForm] = useState<InventoryFormState>(EMPTY_FORM);
   const [editForm, setEditForm] = useState<InventoryFormState>(EMPTY_FORM);
   const selectedItemType = itemTypes.find((itemType) => itemType.id === form.itemTypeId);
   const selectedEditItemType = itemTypes.find((itemType) => itemType.id === editForm.itemTypeId);
   const createSubmitDisabled = !form.itemTypeId || Number(form.quantity) <= 0;
   const editSubmitDisabled = !editForm.itemTypeId || Number(editForm.quantity) <= 0;
+  const activeVendorItem = galleryModalItem
+    ? vendorItemsByInventoryId[galleryModalItem.id]
+    : null;
+  const galleryPhotos = useMemo(
+    () => (activeVendorItem?.photos || []).filter(isGalleryPhoto),
+    [activeVendorItem],
+  );
+  const gallerySlotsRemaining = Math.max(0, VENDOR_GALLERY_LIMIT - galleryPhotos.length);
+
+  const refreshVendorVerificationItems = async () => {
+    const vendorItems = await listMyVendorVerificationItems();
+    const vendorItemMap = buildVendorItemMap(vendorItems);
+    setVendorItemsByInventoryId(vendorItemMap);
+    return vendorItemMap;
+  };
 
   const load = async () => {
     setLoading(true);
     try {
       const v = await getMyVendor();
       setVendorId(v.id);
-      const [inv, it, b] = await Promise.all([
+      const [inv, it, b, vendorItems] = await Promise.all([
         getInventory(v.id),
         getItemTypes(),
         getBrands(),
+        listMyVendorVerificationItems(),
       ]);
       setItems(inv);
       setItemTypes(it);
       setBrands(b);
+      setVendorItemsByInventoryId(buildVendorItemMap(vendorItems));
     } catch {
       toast.error('Failed to load inventory data.');
     } finally {
@@ -374,6 +442,24 @@ export default function Inventory() {
   const closeCreateModal = () => {
     setShowModal(false);
     setForm(EMPTY_FORM);
+  };
+
+  const ensureVendorItemForInventoryItem = async (item: InventoryItem) => {
+    const existing = vendorItemsByInventoryId[item.id];
+    if (existing) return existing;
+
+    const created = await createMyVendorVerificationItem({
+      inventoryItemId: item.id,
+      title: `${item.itemType?.name || 'Inventory Item'} Gallery`,
+      description: 'Gallery images for this operated inventory item.',
+    });
+
+    setVendorItemsByInventoryId((current) => ({
+      ...current,
+      [item.id]: created,
+    }));
+
+    return created;
   };
 
   const applyItemTypeChange = (
@@ -463,6 +549,79 @@ export default function Inventory() {
     void load();
   };
 
+  const openGalleryModal = async (item: InventoryItem) => {
+    setGalleryModalItem(item);
+    setGalleryDeletingPhotoId(null);
+
+    try {
+      await ensureVendorItemForInventoryItem(item);
+    } catch (error: any) {
+      toast.error(error?.response?.data?.message || 'Failed to prepare item gallery.');
+      setGalleryModalItem(null);
+    }
+  };
+
+  const closeGalleryModal = () => {
+    setGalleryModalItem(null);
+    setGalleryDeletingPhotoId(null);
+  };
+
+  const handleGalleryUpload = async (event: ChangeEvent<HTMLInputElement>) => {
+    const selectedFiles = Array.from(event.target.files || []);
+    event.target.value = '';
+
+    if (!selectedFiles.length || !galleryModalItem) return;
+
+    if (gallerySlotsRemaining <= 0) {
+      toast.error('Gallery limit reached (10 images).');
+      return;
+    }
+
+    const uploadQueue = selectedFiles.slice(0, gallerySlotsRemaining);
+    if (selectedFiles.length > gallerySlotsRemaining) {
+      toast.error(`Only ${gallerySlotsRemaining} more photo(s) can be uploaded.`);
+    }
+
+    setGalleryUploading(true);
+    try {
+      const vendorItem = await ensureVendorItemForInventoryItem(galleryModalItem);
+      for (const file of uploadQueue) {
+        await uploadMyVendorItemPhoto(vendorItem.id, file, 'item_only', {
+          category: 'gallery',
+        });
+      }
+
+      await refreshVendorVerificationItems();
+      toast.success(
+        `${uploadQueue.length} photo${uploadQueue.length === 1 ? '' : 's'} uploaded.`,
+      );
+    } catch (error: any) {
+      toast.error(error?.response?.data?.message || 'Failed to upload gallery photos.');
+    } finally {
+      setGalleryUploading(false);
+    }
+  };
+
+  const handleDeleteGalleryPhoto = async (photo: VendorItemPhoto) => {
+    if (!galleryModalItem) return;
+    const vendorItem = vendorItemsByInventoryId[galleryModalItem.id];
+    if (!vendorItem) return;
+
+    setGalleryDeletingPhotoId(photo.id);
+    try {
+      const updatedItem = await deleteMyVendorItemPhoto(vendorItem.id, photo.id);
+      setVendorItemsByInventoryId((current) => ({
+        ...current,
+        [galleryModalItem.id]: updatedItem,
+      }));
+      toast.success('Photo removed.');
+    } catch (error: any) {
+      toast.error(error?.response?.data?.message || 'Failed to remove photo.');
+    } finally {
+      setGalleryDeletingPhotoId(null);
+    }
+  };
+
   if (loading) return <VendorLayout><LoadingSpinner /></VendorLayout>;
 
   return (
@@ -474,6 +633,9 @@ export default function Inventory() {
       <div className="grid grid-cols-[repeat(auto-fill,minmax(240px,1fr))] gap-4">
         {items.map(item => {
           const itemPictureUrl = item.pictureUrl || item.itemType?.pictureUrl;
+          const galleryCount = (vendorItemsByInventoryId[item.id]?.photos || []).filter(
+            isGalleryPhoto,
+          ).length;
 
           return (
             <div key={item.id} className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
@@ -485,9 +647,11 @@ export default function Inventory() {
                 <p>📦 Total: <strong>{item.quantity}</strong></p>
                 <p>✅ Available: <strong className="text-green-600">{item.availableQuantity}</strong></p>
                 <p>💵 Rate: <strong>{formatCurrency(item.ratePerDay)}/day</strong></p>
+                <p>🖼️ Gallery: <strong>{galleryCount}/{VENDOR_GALLERY_LIMIT}</strong></p>
                 {item.condition && <p>🔧 Condition: {item.condition}</p>}
               </div>
-              <div className="mt-3 flex items-center gap-2">
+              <div className="mt-3 flex flex-wrap items-center gap-2">
+                <Button color="light" size="sm" onClick={() => void openGalleryModal(item)}>Manage Photos</Button>
                 <Button color="light" size="sm" onClick={() => openEditModal(item)}>Edit</Button>
                 <Button color="failure" size="sm" onClick={() => deleteInventoryItem(item.id).then(() => { toast.success('Removed!'); void load(); })}>Remove</Button>
               </div>
@@ -529,6 +693,72 @@ export default function Inventory() {
         <Modal.Footer className="justify-end gap-3">
           <Button color="gray" size="lg" onClick={closeEditModal}>Cancel</Button>
           <Button size="lg" onClick={handleUpdate} disabled={editSubmitDisabled}>Save Item</Button>
+        </Modal.Footer>
+      </Modal>
+
+      <Modal show={Boolean(galleryModalItem)} onClose={closeGalleryModal} size="4xl">
+        <Modal.Header>
+          {galleryModalItem
+            ? `Photo Gallery: ${galleryModalItem.itemType?.name || 'Inventory Item'}`
+            : 'Photo Gallery'}
+        </Modal.Header>
+        <Modal.Body className="space-y-4">
+          <div className="rounded-xl border border-slate-200 bg-slate-50 p-4">
+            <p className="text-sm text-slate-700">
+              Upload photos of this item in operation. Limit: {VENDOR_GALLERY_LIMIT} images.
+            </p>
+            <p className="mt-1 text-xs text-slate-500">
+              {galleryPhotos.length}/{VENDOR_GALLERY_LIMIT} uploaded
+            </p>
+          </div>
+
+          <label
+            className={`inline-flex w-fit items-center rounded-lg px-4 py-2 text-sm font-semibold text-white ${gallerySlotsRemaining > 0 && !galleryUploading
+              ? 'cursor-pointer bg-cyan-700 hover:bg-cyan-800'
+              : 'cursor-not-allowed bg-slate-400'
+              }`}
+          >
+            <input
+              type="file"
+              accept="image/*"
+              multiple
+              className="hidden"
+              onChange={handleGalleryUpload}
+              disabled={gallerySlotsRemaining <= 0 || galleryUploading}
+            />
+            {galleryUploading ? 'Uploading...' : 'Upload Photos'}
+          </label>
+
+          {galleryPhotos.length ? (
+            <div className="grid grid-cols-2 gap-3 md:grid-cols-3 xl:grid-cols-4">
+              {galleryPhotos.map((photo) => (
+                <div key={photo.id} className="rounded-xl border border-slate-200 bg-white p-2 shadow-sm">
+                  <img
+                    src={photo.fileUrl}
+                    alt="Inventory gallery"
+                    className="h-32 w-full rounded-lg bg-slate-50 object-cover"
+                  />
+                  <Button
+                    color="failure"
+                    size="xs"
+                    className="mt-2 w-full"
+                    onClick={() => void handleDeleteGalleryPhoto(photo)}
+                    isProcessing={galleryDeletingPhotoId === photo.id}
+                    disabled={galleryDeletingPhotoId === photo.id}
+                  >
+                    Remove
+                  </Button>
+                </div>
+              ))}
+            </div>
+          ) : (
+            <p className="rounded-xl border border-dashed border-slate-300 bg-slate-50 px-4 py-10 text-center text-sm text-slate-500">
+              No gallery photos yet. Upload images to showcase what you operate.
+            </p>
+          )}
+        </Modal.Body>
+        <Modal.Footer className="justify-end">
+          <Button color="gray" onClick={closeGalleryModal}>Close</Button>
         </Modal.Footer>
       </Modal>
     </VendorLayout>

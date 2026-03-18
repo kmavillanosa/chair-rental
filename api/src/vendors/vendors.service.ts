@@ -133,6 +133,7 @@ const PAYMONGO_RELATED_CONSUMER_INTENDED_USE = new Set([
 export class VendorsService {
   private readonly logger = new Logger(VendorsService.name);
   private readonly emailOtpChannel = '__email__';
+  private readonly vendorGalleryPhotoLimit = 10;
 
   constructor(
     @InjectRepository(Vendor)
@@ -989,11 +990,29 @@ export class VendorsService {
     const fileUrl = this.normalizeText(fileUrlInput);
     if (!fileUrl) throw new BadRequestException('A photo file URL is required');
 
+    const normalizedMetadata = this.normalizeVendorItemPhotoMetadata(metadata);
+    const isGalleryUpload = this.isGalleryPhotoMetadata(normalizedMetadata);
+
+    if (isGalleryUpload) {
+      const existingPhotos = await this.vendorItemPhotosRepo.find({
+        where: { vendorItemId },
+      });
+      const galleryPhotoCount = existingPhotos.filter((itemPhoto) =>
+        this.isGalleryVendorItemPhoto(itemPhoto),
+      ).length;
+
+      if (galleryPhotoCount >= this.vendorGalleryPhotoLimit) {
+        throw new BadRequestException(
+          `Gallery limit reached. You can only upload up to ${this.vendorGalleryPhotoLimit} images.`,
+        );
+      }
+    }
+
     const photo = this.vendorItemPhotosRepo.create({
       vendorItemId,
       photoType,
       fileUrl,
-      metadata: metadata ? JSON.stringify(metadata) : null,
+      metadata: normalizedMetadata ? JSON.stringify(normalizedMetadata) : null,
     });
 
     await this.vendorItemPhotosRepo.save(photo);
@@ -1011,6 +1030,35 @@ export class VendorsService {
         rejectionReason: null,
       });
     }
+
+    return this.vendorItemsRepo.findOne({
+      where: { id: vendorItemId },
+      relations: ['photos'],
+    });
+  }
+
+  async deleteVendorItemPhoto(
+    userId: string,
+    vendorItemId: string,
+    photoId: string,
+  ) {
+    const vendor = await this.findByUserIdRaw(userId, false);
+    if (!vendor) throw new NotFoundException('Vendor profile not found');
+
+    const vendorItem = await this.vendorItemsRepo.findOne({
+      where: { id: vendorItemId },
+    });
+    if (!vendorItem) throw new NotFoundException('Vendor item not found');
+    if (vendorItem.vendorId !== vendor.id) {
+      throw new ForbiddenException('You can only delete photos for your own vendor items');
+    }
+
+    const photo = await this.vendorItemPhotosRepo.findOne({
+      where: { id: photoId, vendorItemId },
+    });
+    if (!photo) throw new NotFoundException('Vendor item photo not found');
+
+    await this.vendorItemPhotosRepo.delete({ id: photoId, vendorItemId });
 
     return this.vendorItemsRepo.findOne({
       where: { id: vendorItemId },
@@ -2406,6 +2454,57 @@ export class VendorsService {
     }
 
     return null;
+  }
+
+  private normalizeVendorItemPhotoMetadata(input?: Record<string, unknown>) {
+    if (!input || typeof input !== 'object' || Array.isArray(input)) {
+      return undefined;
+    }
+
+    return input;
+  }
+
+  private parseVendorItemPhotoMetadata(input: unknown): JsonRecord | null {
+    if (input === undefined || input === null) {
+      return null;
+    }
+
+    if (typeof input === 'string') {
+      const normalized = input.trim();
+      if (!normalized) {
+        return null;
+      }
+
+      try {
+        const parsed = JSON.parse(normalized);
+        if (parsed && typeof parsed === 'object' && !Array.isArray(parsed)) {
+          return parsed as JsonRecord;
+        }
+      } catch {
+        return null;
+      }
+
+      return null;
+    }
+
+    if (typeof input === 'object' && !Array.isArray(input)) {
+      return input as JsonRecord;
+    }
+
+    return null;
+  }
+
+  private isGalleryPhotoMetadata(metadata?: Record<string, unknown> | null) {
+    if (!metadata) {
+      return false;
+    }
+
+    return String(metadata.category || '').trim().toLowerCase() === 'gallery';
+  }
+
+  private isGalleryVendorItemPhoto(photo: Pick<VendorItemPhoto, 'metadata'>) {
+    const metadata = this.parseVendorItemPhotoMetadata(photo.metadata);
+    return this.isGalleryPhotoMetadata(metadata);
   }
 
   private hashOtp(phone: string, otpCode: string) {

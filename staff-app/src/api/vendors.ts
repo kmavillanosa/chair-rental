@@ -1,10 +1,25 @@
 import api from './axios';
-import type { Vendor, VendorDocument } from '../types';
+import type {
+  Vendor,
+  VendorDocument,
+  VendorItemPhoto,
+  VendorItemVerification,
+} from '../types';
 import { resolveMediaUrl } from '../utils/media';
 
 const mapVendorDocument = (document: VendorDocument): VendorDocument => ({
   ...document,
   fileUrl: resolveMediaUrl(document.fileUrl),
+});
+
+const mapVendorItemPhoto = (photo: VendorItemPhoto): VendorItemPhoto => ({
+  ...photo,
+  fileUrl: resolveMediaUrl(photo.fileUrl),
+});
+
+const mapVendorItem = (item: VendorItemVerification): VendorItemVerification => ({
+  ...item,
+  photos: item.photos?.map(mapVendorItemPhoto),
 });
 
 const mapVendor = (vendor: Vendor): Vendor => ({
@@ -162,6 +177,45 @@ export const uploadMyVendorDocument = (
     .then((r) => r.data);
 };
 
+export type CreateMyVendorItemPayload = {
+  inventoryItemId?: string;
+  title: string;
+  description?: string;
+};
+
+export const listMyVendorVerificationItems = () =>
+  api
+    .get<VendorItemVerification[]>('/vendors/my/items')
+    .then((r) => r.data.map(mapVendorItem));
+
+export const createMyVendorVerificationItem = (data: CreateMyVendorItemPayload) =>
+  api
+    .post<VendorItemVerification>('/vendors/my/items', data)
+    .then((r) => mapVendorItem(r.data));
+
+export const uploadMyVendorItemPhoto = (
+  itemId: string,
+  file: File,
+  photoType: 'item_only' | 'with_vendor_name_and_date' = 'item_only',
+  metadata?: Record<string, unknown>,
+) => {
+  const formData = new FormData();
+  formData.append('file', file);
+  formData.append('photoType', photoType);
+  if (metadata) formData.append('metadata', JSON.stringify(metadata));
+
+  return api
+    .post<VendorItemVerification>(`/vendors/my/items/${itemId}/photos`, formData, {
+      headers: { 'Content-Type': 'multipart/form-data' },
+    })
+    .then((r) => mapVendorItem(r.data));
+};
+
+export const deleteMyVendorItemPhoto = (itemId: string, photoId: string) =>
+  api
+    .delete<VendorItemVerification>(`/vendors/my/items/${itemId}/photos/${photoId}`)
+    .then((r) => mapVendorItem(r.data));
+
 export const getVendorRequests = (status = 'pending') =>
   api.get<Vendor[]>('/vendors/requests', { params: { status } }).then(r => r.data.map(mapVendor));
 
@@ -178,7 +232,9 @@ export const getVendorDocuments = (id: string) =>
   api.get(`/vendors/${id}/documents`).then((r) => r.data);
 
 export const listVendorVerificationItems = (id: string) =>
-  api.get(`/vendors/${id}/items`).then((r) => r.data);
+  api
+    .get<VendorItemVerification[]>(`/vendors/${id}/items`)
+    .then((r) => r.data.map(mapVendorItem));
 
 export const flagVendorSuspicious = (
   id: string,

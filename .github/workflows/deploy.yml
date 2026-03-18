@@ -245,7 +245,9 @@ jobs:
             bash nginx/certbot-init.sh
           fi
 
-          docker compose up -d --build
+          # Force fresh images for services we build locally to avoid stale deploys.
+          docker compose build --pull --no-cache api app staff_app
+          docker compose up -d --force-recreate api app staff_app nginx_proxy
           docker compose exec -T api npm run db:migrate
           docker compose exec -T api node dist/scripts/seed-catalog.js
           docker compose ps

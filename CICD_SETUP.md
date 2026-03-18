@@ -192,7 +192,8 @@ Check the **Actions** tab logs. Fix the failing test locally, then push again.
 ```bash
 # On VPS, manually force a rebuild:
 cd /root/chair-rental
-docker compose up -d --build
+docker compose build --pull --no-cache api app staff_app
+docker compose up -d --force-recreate api app staff_app nginx_proxy
 ```
 
 ### Check live container logs
