@@ -127,9 +127,8 @@ export default function VendorLanding({ slugOverride }: { slugOverride?: string 
           <div className="mt-4 self-start">
             <Button
               onClick={handleBookNow}
-              color="dark"
               size="lg"
-              className="!rounded-xl !px-7 !py-2.5 !text-base !font-bold"
+              className="!rounded-xl !border !border-[#2d3f63] !bg-gradient-to-r !from-[#1f2944] !via-[#243153] !to-[#0d4ea8] !px-7 !py-2.5 !text-base !font-bold !text-white shadow-lg hover:!brightness-110 focus:!ring-2 focus:!ring-[#2ab6e8]/40"
             >
               {t('vendorLandingPage.bookNow')}
             </Button>

@@ -25,7 +25,7 @@ export const legalDocuments: LegalDocument[] = [
       {
         heading: 'Operator',
         paragraphs: [
-          'This platform is operated by [YOUR FULL LEGAL NAME], an individual or sole proprietor doing business as [PLATFORM OR BUSINESS NAME].',
+          'This platform is operated by Kim Cyriel Samaniego Avillanosa, an individual or sole proprietor doing business as RentalBasic.',
           'Replace all bracketed placeholders before publishing these terms in production.',
         ],
       },
@@ -91,7 +91,7 @@ export const legalDocuments: LegalDocument[] = [
       {
         heading: 'Parties and Purpose',
         paragraphs: [
-          'This agreement is between [YOUR FULL LEGAL NAME], doing business as [PLATFORM OR BUSINESS NAME], and the vendor using the platform.',
+          'This agreement is between Kim Cyriel Samaniego Avillanosa, doing business as RentalBasic, and the vendor using the platform.',
           'The vendor appoints the platform on a non-exclusive basis to host listings, accept booking requests, and facilitate payment flows where supported.',
         ],
       },
