@@ -172,7 +172,7 @@ jobs:
 
           chmod 600 .env
 
-          if [ -n "$(git status --porcelain --untracked-files=no)" ]; then
+          if [ -n "\$(git status --porcelain --untracked-files=no)" ]; then
             echo "ERROR: VPS repo has local tracked changes. Clean /root/chair-rental before deploying." >&2
             git status --short >&2
             exit 1
@@ -188,11 +188,12 @@ jobs:
 
           git merge --ff-only origin/${DEPLOY_BRANCH}
 
-          CURRENT_SHA=$(git rev-parse HEAD)
-          echo "Synced /root/chair-rental to ${CURRENT_SHA} on branch ${DEPLOY_BRANCH}"
+          CURRENT_SHA=\$(git rev-parse HEAD)
+          echo "Synced /root/chair-rental to \${CURRENT_SHA} on branch ${DEPLOY_BRANCH}"
 
-          if [ -n "${DEPLOY_SHA:-}" ] && [ "$CURRENT_SHA" != "${DEPLOY_SHA}" ]; then
-            echo "ERROR: Expected commit ${DEPLOY_SHA} but VPS is at ${CURRENT_SHA}." >&2
+          EXPECTED_SHA="${DEPLOY_SHA:-}"
+          if [ -n "\$EXPECTED_SHA" ] && [ "\$CURRENT_SHA" != "\$EXPECTED_SHA" ]; then
+            echo "ERROR: Expected commit \$EXPECTED_SHA but VPS is at \${CURRENT_SHA}." >&2
             exit 1
           fi
           REMOTE
