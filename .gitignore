@@ -25,8 +25,12 @@ Thumbs.db
 .vscode/
 .idea/
 
-# Uploads (runtime)
-api/uploads/
-
 # Coverage
 coverage/
+
+# TLS certificates (runtime only, never commit)
+nginx/certbot/conf/live/
+nginx/certbot/conf/archive/
+nginx/certbot/conf/accounts/
+nginx/certbot/conf/renewal/
+nginx/certbot/www/

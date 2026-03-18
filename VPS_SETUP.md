@@ -304,7 +304,9 @@ PAYMONGO_SPLIT_FEE_BUFFER_BPS=300
 
 ## Step 5 — Obtain TLS Certificates (Let's Encrypt)
 
-This must be done **once** before starting the full stack. It obtains a wildcard certificate for `rentalbasic.com` and `*.rentalbasic.com`.
+Run this before first launch to obtain a wildcard certificate for `rentalbasic.com` and `*.rentalbasic.com`.
+
+Because this flow uses a **manual DNS-01 challenge**, renewals are also manual unless you later add a DNS API auth-hook/plugin.
 
 ```bash
 DOMAIN=rentalbasic.com EMAIL=you@rentalbasic.com bash nginx/certbot-init.sh
@@ -331,7 +333,22 @@ dig TXT _acme-challenge.rentalbasic.com +short
 
 5. Press Enter in the certbot terminal to continue.
 
-> After completing the DNS challenge, certbot auto-renewal runs every 12 hours inside the `certbot` container — you never need to manually renew.
+> Important: manual DNS-01 challenge certificates do **not** renew unattended.
+> Re-run the same command before expiry (around every 60 days), or move to a DNS API hook/plugin for true unattended renewal.
+
+If the browser still shows `Not Secure`, force a re-issue and reload nginx:
+
+```bash
+DOMAIN=rentalbasic.com EMAIL=you@rentalbasic.com FORCE_RENEWAL=true bash nginx/certbot-init.sh
+```
+
+Verify the live certificate issuer from the VPS:
+
+```bash
+echo | openssl s_client -connect rentalbasic.com:443 -servername rentalbasic.com 2>/dev/null | openssl x509 -noout -issuer -dates
+```
+
+Expected issuer should include `Let's Encrypt`.
 
 ---
 
