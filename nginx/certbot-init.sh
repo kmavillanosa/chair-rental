@@ -101,7 +101,6 @@ if [[ "$DNS_PROVIDER" == "hostinger" ]]; then
   CERTBOT_ARGS+=(
     --manual-auth-hook "python3 /work/nginx/hostinger-dns-hook.py auth"
     --manual-cleanup-hook "python3 /work/nginx/hostinger-dns-hook.py cleanup"
-    --manual-public-ip-logging-ok
     --non-interactive
   )
 
