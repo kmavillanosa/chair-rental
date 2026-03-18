@@ -24,4 +24,22 @@ describe('resolveMediaUrl', () => {
     expect(new URL(result).pathname).toBe('/uploads/item.jpg');
     expect(result.startsWith('http://')).toBe(true);
   });
+
+  it('normalizes backslash upload paths', () => {
+    const result = resolveMediaUrl('uploads\\item.jpg');
+    expect(new URL(result).pathname).toBe('/uploads/item.jpg');
+  });
+
+  it('normalizes /api/uploads paths to /uploads', () => {
+    const result = resolveMediaUrl('/api/uploads/item.jpg');
+    expect(new URL(result).pathname).toBe('/uploads/item.jpg');
+  });
+
+  it('remaps localhost absolute upload URLs to app/api origin', () => {
+    const result = resolveMediaUrl('http://127.0.0.1:3999/uploads/item.jpg');
+    const parsed = new URL(result);
+
+    expect(parsed.pathname).toBe('/uploads/item.jpg');
+    expect(parsed.port).not.toBe('3999');
+  });
 });
