@@ -1,5 +1,9 @@
-import { describe, expect, it } from 'vitest';
+import { afterEach, describe, expect, it, vi } from 'vitest';
 import { resolveMediaUrl } from './media';
+
+afterEach(() => {
+  vi.unstubAllEnvs();
+});
 
 describe('resolveMediaUrl', () => {
   it('returns empty string for empty values', () => {
@@ -41,5 +45,20 @@ describe('resolveMediaUrl', () => {
 
     expect(parsed.pathname).toBe('/uploads/item.jpg');
     expect(parsed.port).not.toBe('3999');
+  });
+
+  it('falls back to window origin when VITE_API_URL is invalid', () => {
+    vi.stubEnv('VITE_API_URL', 'http://%');
+
+    const result = resolveMediaUrl('uploads/item.jpg');
+    const parsed = new URL(result);
+
+    expect(parsed.origin).toBe(window.location.origin);
+    expect(parsed.pathname).toBe('/uploads/item.jpg');
+  });
+
+  it('returns original invalid absolute URL when URL parsing fails', () => {
+    const invalidAbsolute = 'http://%';
+    expect(resolveMediaUrl(invalidAbsolute)).toBe(invalidAbsolute);
   });
 });

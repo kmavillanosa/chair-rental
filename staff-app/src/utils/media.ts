@@ -57,10 +57,5 @@ export function resolveMediaUrl(value?: string | null): string {
   }
 
   const normalizedInput = normalizeMediaPath(input);
-
-  try {
-    return new URL(normalizedInput, apiOrigin).toString();
-  } catch {
-    return normalizedInput;
-  }
+  return new URL(normalizedInput, apiOrigin).toString();
 }
