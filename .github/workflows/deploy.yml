@@ -334,7 +334,20 @@ jobs:
           fi
 
           docker compose -f docker-compose.yml -f docker-compose.release.yml build --pull --no-cache api app staff_app
-          docker compose -f docker-compose.yml -f docker-compose.release.yml up -d --force-recreate api app staff_app nginx_proxy
+          docker compose -f docker-compose.yml -f docker-compose.release.yml up -d mysql
+
+          echo "Checking for pending migrations before recreating app services..."
+          PREDEPLOY_PENDING="$(docker compose -f docker-compose.yml -f docker-compose.release.yml run --rm api npm run db:show | grep -E '^\[ \]' || true)"
+
+          if [ -n "$PREDEPLOY_PENDING" ]; then
+            echo "Pending migrations detected before service restart:"
+            echo "$PREDEPLOY_PENDING"
+            docker compose -f docker-compose.yml -f docker-compose.release.yml run --rm api npm run db:migrate
+          else
+            echo "No pending migrations found before service restart."
+          fi
+
+          docker compose -f docker-compose.yml -f docker-compose.release.yml up -d --force-recreate api app staff_app phpmyadmin nginx_proxy
           docker compose -f docker-compose.yml -f docker-compose.release.yml ps
           REMOTE
 
@@ -387,9 +400,22 @@ jobs:
             exit 1
           fi
 
-          echo "Running seed verification scripts..."
-          docker compose $COMPOSE_FILES exec -T api npm run seed:catalog
-          docker compose $COMPOSE_FILES exec -T api npm run seed:vendors
+          UPLOAD_FOLDER_COUNT="$(find api/uploads -mindepth 1 -maxdepth 1 -type d | wc -l | tr -d ' ')"
+          if [ "$UPLOAD_FOLDER_COUNT" = "0" ]; then
+            echo "ERROR: api/uploads has no seed folders, so catalog seeding cannot create item types." >&2
+            exit 1
+          fi
+
+          echo "Running master seed..."
+          docker compose $COMPOSE_FILES exec -T api npm run seed:master
+
+          ITEM_TYPE_COUNT="$(docker compose $COMPOSE_FILES exec -T mysql sh -lc 'mysql -u"$MYSQL_USER" -p"$MYSQL_PASSWORD" -D"$MYSQL_DATABASE" -Nse "SELECT COUNT(*) FROM item_types;"')"
+          if [ -z "$ITEM_TYPE_COUNT" ] || [ "$ITEM_TYPE_COUNT" = "0" ]; then
+            echo "ERROR: item_types is still empty after seeding." >&2
+            exit 1
+          fi
+
+          echo "Item types available after seed: $ITEM_TYPE_COUNT"
 
           echo "Migration and seed checks completed successfully."
           REMOTE
