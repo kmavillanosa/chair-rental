@@ -44,7 +44,7 @@ export default function VendorLanding() {
         {/* Book Button */}
         <div className="text-center mb-8">
           <Button size="xl" onClick={() => navigate(`/book/${slug}`)}
-            className="text-2xl px-12 py-4 bg-green-500 hover:bg-green-600">
+            className="text-2xl px-12 py-4 !bg-emerald-500 hover:!bg-emerald-600 focus:!ring-emerald-300 !text-white shadow-lg">
             📅 Book Now
           </Button>
         </div>

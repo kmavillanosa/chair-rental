@@ -2,12 +2,52 @@ import { useEffect, useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Table } from 'flowbite-react';
 import toast from 'react-hot-toast';
+import { addDays, format, getDay, parse, startOfWeek } from 'date-fns';
+import { enUS } from 'date-fns/locale';
+import { Calendar, Views, dateFnsLocalizer, type View } from 'react-big-calendar';
+import 'react-big-calendar/lib/css/react-big-calendar.css';
 import VendorLayout from '../../components/layout/VendorLayout';
 import { getVendorBookings, updateBookingStatus } from '../../api/bookings';
 import type { Booking } from '../../types';
 import { BookingStatusBadge } from '../../components/common/StatusBadge';
 import { formatDate, formatCurrency } from '../../utils/format';
 import LoadingSpinner from '../../components/common/LoadingSpinner';
+
+type BookingCalendarEvent = {
+    title: string;
+    start: Date;
+    end: Date;
+    allDay: boolean;
+    resource: Booking;
+};
+
+const calendarLocalizer = dateFnsLocalizer({
+    format,
+    parse,
+    startOfWeek: (date) => startOfWeek(date, { weekStartsOn: 0 }),
+    getDay,
+    locales: {
+        'en-US': enUS,
+    },
+});
+
+const BOOKING_STATUS_STYLES: Record<Booking['status'], { background: string; border: string; color: string; label: string }> = {
+    pending: { background: '#fef3c7', border: '#f59e0b', color: '#92400e', label: 'Pending' },
+    confirmed: { background: '#dbeafe', border: '#3b82f6', color: '#1d4ed8', label: 'Confirmed' },
+    completed: { background: '#dcfce7', border: '#22c55e', color: '#166534', label: 'Completed' },
+    cancelled: { background: '#fee2e2', border: '#ef4444', color: '#991b1b', label: 'Cancelled' },
+};
+
+const CALENDAR_VIEWS: View[] = [Views.MONTH, Views.WEEK, Views.DAY, Views.AGENDA];
+
+function parseBookingDate(value: string): Date {
+    if (/^\d{4}-\d{2}-\d{2}$/.test(value)) {
+        const [year, month, day] = value.split('-').map((segment) => Number(segment));
+        return new Date(year, month - 1, day);
+    }
+
+    return new Date(value);
+}
 
 export default function VendorBookings() {
     const navigate = useNavigate();
@@ -17,6 +57,8 @@ export default function VendorBookings() {
     const [statusFilter, setStatusFilter] = useState('');
     const [dateFrom, setDateFrom] = useState('');
     const [dateTo, setDateTo] = useState('');
+    const [calendarView, setCalendarView] = useState<View>(Views.MONTH);
+    const [calendarDate, setCalendarDate] = useState(new Date());
 
     const load = () => getVendorBookings().then(setBookings).finally(() => setLoading(false));
 
@@ -40,6 +82,29 @@ export default function VendorBookings() {
                 return true;
             }),
         [bookings, searchQuery, statusFilter, dateFrom, dateTo],
+    );
+
+    const calendarEvents = useMemo<BookingCalendarEvent[]>(
+        () =>
+            filteredBookings
+                .map((booking) => {
+                    const start = parseBookingDate(booking.startDate);
+                    const endExclusive = addDays(parseBookingDate(booking.endDate), 1);
+
+                    if (Number.isNaN(start.getTime()) || Number.isNaN(endExclusive.getTime())) {
+                        return null;
+                    }
+
+                    return {
+                        title: `${booking.customer?.name || 'Customer'} • ${formatCurrency(booking.totalAmount)}`,
+                        start,
+                        end: endExclusive,
+                        allDay: true,
+                        resource: booking,
+                    };
+                })
+                .filter((event): event is BookingCalendarEvent => Boolean(event)),
+        [filteredBookings],
     );
 
     const confirm = async (id: string) => {
@@ -135,6 +200,66 @@ export default function VendorBookings() {
                 <span className="ml-auto text-xs text-slate-400">
                     {filteredBookings.length} of {bookings.length}
                 </span>
+            </div>
+
+            <div className="booking-calendar mb-6 rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
+                <div className="mb-4 flex flex-wrap items-center justify-between gap-2">
+                    <div>
+                        <h2 className="text-lg font-semibold text-slate-800">Booking Schedule Calendar</h2>
+                        <p className="text-sm text-slate-500">Click any booking event to open details.</p>
+                    </div>
+                    <div className="flex flex-wrap gap-2 text-xs font-medium">
+                        {(Object.keys(BOOKING_STATUS_STYLES) as Booking['status'][]).map((status) => {
+                            const style = BOOKING_STATUS_STYLES[status];
+
+                            return (
+                                <span
+                                    key={status}
+                                    className="inline-flex items-center rounded-full border px-3 py-1"
+                                    style={{
+                                        backgroundColor: style.background,
+                                        borderColor: style.border,
+                                        color: style.color,
+                                    }}
+                                >
+                                    {style.label}
+                                </span>
+                            );
+                        })}
+                    </div>
+                </div>
+
+                <Calendar<BookingCalendarEvent>
+                    localizer={calendarLocalizer}
+                    events={calendarEvents}
+                    views={CALENDAR_VIEWS}
+                    view={calendarView}
+                    onView={(nextView) => setCalendarView(nextView)}
+                    date={calendarDate}
+                    onNavigate={(nextDate) => setCalendarDate(nextDate)}
+                    startAccessor="start"
+                    endAccessor="end"
+                    allDayAccessor="allDay"
+                    popup
+                    onSelectEvent={(event) => navigate(`/vendor/bookings/${event.resource.id}`)}
+                    eventPropGetter={(event) => {
+                        const style = BOOKING_STATUS_STYLES[event.resource.status];
+
+                        return {
+                            style: {
+                                backgroundColor: style.background,
+                                borderColor: style.border,
+                                color: style.color,
+                                borderWidth: '1px',
+                                borderStyle: 'solid',
+                                borderRadius: '10px',
+                                fontWeight: 600,
+                                opacity: event.resource.status === 'cancelled' ? 0.75 : 1,
+                            },
+                        };
+                    }}
+                    style={{ height: 720 }}
+                />
             </div>
 
             <div className="overflow-x-auto rounded-xl shadow">

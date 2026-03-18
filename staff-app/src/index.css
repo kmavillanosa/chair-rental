@@ -56,3 +56,69 @@ h6 {
   height: 100%;
   border-radius: 0.5rem;
 }
+
+.booking-calendar .rbc-toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  margin-bottom: 0.75rem;
+}
+
+.booking-calendar .rbc-toolbar .rbc-btn-group {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.35rem;
+}
+
+.booking-calendar .rbc-toolbar button {
+  border: 1px solid #cbd5e1;
+  border-radius: 0.6rem;
+  background: #f8fafc;
+  color: #334155;
+  font-size: 0.85rem;
+  font-weight: 600;
+  padding: 0.45rem 0.7rem;
+}
+
+.booking-calendar .rbc-toolbar button:hover {
+  background: #eef2f7;
+}
+
+.booking-calendar .rbc-toolbar button.rbc-active {
+  background: #dbeafe;
+  border-color: #93c5fd;
+  color: #1d4ed8;
+}
+
+.booking-calendar .rbc-toolbar-label {
+  font-size: 1.05rem;
+  font-weight: 700;
+  color: #1e293b;
+}
+
+.booking-calendar .rbc-month-view,
+.booking-calendar .rbc-time-view,
+.booking-calendar .rbc-agenda-view {
+  border: 1px solid #dbe4ef;
+  border-radius: 0.75rem;
+  overflow: hidden;
+}
+
+.booking-calendar .rbc-header {
+  background: #f8fafc;
+  color: #475569;
+  font-size: 0.82rem;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+  padding: 0.55rem 0;
+}
+
+.booking-calendar .rbc-date-cell {
+  color: #64748b;
+  font-size: 0.8rem;
+  padding-right: 0.35rem;
+}
+
+.booking-calendar .rbc-today {
+  background-color: #ecfdf5;
+}
