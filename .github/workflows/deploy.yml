@@ -100,6 +100,14 @@ jobs:
           VENDOR_DOMAIN: ${{ secrets.VENDOR_DOMAIN }}
           VITE_API_URL: ${{ secrets.VITE_API_URL }}
           VITE_VENDOR_LOGIN_URL: ${{ secrets.VITE_VENDOR_LOGIN_URL }}
+          TLS_AUTO_PROVISION: ${{ secrets.TLS_AUTO_PROVISION }}
+          CERTBOT_DOMAIN: ${{ secrets.CERTBOT_DOMAIN }}
+          CERTBOT_EMAIL: ${{ secrets.CERTBOT_EMAIL }}
+          HOSTINGER_API_TOKEN: ${{ secrets.HOSTINGER_API_TOKEN }}
+          HOSTINGER_ZONE: ${{ secrets.HOSTINGER_ZONE }}
+          HOSTINGER_DNS_TTL: ${{ secrets.HOSTINGER_DNS_TTL }}
+          HOSTINGER_DNS_PROPAGATION_SECONDS: ${{ secrets.HOSTINGER_DNS_PROPAGATION_SECONDS }}
+          HOSTINGER_API_BASE_URL: ${{ secrets.HOSTINGER_API_BASE_URL }}
         run: |
           set -euo pipefail
           SSH_OPTS="-o BatchMode=yes -o StrictHostKeyChecking=no -o ConnectTimeout=90 -o ConnectionAttempts=5 -o ServerAliveInterval=15 -o ServerAliveCountMax=60 -o TCPKeepAlive=yes"
@@ -151,6 +159,14 @@ jobs:
           ROCKETCHAT_ADMIN_PASSWORD=${ROCKETCHAT_ADMIN_PASSWORD}
           ROCKETCHAT_USER_SECRET=${ROCKETCHAT_USER_SECRET}
           ROCKETCHAT_WEBHOOK_SECRET=${ROCKETCHAT_WEBHOOK_SECRET}
+          TLS_AUTO_PROVISION=${TLS_AUTO_PROVISION}
+          CERTBOT_DOMAIN=${CERTBOT_DOMAIN}
+          CERTBOT_EMAIL=${CERTBOT_EMAIL}
+          HOSTINGER_API_TOKEN=${HOSTINGER_API_TOKEN}
+          HOSTINGER_ZONE=${HOSTINGER_ZONE}
+          HOSTINGER_DNS_TTL=${HOSTINGER_DNS_TTL}
+          HOSTINGER_DNS_PROPAGATION_SECONDS=${HOSTINGER_DNS_PROPAGATION_SECONDS}
+          HOSTINGER_API_BASE_URL=${HOSTINGER_API_BASE_URL}
           ENVVARS
 
           chmod 600 .env
@@ -180,9 +196,30 @@ jobs:
           set -euo pipefail
           SSH_OPTS="-o BatchMode=yes -o StrictHostKeyChecking=no -o ConnectTimeout=90 -o ConnectionAttempts=5 -o ServerAliveInterval=15 -o ServerAliveCountMax=60 -o TCPKeepAlive=yes"
 
-          ssh $SSH_OPTS "$VPS_USER@$VPS_HOST" "bash -s" <<REMOTE
+          ssh $SSH_OPTS "$VPS_USER@$VPS_HOST" "bash -s" <<'REMOTE'
           set -euo pipefail
           cd /root/chair-rental
+
+          set -a
+          . ./.env
+          set +a
+
+          if [ "${TLS_AUTO_PROVISION:-false}" = "true" ]; then
+            DOMAIN_FOR_CERT="${CERTBOT_DOMAIN:-${HOSTINGER_ZONE:-rentalbasic.com}}"
+            EMAIL_FOR_CERT="${CERTBOT_EMAIL:-}"
+
+            if [ -z "$EMAIL_FOR_CERT" ]; then
+              echo "TLS_AUTO_PROVISION=true but CERTBOT_EMAIL is empty." >&2
+              exit 1
+            fi
+
+            DOMAIN="$DOMAIN_FOR_CERT" \
+            EMAIL="$EMAIL_FOR_CERT" \
+            DNS_PROVIDER=hostinger \
+            FORCE_RENEWAL=false \
+            bash nginx/certbot-init.sh
+          fi
+
           docker compose up -d --build
           docker compose exec -T api npm run db:migrate
           docker compose exec -T api node dist/scripts/seed-catalog.js

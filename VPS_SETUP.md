@@ -306,17 +306,25 @@ PAYMONGO_SPLIT_FEE_BUFFER_BPS=300
 
 Run this before first launch to obtain a wildcard certificate for `rentalbasic.com` and `*.rentalbasic.com`.
 
-Because this flow uses a **manual DNS-01 challenge**, renewals are also manual unless you later add a DNS API auth-hook/plugin.
+Recommended for Hostinger DNS (non-interactive):
 
 ```bash
-DOMAIN=rentalbasic.com EMAIL=you@rentalbasic.com bash nginx/certbot-init.sh
+DOMAIN=rentalbasic.com EMAIL=you@rentalbasic.com DNS_PROVIDER=hostinger HOSTINGER_API_TOKEN=your_hostinger_api_token HOSTINGER_ZONE=rentalbasic.com bash nginx/certbot-init.sh
+```
+
+Manual fallback (interactive TXT prompts):
+
+```bash
+DOMAIN=rentalbasic.com EMAIL=you@rentalbasic.com DNS_PROVIDER=manual bash nginx/certbot-init.sh
 ```
 
 The script will:
 1. Generate a temporary self-signed cert so nginx can start
 2. Bring up the nginx proxy
-3. Run certbot in interactive DNS-01 challenge mode — **it will ask you to add TXT record(s) in Hostinger DNS**
+3. Run certbot DNS-01 flow (automatic with Hostinger API mode, interactive in manual mode)
 4. Reload nginx with the real certificate
+
+If you use `DNS_PROVIDER=hostinger`, no manual TXT entry is required.
 
 When prompted by certbot, add TXT records in Hostinger hPanel:
 1. `Domains` -> your domain -> `DNS / Nameservers`.
@@ -334,7 +342,7 @@ dig TXT _acme-challenge.rentalbasic.com +short
 5. Press Enter in the certbot terminal to continue.
 
 > Important: manual DNS-01 challenge certificates do **not** renew unattended.
-> Re-run the same command before expiry (around every 60 days), or move to a DNS API hook/plugin for true unattended renewal.
+> Use `DNS_PROVIDER=hostinger` with `HOSTINGER_API_TOKEN` for unattended renewal.
 
 If the browser still shows `Not Secure`, force a re-issue and reload nginx:
 

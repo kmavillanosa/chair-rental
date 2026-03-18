@@ -8,17 +8,24 @@
 # Prerequisites:
 #   • docker & docker compose are installed and the stack is not yet running
 #   • Your DNS is pointed at this server (A / wildcard * records)
-#   • You have access to add a DNS TXT record at your registrar
+#   • For manual mode: access to add DNS TXT records at your registrar
+#   • For Hostinger mode: Hostinger API token from hPanel
 #
 # Usage:
 #   DOMAIN=rentalbasic.com EMAIL=you@example.com bash nginx/certbot-init.sh
 #   DOMAIN=rentalbasic.com EMAIL=you@example.com FORCE_RENEWAL=true bash nginx/certbot-init.sh
+#   DOMAIN=rentalbasic.com EMAIL=you@example.com DNS_PROVIDER=hostinger HOSTINGER_API_TOKEN=... bash nginx/certbot-init.sh
 # =============================================================================
 set -euo pipefail
 
 DOMAIN="${DOMAIN:-rentalbasic.com}"
 EMAIL="${EMAIL:-}"   # Set via env: EMAIL=you@example.com bash nginx/certbot-init.sh
 FORCE_RENEWAL="${FORCE_RENEWAL:-false}" # Optional: FORCE_RENEWAL=true to always reissue
+DNS_PROVIDER="${DNS_PROVIDER:-manual}" # manual | hostinger
+HOSTINGER_ZONE="${HOSTINGER_ZONE:-$DOMAIN}"
+HOSTINGER_DNS_TTL="${HOSTINGER_DNS_TTL:-60}"
+HOSTINGER_DNS_PROPAGATION_SECONDS="${HOSTINGER_DNS_PROPAGATION_SECONDS:-60}"
+HOSTINGER_API_BASE_URL="${HOSTINGER_API_BASE_URL:-https://developers.hostinger.com}"
 
 if [[ -z "$EMAIL" ]]; then
   echo "ERROR: Set EMAIL before running this script."
@@ -64,8 +71,6 @@ docker compose up -d nginx_proxy
 # The certbot prompt will tell you exactly what to add.
 echo ""
 echo "→ [3/4] Requesting wildcard certificate for $DOMAIN and *.$DOMAIN"
-echo "   ⚠  You will be asked to create a DNS TXT record at your registrar."
-echo "      Wait for DNS to propagate (~60 s) before pressing Enter in certbot."
 echo ""
 
 CERTBOT_ARGS=(
@@ -80,11 +85,43 @@ CERTBOT_ARGS=(
   -d "*.$DOMAIN"
 )
 
+CERTBOT_RUN_ENV_ARGS=()
+
+if [[ "$DNS_PROVIDER" == "hostinger" ]]; then
+  if [[ -z "${HOSTINGER_API_TOKEN:-}" ]]; then
+    echo "ERROR: HOSTINGER_API_TOKEN is required when DNS_PROVIDER=hostinger."
+    echo "       Generate token at: https://hpanel.hostinger.com/profile/api"
+    exit 1
+  fi
+
+  echo "   Using Hostinger DNS API in non-interactive mode."
+  echo "   Zone: $HOSTINGER_ZONE"
+  echo "   DNS propagation wait: ${HOSTINGER_DNS_PROPAGATION_SECONDS}s"
+
+  CERTBOT_ARGS+=(
+    --manual-auth-hook "python3 /work/nginx/hostinger-dns-hook.py auth"
+    --manual-cleanup-hook "python3 /work/nginx/hostinger-dns-hook.py cleanup"
+    --manual-public-ip-logging-ok
+    --non-interactive
+  )
+
+  CERTBOT_RUN_ENV_ARGS+=(
+    -e "HOSTINGER_API_TOKEN=$HOSTINGER_API_TOKEN"
+    -e "HOSTINGER_ZONE=$HOSTINGER_ZONE"
+    -e "HOSTINGER_DNS_TTL=$HOSTINGER_DNS_TTL"
+    -e "HOSTINGER_DNS_PROPAGATION_SECONDS=$HOSTINGER_DNS_PROPAGATION_SECONDS"
+    -e "HOSTINGER_API_BASE_URL=$HOSTINGER_API_BASE_URL"
+  )
+else
+  echo "   ⚠  You will be asked to create DNS TXT record(s) at your registrar."
+  echo "      Wait for DNS to propagate (~60 s) before pressing Enter in certbot."
+fi
+
 if [[ "$FORCE_RENEWAL" == "true" ]]; then
   CERTBOT_ARGS+=(--force-renewal)
 fi
 
-docker compose run --rm certbot "${CERTBOT_ARGS[@]}"
+docker compose run --rm --entrypoint certbot "${CERTBOT_RUN_ENV_ARGS[@]}" certbot "${CERTBOT_ARGS[@]}"
 
 # ── Step 4: Reload nginx with the real certificate ───────────────────────────
 echo ""
@@ -100,9 +137,14 @@ fi
 
 echo ""
 echo "✓ Done! Your site is now secured with a Let's Encrypt wildcard certificate."
-echo "  IMPORTANT: Manual DNS-01 challenge certs are NOT automatically renewable."
-echo "  Re-run this script before expiry (~every 60 days), or switch to a DNS API"
-echo "  plugin/auth-hook flow to enable unattended renewal."
+if [[ "$DNS_PROVIDER" == "hostinger" ]]; then
+  echo "  Hostinger DNS API mode is enabled; non-interactive renewals can run unattended."
+  echo "  Keep HOSTINGER_API_TOKEN available in your certbot runtime environment."
+else
+  echo "  IMPORTANT: Manual DNS-01 challenge certs are NOT automatically renewable."
+  echo "  Re-run this script before expiry (~every 60 days), or switch to DNS_PROVIDER=hostinger"
+  echo "  with HOSTINGER_API_TOKEN for unattended renewal."
+fi
 echo ""
 echo "  DNS records you need at your registrar:"
 echo "  ┌──────┬──────────────────────────┬───────────────────┐"

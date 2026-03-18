@@ -59,13 +59,19 @@ openssl rand -base64 32   # for passwords
 openssl rand -base64 48   # for JWT_SECRET
 ```
 
-### Get TLS certificates (run once)
+### Get TLS certificates (recommended: Hostinger API mode)
 
 ```bash
-DOMAIN=rentalbasic.com EMAIL=you@rentalbasic.com bash nginx/certbot-init.sh
+DOMAIN=rentalbasic.com EMAIL=you@rentalbasic.com DNS_PROVIDER=hostinger HOSTINGER_API_TOKEN=your_hostinger_api_token bash nginx/certbot-init.sh
 ```
 
-> The script will pause and ask you to add a DNS TXT record at your registrar. Add it, wait ~60 seconds, then press Enter to continue.
+Get your Hostinger token from: `https://hpanel.hostinger.com/profile/api`
+
+Fallback manual mode (interactive TXT prompts):
+
+```bash
+DOMAIN=rentalbasic.com EMAIL=you@rentalbasic.com DNS_PROVIDER=manual bash nginx/certbot-init.sh
+```
 
 ### Start the stack
 
@@ -117,13 +123,28 @@ cat ~/.ssh/github_deploy
 In your GitHub repo go to:
 **Settings → Secrets and variables → Actions → New repository secret**
 
-Add the following three secrets:
+Add the following base secrets:
 
 | Secret Name | Value |
 |---|---|
 | `VPS_HOST` | `72.62.125.235` |
 | `VPS_USER` | `root` |
 | `VPS_SSH_KEY` | Full contents of `~/.ssh/github_deploy` (include the `-----BEGIN...` and `-----END...` lines) |
+
+For automated TLS with Hostinger DNS API, also add:
+
+| Secret Name | Value |
+|---|---|
+| `TLS_AUTO_PROVISION` | `true` |
+| `CERTBOT_DOMAIN` | `rentalbasic.com` |
+| `CERTBOT_EMAIL` | Your Let's Encrypt email |
+| `HOSTINGER_API_TOKEN` | Hostinger API token from hPanel |
+| `HOSTINGER_ZONE` | `rentalbasic.com` |
+| `HOSTINGER_DNS_TTL` | `60` |
+| `HOSTINGER_DNS_PROPAGATION_SECONDS` | `60` |
+| `HOSTINGER_API_BASE_URL` | `https://developers.hostinger.com` |
+
+If you want to disable CI-driven certificate provisioning, set `TLS_AUTO_PROVISION` to `false`.
 
 ---
 
@@ -179,3 +200,8 @@ docker compose up -d --build
 docker compose logs -f api
 docker compose logs -f nginx_proxy
 ```
+
+### Hostinger API token or DNS errors in deploy logs
+- Verify `HOSTINGER_API_TOKEN` is valid in GitHub Secrets.
+- Verify `HOSTINGER_ZONE` matches the DNS zone (example: `rentalbasic.com`).
+- Keep `TLS_AUTO_PROVISION=true` only when those secrets are configured.

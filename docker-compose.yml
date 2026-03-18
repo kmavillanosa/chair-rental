@@ -206,6 +206,13 @@ services:
     volumes:
       - ./nginx/certbot/conf:/etc/letsencrypt
       - ./nginx/certbot/www:/var/www/certbot
+      - ./nginx:/work/nginx:ro
+    environment:
+      HOSTINGER_API_TOKEN: ${HOSTINGER_API_TOKEN}
+      HOSTINGER_ZONE: ${HOSTINGER_ZONE}
+      HOSTINGER_DNS_TTL: ${HOSTINGER_DNS_TTL:-60}
+      HOSTINGER_DNS_PROPAGATION_SECONDS: ${HOSTINGER_DNS_PROPAGATION_SECONDS:-60}
+      HOSTINGER_API_BASE_URL: ${HOSTINGER_API_BASE_URL:-https://developers.hostinger.com}
     # This only performs unattended renewal when certbot has a valid non-interactive
     # challenge method configured. Manual DNS-01 certs still require manual re-issue.
     entrypoint: "/bin/sh -c 'trap exit TERM; while :; do certbot renew --quiet; sleep 12h & wait $${!}; done;'"
