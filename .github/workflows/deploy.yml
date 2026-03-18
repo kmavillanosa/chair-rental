@@ -348,6 +348,11 @@ jobs:
           fi
 
           docker compose -f docker-compose.yml -f docker-compose.release.yml up -d --force-recreate api app staff_app phpmyadmin nginx_proxy
+          if ! docker compose -f docker-compose.yml -f docker-compose.release.yml ps --status running --services | grep -qx 'phpmyadmin'; then
+            echo "ERROR: phpmyadmin is not running after deploy." >&2
+            docker compose -f docker-compose.yml -f docker-compose.release.yml ps >&2
+            exit 1
+          fi
           docker compose -f docker-compose.yml -f docker-compose.release.yml ps
           REMOTE
 
