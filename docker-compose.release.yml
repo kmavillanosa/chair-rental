@@ -1,0 +1,12 @@
+services:
+  api:
+    build:
+      dockerfile: Dockerfile.release
+
+  app:
+    build:
+      dockerfile: Dockerfile.release
+
+  staff_app:
+    build:
+      dockerfile: Dockerfile.release

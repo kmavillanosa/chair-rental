@@ -11,53 +11,27 @@ on:
       - master
 
 jobs:
-  test:
-    runs-on: ubuntu-latest
-    timeout-minutes: 30
-    strategy:
-      fail-fast: false
-      matrix:
-        project:
-          - app
-          - staff-app
-          - api
-
-    defaults:
-      run:
-        working-directory: ${{ matrix.project }}
-
-    steps:
-      - name: Checkout
-        uses: actions/checkout@v4
-
-      - name: Setup Node.js
-        uses: actions/setup-node@v4
-        with:
-          node-version: 20
-          cache: npm
-          cache-dependency-path: ${{ matrix.project }}/package-lock.json
-
-      - name: Install dependencies
-        run: npm ci
-
-      - name: Run unit tests with coverage thresholds
-        run: npm run test:coverage
-
-  sync:
+  pull_repo:
     runs-on: ubuntu-latest
     timeout-minutes: 10
-    if: github.event_name == 'push'
 
     steps:
+      - name: Skip pull stage for pull requests
+        if: github.event_name != 'push'
+        run: echo "Pull stage runs only on push deployments."
+
       - name: Install SSH key
+        if: github.event_name == 'push'
         uses: webfactory/ssh-agent@v0.9.1
         with:
           ssh-private-key: ${{ secrets.VPS_SSH_KEY }}
 
       - name: Verify loaded SSH key
+        if: github.event_name == 'push'
         run: ssh-add -l
 
       - name: Pull latest code on VPS
+        if: github.event_name == 'push'
         env:
           VPS_HOST: ${{ secrets.VPS_HOST }}
           VPS_USER: ${{ secrets.VPS_USER }}
@@ -198,10 +172,109 @@ jobs:
           fi
           REMOTE
 
-  deploy:
+  test:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    needs: [pull_repo]
+    strategy:
+      fail-fast: false
+      matrix:
+        project:
+          - app
+          - staff-app
+          - api
+
+    defaults:
+      run:
+        working-directory: ${{ matrix.project }}
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+          cache-dependency-path: ${{ matrix.project }}/package-lock.json
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Run unit tests with coverage thresholds
+        run: npm run test:coverage
+
+  build_artifact:
     runs-on: ubuntu-latest
     timeout-minutes: 40
-    needs: [test, sync]
+    needs: [test]
+    if: github.event_name == 'push'
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+          cache-dependency-path: |
+            api/package-lock.json
+            app/package-lock.json
+            staff-app/package-lock.json
+
+      - name: Install dependencies
+        run: |
+          set -euo pipefail
+          npm ci --prefix api
+          npm ci --prefix app
+          npm ci --prefix staff-app
+
+      - name: Build project artifacts
+        env:
+          VITE_VENDOR_DOMAIN: ${{ secrets.VENDOR_DOMAIN }}
+          VITE_API_URL: ${{ secrets.VITE_API_URL }}
+          VITE_VENDOR_LOGIN_URL: ${{ secrets.VITE_VENDOR_LOGIN_URL }}
+        run: |
+          set -euo pipefail
+          npm run build --prefix api
+          VITE_VENDOR_DOMAIN="${VITE_VENDOR_DOMAIN}" VITE_API_URL="${VITE_API_URL}" VITE_VENDOR_LOGIN_URL="${VITE_VENDOR_LOGIN_URL}" npm run build --prefix app
+          VITE_VENDOR_DOMAIN="${VITE_VENDOR_DOMAIN}" VITE_API_URL="${VITE_API_URL}" npm run build --prefix staff-app
+
+      - name: Create deploy bundle
+        id: bundle
+        run: |
+          set -euo pipefail
+          ARTIFACT_FILE="chair-rental-deploy-bundle-${GITHUB_SHA}.tgz"
+          tar -czf "$ARTIFACT_FILE" \
+            docker-compose.yml \
+            docker-compose.release.yml \
+            nginx \
+            api/package.json \
+            api/package-lock.json \
+            api/Dockerfile.release \
+            api/dist \
+            app/nginx.conf \
+            app/Dockerfile.release \
+            app/dist \
+            staff-app/nginx.conf \
+            staff-app/Dockerfile.release \
+            staff-app/dist
+          echo "artifact_file=$ARTIFACT_FILE" >> "$GITHUB_OUTPUT"
+
+      - name: Upload deploy bundle artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: deploy-bundle
+          path: ${{ steps.bundle.outputs.artifact_file }}
+          retention-days: 7
+
+  deploy_containers:
+    runs-on: ubuntu-latest
+    timeout-minutes: 40
+    needs: [build_artifact]
     if: github.event_name == 'push'
 
     steps:
@@ -213,17 +286,30 @@ jobs:
       - name: Verify loaded SSH key
         run: ssh-add -l
 
-      - name: Deploy to VPS
+      - name: Download deploy bundle
+        uses: actions/download-artifact@v4
+        with:
+          name: deploy-bundle
+          path: ./deploy-bundle
+
+      - name: Upload artifact and rebuild containers on VPS
         env:
           VPS_HOST: ${{ secrets.VPS_HOST }}
           VPS_USER: ${{ secrets.VPS_USER }}
         run: |
           set -euo pipefail
           SSH_OPTS="-o BatchMode=yes -o StrictHostKeyChecking=no -o ConnectTimeout=90 -o ConnectionAttempts=5 -o ServerAliveInterval=15 -o ServerAliveCountMax=60 -o TCPKeepAlive=yes"
+          ARTIFACT_PATH="$(ls -1 ./deploy-bundle/*.tgz | head -n 1)"
+
+          scp $SSH_OPTS "$ARTIFACT_PATH" "$VPS_USER@$VPS_HOST:/tmp/chair-rental-deploy-bundle.tgz"
 
           ssh $SSH_OPTS "$VPS_USER@$VPS_HOST" "bash -s" <<'REMOTE'
           set -euo pipefail
           cd /root/chair-rental
+
+          rm -rf api/dist app/dist staff-app/dist
+          tar -xzf /tmp/chair-rental-deploy-bundle.tgz -C /root/chair-rental
+          rm -f /tmp/chair-rental-deploy-bundle.tgz
 
           set -a
           . ./.env
@@ -245,10 +331,63 @@ jobs:
             bash nginx/certbot-init.sh
           fi
 
-          # Force fresh images for services we build locally to avoid stale deploys.
-          docker compose build --pull --no-cache api app staff_app
-          docker compose up -d --force-recreate api app staff_app nginx_proxy
-          docker compose exec -T api npm run db:migrate
-          docker compose exec -T api node dist/scripts/seed-catalog.js
-          docker compose ps
+          docker compose -f docker-compose.yml -f docker-compose.release.yml build --pull --no-cache api app staff_app
+          docker compose -f docker-compose.yml -f docker-compose.release.yml up -d --force-recreate api app staff_app nginx_proxy
+          docker compose -f docker-compose.yml -f docker-compose.release.yml ps
+          REMOTE
+
+  post_deploy_db_checks:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    needs: [deploy_containers]
+    if: github.event_name == 'push'
+
+    steps:
+      - name: Install SSH key
+        uses: webfactory/ssh-agent@v0.9.1
+        with:
+          ssh-private-key: ${{ secrets.VPS_SSH_KEY }}
+
+      - name: Verify loaded SSH key
+        run: ssh-add -l
+
+      - name: Run migration and seed checks
+        env:
+          VPS_HOST: ${{ secrets.VPS_HOST }}
+          VPS_USER: ${{ secrets.VPS_USER }}
+        run: |
+          set -euo pipefail
+          SSH_OPTS="-o BatchMode=yes -o StrictHostKeyChecking=no -o ConnectTimeout=90 -o ConnectionAttempts=5 -o ServerAliveInterval=15 -o ServerAliveCountMax=60 -o TCPKeepAlive=yes"
+
+          ssh $SSH_OPTS "$VPS_USER@$VPS_HOST" "bash -s" <<'REMOTE'
+          set -euo pipefail
+          cd /root/chair-rental
+
+          COMPOSE_FILES="-f docker-compose.yml -f docker-compose.release.yml"
+
+          echo "Checking for pending migrations before migrate step..."
+          PENDING_BEFORE="$(docker compose $COMPOSE_FILES exec -T api npm run db:show | grep -E '^\[ \]' || true)"
+
+          if [ -n "$PENDING_BEFORE" ]; then
+            echo "Pending migrations detected:"
+            echo "$PENDING_BEFORE"
+            docker compose $COMPOSE_FILES exec -T api npm run db:migrate
+          else
+            echo "No pending migrations found before migrate step."
+          fi
+
+          echo "Re-checking migration state..."
+          PENDING_AFTER="$(docker compose $COMPOSE_FILES exec -T api npm run db:show | grep -E '^\[ \]' || true)"
+
+          if [ -n "$PENDING_AFTER" ]; then
+            echo "ERROR: Pending migrations still exist after db:migrate." >&2
+            echo "$PENDING_AFTER" >&2
+            exit 1
+          fi
+
+          echo "Running seed verification scripts..."
+          docker compose $COMPOSE_FILES exec -T api npm run seed:catalog
+          docker compose $COMPOSE_FILES exec -T api npm run seed:vendors
+
+          echo "Migration and seed checks completed successfully."
           REMOTE
