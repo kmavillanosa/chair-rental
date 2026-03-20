@@ -19,7 +19,6 @@ export default function VendorsList() {
     ownerFullName: '',
     address: '',
     phone: '',
-    paymongoMerchantId: '',
     vendorType: 'registered_business',
   });
 
@@ -51,7 +50,6 @@ export default function VendorsList() {
       ownerFullName: form.ownerFullName.trim() || undefined,
       address: form.address.trim(),
       phone: form.phone.trim() || undefined,
-      paymongoMerchantId: form.paymongoMerchantId.trim() || undefined,
       vendorType: form.vendorType as Vendor['vendorType'],
       isVerified: true,
       isActive: true,
@@ -73,7 +71,6 @@ export default function VendorsList() {
         ownerFullName: '',
         address: '',
         phone: '',
-        paymongoMerchantId: '',
         vendorType: 'registered_business',
       });
       load();
@@ -162,12 +159,6 @@ export default function VendorsList() {
             placeholder={t('vendorsList.phonePlaceholder')}
             value={form.phone}
             onChange={(event) => setForm((current) => ({ ...current, phone: event.target.value }))}
-            sizing="lg"
-          />
-          <TextInput
-            placeholder="PayMongo Merchant ID (optional)"
-            value={form.paymongoMerchantId}
-            onChange={(event) => setForm((current) => ({ ...current, paymongoMerchantId: event.target.value }))}
             sizing="lg"
           />
           <Select

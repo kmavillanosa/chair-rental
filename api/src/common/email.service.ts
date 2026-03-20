@@ -1,27 +1,78 @@
 import * as nodemailer from 'nodemailer';
-import type { Transporter } from 'nodemailer';
+import type { SendMailOptions, Transporter } from 'nodemailer';
 import { Injectable, Logger } from '@nestjs/common';
 
 @Injectable()
 export class EmailService {
   private transporter: Transporter;
   private readonly logger = new Logger(EmailService.name);
+  private readonly gmailUser = String(process.env.GMAIL_USER || '').trim();
+  private readonly gmailAppPassword = String(process.env.GMAIL_APP_PASSWORD || '')
+    .replace(/\s+/g, '')
+    .trim();
 
   constructor() {
     this.transporter = nodemailer.createTransport({
       service: 'gmail',
       auth: {
-        user: process.env.GMAIL_USER,
-        pass: process.env.GMAIL_APP_PASSWORD,
+        user: this.gmailUser,
+        pass: this.gmailAppPassword,
       },
     });
+  }
+
+  async verifyTransportOnStartup() {
+    if (!this.gmailUser || !this.gmailAppPassword) {
+      this.logger.warn(
+        'Email is not fully configured. Set GMAIL_USER and GMAIL_APP_PASSWORD.',
+      );
+      return;
+    }
+
+    try {
+      await this.transporter.verify();
+      this.logger.log('SMTP transporter verification succeeded.');
+    } catch (error) {
+      this.logSmtpError('SMTP transporter verification failed', error);
+    }
+  }
+
+  private fromAddress() {
+    const sender = this.gmailUser || 'no-reply@rentalbasic.com';
+    return `"RentalBasic" <${sender}>`;
+  }
+
+  private logSmtpError(context: string, error: unknown) {
+    const message = error instanceof Error ? error.message : String(error);
+    const stack = error instanceof Error ? error.stack : message;
+
+    this.logger.error(context, stack);
+
+    if (
+      /Application-specific password required|InvalidSecondFactor|\b5\.7\.9\b/i.test(
+        message,
+      )
+    ) {
+      this.logger.error(
+        'Gmail authentication failed (534 5.7.9). Use a Google App Password (16 chars, no spaces) from an account with 2-Step Verification enabled, then update GMAIL_APP_PASSWORD and restart the API service.',
+      );
+    }
+  }
+
+  private async sendMailOrThrow(mailOptions: SendMailOptions, context: string) {
+    try {
+      await this.transporter.sendMail(mailOptions);
+    } catch (error) {
+      this.logSmtpError(context, error);
+      throw error;
+    }
   }
 
   async sendVendorOtpEmail(vendorEmail: string, otpCode: string, expiresAt: Date) {
     const expiresAtText = new Date(expiresAt).toLocaleString();
 
-    await this.transporter.sendMail({
-      from: `"RentalBasic" <${process.env.GMAIL_USER}>`,
+    await this.sendMailOrThrow({
+      from: this.fromAddress(),
       to: vendorEmail,
       subject: 'Your RentalBasic verification code',
       html: `
@@ -40,7 +91,7 @@ export class EmailService {
         </html>
       `,
       text: `Your RentalBasic OTP code is ${otpCode}. It expires at ${expiresAtText}.`,
-    });
+    }, `Failed to send vendor OTP email to ${vendorEmail}`);
 
     this.logger.log(`Vendor OTP email sent to ${vendorEmail}`);
   }
@@ -56,7 +107,7 @@ export class EmailService {
     
     try {
       await this.transporter.sendMail({
-        from: `"RentalBasic" <${process.env.GMAIL_USER}>`,
+        from: this.fromAddress(),
         to: vendorEmail,
         subject: '✅ Your RentalBasic Verification is Approved!',
         html: `
@@ -110,7 +161,7 @@ export class EmailService {
 
       this.logger.log(`Approval email sent to ${vendorEmail}`);
     } catch (error) {
-      this.logger.error(`Failed to send approval email to ${vendorEmail}:`, error);
+      this.logSmtpError(`Failed to send approval email to ${vendorEmail}`, error);
       // Don't throw — fail silently so vendor isn't blocked if email fails
     }
   }
@@ -125,7 +176,7 @@ export class EmailService {
     
     try {
       await this.transporter.sendMail({
-        from: `"RentalBasic" <${process.env.GMAIL_USER}>`,
+        from: this.fromAddress(),
         to: vendorEmail,
         subject: '⚠️ Verification Update Required',
         html: `
@@ -182,7 +233,7 @@ export class EmailService {
 
       this.logger.log(`Rejection email sent to ${vendorEmail}`);
     } catch (error) {
-      this.logger.error(`Failed to send rejection email to ${vendorEmail}:`, error);
+      this.logSmtpError(`Failed to send rejection email to ${vendorEmail}`, error);
     }
   }
 
@@ -199,7 +250,7 @@ export class EmailService {
     
     try {
       await this.transporter.sendMail({
-        from: `"RentalBasic" <${process.env.GMAIL_USER}>`,
+        from: this.fromAddress(),
         to: vendorEmail,
         subject: '🔒 Account Suspended',
         html: `
@@ -251,7 +302,7 @@ export class EmailService {
 
       this.logger.log(`Suspension email sent to ${vendorEmail}`);
     } catch (error) {
-      this.logger.error(`Failed to send suspension email to ${vendorEmail}:`, error);
+      this.logSmtpError(`Failed to send suspension email to ${vendorEmail}`, error);
     }
   }
 }

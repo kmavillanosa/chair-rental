@@ -66,23 +66,15 @@ Key variables:
 - `FRONTEND_URL` – customer app URL (e.g. `http://yourdomain.com`)
 - `STAFF_FRONTEND_URL` – admin/vendor app URL (e.g. `http://staff.yourdomain.com`)
 - `GOOGLE_CALLBACK_URL` – e.g. `http://yourdomain.com/auth/google/callback`
+- `GMAIL_USER` – Gmail sender account used by backend email notifications
+- `GMAIL_APP_PASSWORD` – Google App Password for `GMAIL_USER` (16 chars, no spaces). Regular Gmail passwords are rejected by SMTP with `534 5.7.9`.
 
-Split-payment variables (PayMongo):
+PayMongo checkout variables:
 - `PAYMONGO_ENABLED` – set `true` to require checkout session creation for new bookings.
 - `PAYMONGO_SECRET_KEY` – PayMongo secret key used by API requests.
 - `PAYMONGO_API_BASE_URL` – defaults to `https://api.paymongo.com/v1`.
-- `PAYMONGO_PLATFORM_MERCHANT_ID` – parent/platform merchant org ID for split recipients.
-- `PAYMONGO_DELIVERY_MERCHANT_ID` – optional merchant org ID that receives fixed delivery split.
-- `PAYMONGO_VENDOR_ONBOARDING_ENABLED` – set `true` to auto-provision vendor merchant IDs during admin approval.
-- `PAYMONGO_VENDOR_ONBOARDING_REQUIRED` – when `true`, onboarding failure blocks approval/verify; default `false` allows approval to continue while recording onboarding failure.
-- `PAYMONGO_VENDOR_ONBOARDING_URL` – optional override URL for merchant onboarding API; defaults to `${PAYMONGO_API_BASE_URL}/organizations`. You can set `${PAYMONGO_API_BASE_URL}/merchants/children` for child-merchant onboarding.
-- `PAYMONGO_VENDOR_ONBOARDING_AUTO_SUBMIT` – when `true`, child-merchant onboarding will auto-submit after a successful create/update call.
 - `PAYMONGO_PAYMENT_METHOD_TYPES` – comma-separated methods for checkout session (default `gcash`).
 - `PAYMONGO_SUCCESS_URL` / `PAYMONGO_CANCEL_URL` – customer redirect URLs after checkout.
-- `PAYMONGO_SPLIT_FEE_BUFFER_BPS` – safety buffer (bps) for fixed splits against net amount (default `300`).
-
-If automatic onboarding is enabled and merchant provisioning fails, vendor approval now continues by default and the vendor is marked with onboarding status `failed` plus an error message for follow-up.
-Set `PAYMONGO_VENDOR_ONBOARDING_REQUIRED=true` if you want onboarding failure to block approval/verify.
 
 ## Development
 

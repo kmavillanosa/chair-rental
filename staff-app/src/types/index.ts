@@ -10,55 +10,6 @@ export type VendorVerificationStatus =
   | 'verified_owner'
   | 'rejected'
   | 'suspended';
-export type VendorPayMongoOnboardingStatus =
-  | 'not_started'
-  | 'processing'
-  | 'provisioned'
-  | 'failed';
-
-export interface VendorPayMongoOnboardingData {
-  child_merchant?: {
-    address?: {
-      state?: string;
-    };
-    bank?: {
-      id?: string;
-    };
-    business?: {
-      age?: string;
-      estimated_monthly_volume?: string;
-      handle?: string;
-      industry?: string;
-      intended_product?: string;
-      legal_name?: string;
-      size?: string;
-      trade_name?: string;
-      type?: string;
-    };
-    e_wallet?: {
-      provider?: string;
-    };
-    features?: string[];
-    representative?: {
-      nature_of_work?: string;
-      nationality?: string;
-      source_of_funds?: string;
-    };
-  };
-  related_consumer?: {
-    address?: {
-      state?: string;
-    };
-    intended_use?: string;
-    features?: string[];
-    nature_of_work?: string;
-    nationality?: string;
-    source_of_funds?: string;
-  };
-  file_record?: {
-    purpose?: string;
-  };
-}
 
 export interface VendorDocument {
   id: string;
@@ -127,11 +78,6 @@ export interface Vendor {
   phoneOtpVerifiedAt?: string;
   socialMediaLink?: string;
   logoUrl?: string;
-  paymongoMerchantId?: string;
-  paymongoOnboardingStatus?: VendorPayMongoOnboardingStatus;
-  paymongoOnboardingData?: VendorPayMongoOnboardingData | string | null;
-  paymongoOnboardingError?: string;
-  paymongoOnboardedAt?: string;
   registrationStatus?: VendorRegistrationStatus;
   kycStatus?: VendorKycStatus;
   verificationStatus?: VendorVerificationStatus;

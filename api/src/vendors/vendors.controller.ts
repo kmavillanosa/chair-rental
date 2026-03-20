@@ -375,14 +375,6 @@ export class VendorsController {
   @UseGuards(JwtAuthGuard, RolesGuard)
   @Roles(UserRole.ADMIN)
   @ApiBearerAuth()
-  @Patch(':id/provision-merchant')
-  provisionMerchant(@Param('id') id: string) {
-    return this.vendorsService.provisionMerchantId(id);
-  }
-
-  @UseGuards(JwtAuthGuard, RolesGuard)
-  @Roles(UserRole.ADMIN)
-  @ApiBearerAuth()
   @Patch(':id/warn')
   warn(@Param('id') id: string) {
     return this.vendorsService.warn(id);

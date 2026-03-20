@@ -14,7 +14,6 @@ type VendorForm = {
     address: string;
     description: string;
     phone: string;
-    paymongoMerchantId: string;
     latitude: number | null;
     longitude: number | null;
 };
@@ -62,7 +61,6 @@ export default function MyShop() {
         address: '',
         description: '',
         phone: '',
-        paymongoMerchantId: '',
         latitude: null,
         longitude: null,
     });
@@ -84,7 +82,6 @@ export default function MyShop() {
                     address: vendorData.address,
                     description: vendorData.description || '',
                     phone: vendorData.phone || '',
-                    paymongoMerchantId: vendorData.paymongoMerchantId || '',
                     latitude: vendorData.latitude != null ? Number(vendorData.latitude) : null,
                     longitude: vendorData.longitude != null ? Number(vendorData.longitude) : null,
                 });
@@ -104,7 +101,6 @@ export default function MyShop() {
                 address: form.address,
                 description: form.description,
                 phone: form.phone,
-                paymongoMerchantId: form.paymongoMerchantId.trim() || undefined,
                 latitude: form.latitude ?? undefined,
                 longitude: form.longitude ?? undefined,
             });
@@ -162,16 +158,6 @@ export default function MyShop() {
                 <div>
                     <label className="block text-xl font-semibold mb-2">{t('common.phoneNumber')}</label>
                     <TextInput value={form.phone} onChange={(event) => setForm((current) => ({ ...current, phone: event.target.value }))} sizing="lg" />
-                </div>
-
-                <div>
-                    <label className="block text-xl font-semibold mb-2">PayMongo Merchant ID</label>
-                    <TextInput
-                        value={form.paymongoMerchantId}
-                        onChange={(event) => setForm((current) => ({ ...current, paymongoMerchantId: event.target.value }))}
-                        placeholder="org_xxxxxxxxxxxxxxxxxx"
-                        sizing="lg"
-                    />
                 </div>
 
                 <div>

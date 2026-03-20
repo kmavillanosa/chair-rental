@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { Badge, Button, Modal, Select, Table, TextInput } from 'flowbite-react';
 import toast from 'react-hot-toast';
 import { useNavigate } from 'react-router-dom';
@@ -10,7 +10,6 @@ import {
   getAllVendors,
   getVendorRequests,
   hardDeleteVendor,
-  provisionVendorMerchantId,
   setVendorActive,
   suspendVendor,
   verifyVendor,
@@ -21,15 +20,18 @@ import LoadingSpinner from '../../components/common/LoadingSpinner';
 
 export default function VendorsList() {
   const [vendors, setVendors] = useState<Vendor[]>([]);
-  const [requests, setRequests] = useState<Vendor[]>([]);
+  const [pendingApplicantsCount, setPendingApplicantsCount] = useState(0);
   const navigate = useNavigate();
   const [loading, setLoading] = useState(true);
+  const [searchTerm, setSearchTerm] = useState('');
+  const [activityFilter, setActivityFilter] = useState('all');
+  const [verificationFilter, setVerificationFilter] = useState('all');
+  const [riskFilter, setRiskFilter] = useState('all');
   const [showCreateModal, setShowCreateModal] = useState(false);
   const [creatingVendor, setCreatingVendor] = useState(false);
   const [showSuspendModal, setShowSuspendModal] = useState(false);
   const [suspendTargetVendor, setSuspendTargetVendor] = useState<Vendor | null>(null);
   const [suspendingVendor, setSuspendingVendor] = useState(false);
-  const [provisioningVendorId, setProvisioningVendorId] = useState<string | null>(null);
   const [hardDeletingVendorId, setHardDeletingVendorId] = useState<string | null>(null);
   const [createForm, setCreateForm] = useState({
     userEmail: '',
@@ -37,7 +39,6 @@ export default function VendorsList() {
     ownerFullName: '',
     address: '',
     phone: '',
-    paymongoMerchantId: '',
     vendorType: 'registered_business',
   });
   const [suspendForm, setSuspendForm] = useState({
@@ -48,12 +49,102 @@ export default function VendorsList() {
   const load = () =>
     Promise.all([
       getAllVendors().then(setVendors),
-      getVendorRequests('pending').then(setRequests),
+      getVendorRequests('pending').then((requests) => {
+        setPendingApplicantsCount(requests.length);
+      }),
     ]).finally(() => setLoading(false));
 
   useEffect(() => {
     load();
   }, []);
+
+  const managedVendors = useMemo(
+    () =>
+      vendors.filter(
+        (vendor) =>
+          vendor.registrationStatus !== 'pending' &&
+          vendor.verificationStatus !== 'pending_verification',
+      ),
+    [vendors],
+  );
+
+  const filteredVendors = useMemo(() => {
+    const query = searchTerm.trim().toLowerCase();
+
+    return managedVendors.filter((vendor) => {
+      if (query) {
+        const haystack = [
+          vendor.businessName,
+          vendor.ownerFullName,
+          vendor.user?.name,
+          vendor.user?.email,
+          vendor.address,
+          vendor.phone,
+          vendor.slug,
+        ]
+          .filter(Boolean)
+          .join(' ')
+          .toLowerCase();
+
+        if (!haystack.includes(query)) {
+          return false;
+        }
+      }
+
+      if (activityFilter === 'active' && !vendor.isActive) {
+        return false;
+      }
+      if (activityFilter === 'inactive' && vendor.isActive) {
+        return false;
+      }
+      if (
+        activityFilter === 'suspended' &&
+        vendor.verificationStatus !== 'suspended' &&
+        !vendor.suspendedUntil
+      ) {
+        return false;
+      }
+
+      if (verificationFilter === 'verified' && !vendor.isVerified) {
+        return false;
+      }
+      if (
+        verificationFilter === 'unverified' &&
+        (vendor.isVerified || vendor.verificationStatus === 'rejected')
+      ) {
+        return false;
+      }
+      if (
+        verificationFilter === 'rejected' &&
+        vendor.verificationStatus !== 'rejected' &&
+        vendor.registrationStatus !== 'rejected'
+      ) {
+        return false;
+      }
+
+      if (riskFilter === 'flagged' && !vendor.isSuspicious) {
+        return false;
+      }
+      if (riskFilter === 'clean' && vendor.isSuspicious) {
+        return false;
+      }
+
+      return true;
+    });
+  }, [managedVendors, searchTerm, activityFilter, verificationFilter, riskFilter]);
+
+  const resetFilters = () => {
+    setSearchTerm('');
+    setActivityFilter('all');
+    setVerificationFilter('all');
+    setRiskFilter('all');
+  };
+
+  const hasActiveFilters =
+    searchTerm.trim().length > 0 ||
+    activityFilter !== 'all' ||
+    verificationFilter !== 'all' ||
+    riskFilter !== 'all';
 
   const handleVerify = async (vendor: Vendor) => {
     await verifyVendor(vendor.id, !vendor.isVerified);
@@ -118,27 +209,6 @@ export default function VendorsList() {
     }
   };
 
-  const handleProvisionMerchant = async (vendor: Vendor) => {
-    if (vendor.paymongoMerchantId) {
-      toast.success(`${vendor.businessName} already has a Merchant ID.`);
-      return;
-    }
-
-    setProvisioningVendorId(vendor.id);
-    try {
-      await provisionVendorMerchantId(vendor.id);
-      toast.success(`Merchant ID provisioned for ${vendor.businessName}.`);
-      load();
-    } catch (error: any) {
-      toast.error(
-        error?.response?.data?.message ||
-        `Failed to provision Merchant ID for ${vendor.businessName}.`,
-      );
-    } finally {
-      setProvisioningVendorId(null);
-    }
-  };
-
   const handleSuspend = (vendor: Vendor) => {
     const parsedSuspendDate = vendor.suspendedUntil
       ? new Date(vendor.suspendedUntil)
@@ -189,7 +259,6 @@ export default function VendorsList() {
       ownerFullName: createForm.ownerFullName.trim() || undefined,
       address: createForm.address.trim(),
       phone: createForm.phone.trim() || undefined,
-      paymongoMerchantId: createForm.paymongoMerchantId.trim() || undefined,
       vendorType: createForm.vendorType as Vendor['vendorType'],
       isVerified: true,
       isActive: true,
@@ -211,7 +280,6 @@ export default function VendorsList() {
         ownerFullName: '',
         address: '',
         phone: '',
-        paymongoMerchantId: '',
         vendorType: 'registered_business',
       });
       load();
@@ -224,12 +292,13 @@ export default function VendorsList() {
 
   const handleFlagSuspicious = async (vendor: Vendor) => {
     const nextFlagState = !vendor.isSuspicious;
-    const reason = window.prompt(
-      nextFlagState
-        ? 'Reason for flagging as suspicious:'
-        : 'Optional note for removing suspicious flag:',
-      vendor.suspiciousReason || '',
-    ) || '';
+    const reason =
+      window.prompt(
+        nextFlagState
+          ? 'Reason for flagging as suspicious:'
+          : 'Optional note for removing suspicious flag:',
+        vendor.suspiciousReason || '',
+      ) || '';
 
     if (nextFlagState && !reason.trim()) {
       toast.error('Please provide a reason before flagging a vendor.');
@@ -280,66 +349,80 @@ export default function VendorsList() {
   return (
     <AdminLayout>
       <div className="mx-auto w-full max-w-[1240px]">
-        <h1 className="mb-5 text-3xl font-bold text-slate-900">Vendors</h1>
-        <div className="mb-5 flex justify-end">
-          <Button
-            size="md"
-            className="!bg-slate-800 !px-4 !py-2 text-sm hover:!bg-slate-900"
-            onClick={() => setShowCreateModal(true)}
-          >
-            + Create Vendor
-          </Button>
+        <div className="mb-5 flex flex-wrap items-start justify-between gap-3">
+          <div>
+            <h1 className="text-3xl font-bold text-slate-900">Vendors</h1>
+            <p className="mt-1 text-sm text-slate-600">
+              Manage approved, rejected, and manually created vendors separately from pending applicants.
+            </p>
+          </div>
+
+          <div className="flex flex-wrap items-center gap-2">
+            <Button
+              size="md"
+              color="light"
+              className="!border-slate-200 !bg-white !px-4 !py-2 text-sm !text-slate-700 hover:!bg-slate-100"
+              onClick={() => navigate('/admin/vendors/applicants')}
+            >
+              Applicants{pendingApplicantsCount > 0 ? ` (${pendingApplicantsCount})` : ''}
+            </Button>
+            <Button
+              size="md"
+              className="!bg-slate-800 !px-4 !py-2 text-sm hover:!bg-slate-900"
+              onClick={() => setShowCreateModal(true)}
+            >
+              + Create Vendor
+            </Button>
+          </div>
         </div>
 
         <div className="mb-5 rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
-          <div className="mb-3 flex items-center justify-between">
-            <h2 className="text-xl font-semibold text-gray-900">Vendor Applicants</h2>
-            <Badge color="gray">{requests.length} pending</Badge>
+          <div className="flex flex-wrap items-center gap-2">
+            <Badge color="gray">{filteredVendors.length} shown</Badge>
+            <Badge color="gray">{managedVendors.length} total vendors</Badge>
+            {pendingApplicantsCount > 0 && (
+              <Badge color="gray">{pendingApplicantsCount} applicants pending review</Badge>
+            )}
           </div>
 
-          {requests.length === 0 ? (
-            <p className="text-sm text-slate-500">No pending vendor registrations right now.</p>
-          ) : (
-            <div className="overflow-hidden rounded-lg border border-slate-200">
-              {requests.map((request, index) => {
-                const ownerName = request.ownerFullName || request.user?.name || 'Unknown owner';
-                const documentCount =
-                  (request.documents?.filter((document) => Boolean(document.fileUrl)).length || 0) +
-                  (request.kycDocumentUrl ? 1 : 0);
-
-                return (
-                  <button
-                    key={request.id}
-                    type="button"
-                    onClick={() => navigate(`/admin/vendors/applicants/${request.id}`)}
-                    className={`group flex w-full items-start justify-between gap-4 bg-white px-4 py-3 text-left hover:bg-slate-50 ${index !== requests.length - 1 ? 'border-b border-slate-200' : ''
-                      }`}
-                  >
-                    <div className="min-w-0">
-                      <p className="truncate text-sm font-semibold text-slate-900">{request.businessName}</p>
-                      <p className="truncate text-xs text-slate-600">{ownerName} • {request.user?.email}</p>
-                      <p className="mt-0.5 truncate text-xs text-slate-500">{request.address}</p>
-                      <p className="mt-1 text-xs text-slate-500">
-                        {documentCount} file{documentCount === 1 ? '' : 's'} • Duplicate risk: {request.duplicateRiskScore || 0}
-                      </p>
-                    </div>
-
-                    <div className="flex shrink-0 flex-wrap items-center justify-end gap-2">
-                      <Badge color={getStatusColor(request.registrationStatus)}>
-                        Reg: {request.registrationStatus || 'pending'}
-                      </Badge>
-                      <Badge color={getStatusColor(request.kycStatus)}>
-                        KYC: {request.kycStatus || 'pending'}
-                      </Badge>
-                      <span className="text-xs font-semibold text-slate-600 group-hover:text-slate-900">
-                        Review
-                      </span>
-                    </div>
-                  </button>
-                );
-              })}
+          <div className="mt-4 grid gap-3 md:grid-cols-2 xl:grid-cols-[minmax(0,2fr)_repeat(3,minmax(0,1fr))]">
+            <TextInput
+              placeholder="Search business, owner, email, phone, or slug"
+              value={searchTerm}
+              onChange={(event) => setSearchTerm(event.target.value)}
+              sizing="md"
+            />
+            <Select value={activityFilter} onChange={(event) => setActivityFilter(event.target.value)}>
+              <option value="all">All activity</option>
+              <option value="active">Active only</option>
+              <option value="inactive">Inactive only</option>
+              <option value="suspended">Suspended only</option>
+            </Select>
+            <Select
+              value={verificationFilter}
+              onChange={(event) => setVerificationFilter(event.target.value)}
+            >
+              <option value="all">All verification</option>
+              <option value="verified">Verified only</option>
+              <option value="unverified">Unverified only</option>
+              <option value="rejected">Rejected only</option>
+            </Select>
+            <div className="flex gap-2">
+              <Select value={riskFilter} onChange={(event) => setRiskFilter(event.target.value)}>
+                <option value="all">All risk states</option>
+                <option value="flagged">Flagged only</option>
+                <option value="clean">Clean only</option>
+              </Select>
+              <Button
+                color="light"
+                className="!border-slate-200 !bg-white !text-slate-700 hover:!bg-slate-100"
+                onClick={resetFilters}
+                disabled={!hasActiveFilters}
+              >
+                Reset
+              </Button>
             </div>
-          )}
+          </div>
         </div>
 
         <div className="overflow-x-auto rounded-xl shadow">
@@ -353,116 +436,110 @@ export default function VendorsList() {
               <Table.HeadCell className="text-xs uppercase tracking-wide">Actions</Table.HeadCell>
             </Table.Head>
             <Table.Body>
-              {vendors.map((vendor) => (
-                <Table.Row key={vendor.id} className="text-sm">
-                  <Table.Cell>
-                    <p className="font-semibold text-slate-900">{vendor.businessName}</p>
-                    <p className="text-xs text-gray-500">{vendor.address}</p>
-                  </Table.Cell>
-                  <Table.Cell>{vendor.ownerFullName || vendor.user?.name}</Table.Cell>
-                  <Table.Cell className="flex gap-2 flex-wrap">
-                    <Badge color={vendor.isActive ? 'success' : 'gray'}>
-                      {vendor.isActive ? 'Active' : 'Inactive'}
-                    </Badge>
-                    {vendor.isVerified && <Badge color="success">Verified</Badge>}
-                    {vendor.isSuspicious && <Badge color="failure">Suspicious</Badge>}
-                  </Table.Cell>
-                  <Table.Cell>
-                    <div className="flex gap-2 flex-wrap">
-                      <Badge color={getStatusColor(vendor.registrationStatus)}>
-                        Reg: {vendor.registrationStatus || (vendor.isVerified ? 'approved' : 'pending')}
-                      </Badge>
-                      <Badge color={getStatusColor(vendor.verificationStatus)}>
-                        Verification: {vendor.verificationStatus || 'pending_verification'}
-                      </Badge>
-                      <Badge
-                        color={vendor.paymongoMerchantId ? 'success' : vendor.paymongoOnboardingStatus === 'failed' ? 'failure' : 'gray'}
-                      >
-                        Merchant: {vendor.paymongoMerchantId
-                          ? 'ready'
-                          : (vendor.paymongoOnboardingStatus || 'missing').replace(/_/g, ' ')}
-                      </Badge>
-                      {vendor.verificationBadge && (
-                        <Badge color="success">{vendor.verificationBadge}</Badge>
-                      )}
-                    </div>
-                  </Table.Cell>
-                  <Table.Cell className="text-center">{vendor.warningCount}/3</Table.Cell>
-                  <Table.Cell>
-                    <div className="flex gap-1.5 flex-wrap">
-                      <Button
-                        size="xs"
-                        color="light"
-                        className={vendor.isVerified ? mutedActionClass : successActionClass}
-                        onClick={() => handleVerify(vendor)}
-                      >
-                        {vendor.isVerified ? 'Verified' : 'Verify'}
-                      </Button>
-                      <Button
-                        size="xs"
-                        color="light"
-                        className={vendor.paymongoMerchantId ? mutedActionClass : neutralActionClass}
-                        onClick={() => handleProvisionMerchant(vendor)}
-                        isProcessing={provisioningVendorId === vendor.id}
-                        disabled={Boolean(vendor.paymongoMerchantId) || provisioningVendorId === vendor.id}
-                      >
-                        {vendor.paymongoMerchantId ? 'Merchant OK' : 'Get Merchant ID'}
-                      </Button>
-                      <Button
-                        size="xs"
-                        color="light"
-                        className={neutralActionClass}
-                        onClick={() => handleWarn(vendor)}
-                      >
-                        Warn
-                      </Button>
-                      <Button
-                        size="xs"
-                        color="light"
-                        className={`${neutralActionClass} disabled:!border-slate-200 disabled:!bg-slate-100 disabled:!text-slate-400`}
-                        onClick={() => handleClearWarnings(vendor)}
-                        disabled={vendor.warningCount <= 0}
-                      >
-                        Clear
-                      </Button>
-                      <Button
-                        size="xs"
-                        color="light"
-                        className={vendor.isSuspicious ? mutedActionClass : neutralActionClass}
-                        onClick={() => handleFlagSuspicious(vendor)}
-                      >
-                        {vendor.isSuspicious ? 'Unflag' : 'Flag'}
-                      </Button>
-                      <Button
-                        size="xs"
-                        color="light"
-                        className={dangerActionClass}
-                        onClick={() => handleSuspend(vendor)}
-                      >
-                        Suspend
-                      </Button>
-                      <Button
-                        size="xs"
-                        color="light"
-                        className={vendor.isActive ? dangerActionClass : successActionClass}
-                        onClick={() => handleToggleActive(vendor)}
-                      >
-                        {vendor.isActive ? 'Deactivate' : 'Activate'}
-                      </Button>
-                      <Button
-                        size="xs"
-                        color="light"
-                        className={dangerActionClass}
-                        onClick={() => handleHardDelete(vendor)}
-                        isProcessing={hardDeletingVendorId === vendor.id}
-                        disabled={hardDeletingVendorId === vendor.id}
-                      >
-                        Hard Delete
-                      </Button>
-                    </div>
+              {filteredVendors.length === 0 ? (
+                <Table.Row>
+                  <Table.Cell colSpan={6} className="py-8 text-center text-sm text-slate-500">
+                    No vendors match the current filters.
                   </Table.Cell>
                 </Table.Row>
-              ))}
+              ) : (
+                filteredVendors.map((vendor) => (
+                  <Table.Row key={vendor.id} className="text-sm">
+                    <Table.Cell>
+                      <p className="font-semibold text-slate-900">{vendor.businessName}</p>
+                      <p className="text-xs text-gray-500">{vendor.address}</p>
+                    </Table.Cell>
+                    <Table.Cell>
+                      <p>{vendor.ownerFullName || vendor.user?.name}</p>
+                      <p className="text-xs text-gray-500">{vendor.user?.email || '-'}</p>
+                    </Table.Cell>
+                    <Table.Cell className="flex gap-2 flex-wrap">
+                      <Badge color={vendor.isActive ? 'success' : 'gray'}>
+                        {vendor.isActive ? 'Active' : 'Inactive'}
+                      </Badge>
+                      {vendor.isVerified && <Badge color="success">Verified</Badge>}
+                      {vendor.isSuspicious && <Badge color="failure">Suspicious</Badge>}
+                    </Table.Cell>
+                    <Table.Cell>
+                      <div className="flex gap-2 flex-wrap">
+                        <Badge color={getStatusColor(vendor.registrationStatus)}>
+                          Reg: {vendor.registrationStatus || (vendor.isVerified ? 'approved' : 'pending')}
+                        </Badge>
+                        <Badge color={getStatusColor(vendor.verificationStatus)}>
+                          Verification: {vendor.verificationStatus || 'pending_verification'}
+                        </Badge>
+                        {vendor.verificationBadge && (
+                          <Badge color="success">{vendor.verificationBadge}</Badge>
+                        )}
+                      </div>
+                    </Table.Cell>
+                    <Table.Cell className="text-center">{vendor.warningCount}/3</Table.Cell>
+                    <Table.Cell>
+                      <div className="flex gap-1.5 flex-wrap">
+                        <Button
+                          size="xs"
+                          color="light"
+                          className={vendor.isVerified ? mutedActionClass : successActionClass}
+                          onClick={() => handleVerify(vendor)}
+                        >
+                          {vendor.isVerified ? 'Verified' : 'Verify'}
+                        </Button>
+                        <Button
+                          size="xs"
+                          color="light"
+                          className={neutralActionClass}
+                          onClick={() => handleWarn(vendor)}
+                        >
+                          Warn
+                        </Button>
+                        <Button
+                          size="xs"
+                          color="light"
+                          className={`${neutralActionClass} disabled:!border-slate-200 disabled:!bg-slate-100 disabled:!text-slate-400`}
+                          onClick={() => handleClearWarnings(vendor)}
+                          disabled={vendor.warningCount <= 0}
+                        >
+                          Clear
+                        </Button>
+                        <Button
+                          size="xs"
+                          color="light"
+                          className={vendor.isSuspicious ? mutedActionClass : neutralActionClass}
+                          onClick={() => handleFlagSuspicious(vendor)}
+                        >
+                          {vendor.isSuspicious ? 'Unflag' : 'Flag'}
+                        </Button>
+                        <Button
+                          size="xs"
+                          color="light"
+                          className={dangerActionClass}
+                          onClick={() => handleSuspend(vendor)}
+                        >
+                          Suspend
+                        </Button>
+                        <Button
+                          size="xs"
+                          color="light"
+                          className={vendor.isActive ? dangerActionClass : successActionClass}
+                          onClick={() => handleToggleActive(vendor)}
+                        >
+                          {vendor.isActive ? 'Deactivate' : 'Activate'}
+                        </Button>
+                        <Button
+                          size="xs"
+                          color="light"
+                          className={dangerActionClass}
+                          onClick={() => handleHardDelete(vendor)}
+                          isProcessing={hardDeletingVendorId === vendor.id}
+                          disabled={hardDeletingVendorId === vendor.id}
+                        >
+                          Hard Delete
+                        </Button>
+                      </div>
+                    </Table.Cell>
+                  </Table.Row>
+                ))
+              )}
             </Table.Body>
           </Table>
         </div>
@@ -499,12 +576,6 @@ export default function VendorsList() {
             placeholder="Phone (optional)"
             value={createForm.phone}
             onChange={(event) => setCreateForm((current) => ({ ...current, phone: event.target.value }))}
-            sizing="md"
-          />
-          <TextInput
-            placeholder="PayMongo Merchant ID (optional)"
-            value={createForm.paymongoMerchantId}
-            onChange={(event) => setCreateForm((current) => ({ ...current, paymongoMerchantId: event.target.value }))}
             sizing="md"
           />
           <Select

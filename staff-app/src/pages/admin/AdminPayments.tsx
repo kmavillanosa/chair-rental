@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { Button, Modal, Select, Table, TextInput } from 'flowbite-react';
 import toast from 'react-hot-toast';
 import AdminLayout from '../../components/layout/AdminLayout';
@@ -30,6 +30,11 @@ export default function AdminPayments() {
     dueDate: '',
     period: '',
   });
+
+  const toAmount = (value: unknown) => {
+    const parsed = Number(value);
+    return Number.isFinite(parsed) ? parsed : 0;
+  };
 
   const load = () => Promise.all([
     getAllPayments().then(setPayments),
@@ -79,6 +84,115 @@ export default function AdminPayments() {
     }
   };
 
+  const payoutSummary = useMemo(() => {
+    const settledStatuses = new Set<VendorPayout['status']>(['held', 'ready', 'released']);
+    const reversedStatuses = new Set<VendorPayout['status']>(['refunded', 'cancelled']);
+
+    return payouts.reduce(
+      (acc, payout) => {
+        const gross = toAmount(payout.grossAmount);
+        const platformFee = toAmount(payout.platformFeeAmount);
+        const net = toAmount(payout.netAmount);
+
+        if (settledStatuses.has(payout.status)) {
+          acc.grossCollected += gross;
+          acc.platformAccrued += platformFee;
+        }
+
+        if (payout.status === 'held') {
+          acc.vendorPending += net;
+        }
+        if (payout.status === 'ready') {
+          acc.vendorReady += net;
+          acc.readyCount += 1;
+        }
+        if (payout.status === 'released') {
+          acc.vendorReleased += net;
+          acc.releasedCount += 1;
+        }
+        if (reversedStatuses.has(payout.status)) {
+          acc.reversed += net;
+        }
+
+        return acc;
+      },
+      {
+        grossCollected: 0,
+        platformAccrued: 0,
+        vendorPending: 0,
+        vendorReady: 0,
+        vendorReleased: 0,
+        reversed: 0,
+        readyCount: 0,
+        releasedCount: 0,
+      },
+    );
+  }, [payouts]);
+
+  const vendorEarnings = useMemo(() => {
+    const settledStatuses = new Set<VendorPayout['status']>(['held', 'ready', 'released']);
+    const byVendor = new Map<
+      string,
+      {
+        vendorId: string;
+        vendorName: string;
+        grossCollected: number;
+        platformAccrued: number;
+        pendingBalance: number;
+        readyBalance: number;
+        releasedTotal: number;
+        records: number;
+      }
+    >();
+
+    for (const payout of payouts) {
+      const vendorId = payout.vendorId;
+      const vendorName =
+        payout.vendor?.businessName ||
+        vendors.find((vendor) => vendor.id === vendorId)?.businessName ||
+        vendorId;
+
+      if (!byVendor.has(vendorId)) {
+        byVendor.set(vendorId, {
+          vendorId,
+          vendorName,
+          grossCollected: 0,
+          platformAccrued: 0,
+          pendingBalance: 0,
+          readyBalance: 0,
+          releasedTotal: 0,
+          records: 0,
+        });
+      }
+
+      const row = byVendor.get(vendorId)!;
+      const gross = toAmount(payout.grossAmount);
+      const platformFee = toAmount(payout.platformFeeAmount);
+      const net = toAmount(payout.netAmount);
+
+      row.records += 1;
+
+      if (settledStatuses.has(payout.status)) {
+        row.grossCollected += gross;
+        row.platformAccrued += platformFee;
+      }
+
+      if (payout.status === 'held') {
+        row.pendingBalance += net;
+      }
+      if (payout.status === 'ready') {
+        row.readyBalance += net;
+      }
+      if (payout.status === 'released') {
+        row.releasedTotal += net;
+      }
+    }
+
+    return Array.from(byVendor.values()).sort(
+      (a, b) => b.platformAccrued - a.platformAccrued,
+    );
+  }, [payouts, vendors]);
+
   return (
     <AdminLayout>
       <div className="mb-6 flex items-center justify-between gap-3">
@@ -86,6 +200,67 @@ export default function AdminPayments() {
         <Button size="sm" className="!bg-slate-800 hover:!bg-slate-900" onClick={() => setShowCreateModal(true)}>
           + Add Payment
         </Button>
+      </div>
+
+      <div className="mb-6 grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
+        <div className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
+          <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">Platform Earnings (Accrued)</p>
+          <p className="mt-2 text-2xl font-semibold text-slate-900">{formatCurrency(payoutSummary.platformAccrued)}</p>
+          <p className="mt-1 text-xs text-slate-500">From held, ready, and released bookings</p>
+        </div>
+        <div className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
+          <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">Gross Collected</p>
+          <p className="mt-2 text-2xl font-semibold text-slate-900">{formatCurrency(payoutSummary.grossCollected)}</p>
+          <p className="mt-1 text-xs text-slate-500">Full payments collected by platform</p>
+        </div>
+        <div className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
+          <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">Vendor Pending Balance</p>
+          <p className="mt-2 text-2xl font-semibold text-slate-900">{formatCurrency(payoutSummary.vendorPending)}</p>
+          <p className="mt-1 text-xs text-slate-500">Held until completion/payout release window</p>
+        </div>
+        <div className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
+          <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">Vendor Ready To Release</p>
+          <p className="mt-2 text-2xl font-semibold text-slate-900">{formatCurrency(payoutSummary.vendorReady)}</p>
+          <p className="mt-1 text-xs text-slate-500">{payoutSummary.readyCount} payout(s) ready</p>
+        </div>
+        <div className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
+          <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">Vendor Released Total</p>
+          <p className="mt-2 text-2xl font-semibold text-slate-900">{formatCurrency(payoutSummary.vendorReleased)}</p>
+          <p className="mt-1 text-xs text-slate-500">{payoutSummary.releasedCount} payout(s) released</p>
+        </div>
+        <div className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
+          <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">Refunded/Cancelled Reversals</p>
+          <p className="mt-2 text-2xl font-semibold text-slate-900">{formatCurrency(payoutSummary.reversed)}</p>
+          <p className="mt-1 text-xs text-slate-500">Net vendor payouts reversed</p>
+        </div>
+      </div>
+
+      <h2 className="mb-3 text-base font-semibold text-slate-800">Vendor Earnings Breakdown</h2>
+      <div className="overflow-x-auto rounded-xl shadow">
+        <Table striped>
+          <Table.Head>
+            <Table.HeadCell>Vendor</Table.HeadCell>
+            <Table.HeadCell>Gross Collected</Table.HeadCell>
+            <Table.HeadCell>Platform Earnings</Table.HeadCell>
+            <Table.HeadCell>Pending</Table.HeadCell>
+            <Table.HeadCell>Ready</Table.HeadCell>
+            <Table.HeadCell>Released</Table.HeadCell>
+            <Table.HeadCell>Transactions</Table.HeadCell>
+          </Table.Head>
+          <Table.Body>
+            {vendorEarnings.map((row) => (
+              <Table.Row key={row.vendorId} className="text-sm">
+                <Table.Cell>{row.vendorName}</Table.Cell>
+                <Table.Cell className="font-semibold">{formatCurrency(row.grossCollected)}</Table.Cell>
+                <Table.Cell>{formatCurrency(row.platformAccrued)}</Table.Cell>
+                <Table.Cell>{formatCurrency(row.pendingBalance)}</Table.Cell>
+                <Table.Cell>{formatCurrency(row.readyBalance)}</Table.Cell>
+                <Table.Cell>{formatCurrency(row.releasedTotal)}</Table.Cell>
+                <Table.Cell>{row.records}</Table.Cell>
+              </Table.Row>
+            ))}
+          </Table.Body>
+        </Table>
       </div>
 
       <h2 className="mb-3 text-base font-semibold text-slate-800">Billing Records</h2>
@@ -127,6 +302,8 @@ export default function AdminPayments() {
           <Table.Head>
             <Table.HeadCell>Vendor</Table.HeadCell>
             <Table.HeadCell>Booking</Table.HeadCell>
+            <Table.HeadCell>Gross</Table.HeadCell>
+            <Table.HeadCell>Platform Fee</Table.HeadCell>
             <Table.HeadCell>Net Amount</Table.HeadCell>
             <Table.HeadCell>Outstanding</Table.HeadCell>
             <Table.HeadCell>Release On</Table.HeadCell>
@@ -138,6 +315,8 @@ export default function AdminPayments() {
               <Table.Row key={payout.id} className="text-sm">
                 <Table.Cell>{payout.vendor?.businessName || payout.vendorId}</Table.Cell>
                 <Table.Cell>{payout.bookingId.slice(0, 8)}...</Table.Cell>
+                <Table.Cell>{formatCurrency(toAmount(payout.grossAmount))}</Table.Cell>
+                <Table.Cell>{formatCurrency(toAmount(payout.platformFeeAmount))}</Table.Cell>
                 <Table.Cell className="font-semibold">{formatCurrency(payout.netAmount)}</Table.Cell>
                 <Table.Cell>{formatCurrency(payout.outstandingBalanceAmount)}</Table.Cell>
                 <Table.Cell>{payout.releaseOn ? formatDate(payout.releaseOn) : 'Immediate'}</Table.Cell>

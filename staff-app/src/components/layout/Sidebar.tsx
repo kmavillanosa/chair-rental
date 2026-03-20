@@ -3,7 +3,8 @@ import { useAuthStore } from '../../store/authStore';
 
 const adminLinks = [
   { to: '/admin', label: 'Overview', exact: true },
-  { to: '/admin/vendors', label: 'Vendors' },
+  { to: '/admin/vendors/applicants', label: 'Applicants' },
+  { to: '/admin/vendors', label: 'Vendors', exact: true },
   { to: '/admin/item-types', label: 'Item Types' },
   { to: '/admin/brands', label: 'Brands' },
   { to: '/admin/payments', label: 'Payments' },
@@ -40,7 +41,9 @@ export default function Sidebar({ role, className = '', onNavigate }: Props) {
       </div>
       <nav className="flex-1 min-h-0 overflow-y-auto p-4 space-y-1">
         {links.map(({ to, label, exact }) => {
-          const active = exact ? location.pathname === to : location.pathname.startsWith(to);
+          const active = exact
+            ? location.pathname === to
+            : location.pathname === to || location.pathname.startsWith(`${to}/`);
           return (
             <Link
               key={to}

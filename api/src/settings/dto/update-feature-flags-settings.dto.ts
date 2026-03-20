@@ -13,10 +13,6 @@ import {
 export class UpdateFeatureFlagsSettingsDto {
   @IsOptional()
   @IsBoolean()
-  allowKycWithoutMerchantId?: boolean;
-
-  @IsOptional()
-  @IsBoolean()
   allowOrdersWithoutPayment?: boolean;
 
   @IsOptional()

@@ -46,13 +46,6 @@ export enum VendorVerificationStatus {
   SUSPENDED = 'suspended',
 }
 
-export enum VendorPayMongoOnboardingStatus {
-  NOT_STARTED = 'not_started',
-  PROCESSING = 'processing',
-  PROVISIONED = 'provisioned',
-  FAILED = 'failed',
-}
-
 @Entity('vendors')
 @Index('IDX_vendors_user_id', ['userId'], { unique: true })
 @Index('IDX_vendors_status_type', ['verificationStatus', 'vendorType'])
@@ -144,25 +137,6 @@ export class Vendor {
 
   @Column({ nullable: true })
   logoUrl: string;
-
-  @Column({ nullable: true, unique: true })
-  paymongoMerchantId: string;
-
-  @Column({
-    type: 'enum',
-    enum: VendorPayMongoOnboardingStatus,
-    default: VendorPayMongoOnboardingStatus.NOT_STARTED,
-  })
-  paymongoOnboardingStatus: VendorPayMongoOnboardingStatus;
-
-  @Column({ type: 'text', nullable: true })
-  paymongoOnboardingError: string;
-
-  @Column({ type: 'datetime', nullable: true })
-  paymongoOnboardedAt: Date;
-
-  @Column({ type: 'longtext', nullable: true })
-  paymongoOnboardingData: string;
 
   @Column({
     type: 'enum',

@@ -4,9 +4,11 @@ import { SwaggerModule, DocumentBuilder } from '@nestjs/swagger';
 import { ValidationPipe } from '@nestjs/common';
 import { join } from 'path';
 import * as fs from 'fs';
+import { EmailService } from './common/email.service';
 
 async function bootstrap() {
   const app = await NestFactory.create(AppModule);
+  await app.get(EmailService).verifyTransportOnStartup();
 
   const configuredOrigins = [process.env.FRONTEND_URL, process.env.STAFF_FRONTEND_URL]
     .filter((origin): origin is string => Boolean(origin));

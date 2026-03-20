@@ -6,6 +6,7 @@ import Login from './pages/Login'
 import AuthCallback from './pages/AuthCallback'
 import AdminDashboard from './pages/admin/AdminDashboard'
 import VendorsList from './pages/admin/VendorsList'
+import VendorApplicantsList from './pages/admin/VendorApplicantsList'
 import VendorApplicantReview from './pages/admin/VendorApplicantReview'
 import ItemTypesList from './pages/admin/ItemTypesList'
 import BrandsList from './pages/admin/BrandsList'
@@ -79,6 +80,7 @@ export default function App() {
         <Route path="/auth/callback" element={<AuthCallback />} />
         <Route path="/admin" element={<ProtectedRoute role="admin"><AdminDashboard /></ProtectedRoute>} />
         <Route path="/admin/vendors" element={<ProtectedRoute role="admin"><VendorsList /></ProtectedRoute>} />
+        <Route path="/admin/vendors/applicants" element={<ProtectedRoute role="admin"><VendorApplicantsList /></ProtectedRoute>} />
         <Route path="/admin/vendors/applicants/:vendorId" element={<ProtectedRoute role="admin"><VendorApplicantReview /></ProtectedRoute>} />
         <Route path="/admin/item-types" element={<ProtectedRoute role="admin"><ItemTypesList /></ProtectedRoute>} />
         <Route path="/admin/brands" element={<ProtectedRoute role="admin"><BrandsList /></ProtectedRoute>} />

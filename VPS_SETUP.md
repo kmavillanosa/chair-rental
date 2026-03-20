@@ -194,22 +194,16 @@ nano .env
 | `GMAIL_USER` | Gmail address for system emails | Your Gmail address |
 | `GMAIL_APP_PASSWORD` | App-specific password (not your login password) | [myaccount.google.com](https://myaccount.google.com) → Security → 2-Step Verification → **App passwords** |
 
-#### 💳 PayMongo (Split Payments)
+#### 💳 PayMongo (Checkout)
 
 | Variable | Purpose | How to get it |
 |---|---|---|
 | `PAYMONGO_ENABLED` | Enable PayMongo checkout | `true` / `false` |
 | `PAYMONGO_SECRET_KEY` | API secret key | [dashboard.paymongo.com](https://dashboard.paymongo.com) → Developers → API Keys |
 | `PAYMONGO_API_BASE_URL` | PayMongo base URL | `https://api.paymongo.com/v1` |
-| `PAYMONGO_PLATFORM_MERCHANT_ID` | Platform's PayMongo org ID | Dashboard → Settings → Organization |
-| `PAYMONGO_DELIVERY_MERCHANT_ID` | Delivery fee recipient org ID | Same dashboard, separate sub-merchant |
-| `PAYMONGO_VENDOR_ONBOARDING_ENABLED` | Auto-provision vendor merchant accounts | `false` until you have PayMongo Connect access |
-| `PAYMONGO_VENDOR_ONBOARDING_REQUIRED` | Block vendor approval if onboarding fails | `false` (approval continues, failure is logged) |
-| `PAYMONGO_VENDOR_ONBOARDING_URL` | Vendor onboarding API endpoint | Provided by PayMongo Connect program |
 | `PAYMONGO_PAYMENT_METHOD_TYPES` | Accepted payment methods | `gcash`, `paymaya`, `card` — comma-separated |
 | `PAYMONGO_SUCCESS_URL` | Redirect after successful payment | `https://rentalbasic.com/bookings?payment=success` |
 | `PAYMONGO_CANCEL_URL` | Redirect after cancelled payment | `https://rentalbasic.com/bookings?payment=cancelled` |
-| `PAYMONGO_SPLIT_FEE_BUFFER_BPS` | Fee rounding buffer in basis points | `300` (= 3%) |
 
 #### 💬 Rocket.Chat (Booking Chat)
 
@@ -289,15 +283,9 @@ PLATFORM_COMMISSION_RATE=0.10
 PAYMONGO_ENABLED=true
 PAYMONGO_SECRET_KEY=sk_live_xxxx
 PAYMONGO_API_BASE_URL=https://api.paymongo.com/v1
-PAYMONGO_PLATFORM_MERCHANT_ID=org_xxxx
-PAYMONGO_DELIVERY_MERCHANT_ID=org_xxxx
-PAYMONGO_VENDOR_ONBOARDING_ENABLED=false
-PAYMONGO_VENDOR_ONBOARDING_REQUIRED=false
-PAYMONGO_VENDOR_ONBOARDING_URL=https://api.paymongo.com/v1/organizations
 PAYMONGO_PAYMENT_METHOD_TYPES=gcash
 PAYMONGO_SUCCESS_URL=https://rentalbasic.com/bookings?payment=success
 PAYMONGO_CANCEL_URL=https://rentalbasic.com/bookings?payment=cancelled
-PAYMONGO_SPLIT_FEE_BUFFER_BPS=300
 ```
 
 ---

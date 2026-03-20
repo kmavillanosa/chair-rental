@@ -54,12 +54,6 @@ type NormalizedBookingItem = {
   quantity: number;
 };
 
-type PayMongoRecipient = {
-  merchant_id: string;
-  split_type: 'fixed' | 'percentage_net';
-  value: number;
-};
-
 type PayMongoCheckoutResponse = {
   data?: {
     id?: string;
@@ -207,7 +201,8 @@ export class BookingsService {
       createdFromIp,
     });
 
-    const depositPercentage = await this.resolveDepositPercentage(data.depositPercentage);
+    // Full-payment flow: collect 100% at checkout, no remaining balance.
+    const depositPercentage = 100;
 
     const createdBooking = await this.dataSource.transaction(async (manager) => {
       const days = Math.max(1, differenceInDays(endDate, startDate) + 1);
@@ -258,8 +253,8 @@ export class BookingsService {
 
       const platformFee = subtotalItems * commissionRate;
       const totalAmount = subtotalItems + delivery + service;
-      const depositAmount = this.toMoney((totalAmount * depositPercentage) / 100);
-      const remainingBalanceAmount = this.toMoney(totalAmount - depositAmount);
+      const depositAmount = this.toMoney(totalAmount);
+      const remainingBalanceAmount = 0;
 
       const booking = manager.create(Booking, {
         customerId,
@@ -317,10 +312,7 @@ export class BookingsService {
       });
     }
 
-    if (
-      this.isPayMongoEnabled() &&
-      !(await this.allowOrdersWithoutPayment())
-    ) {
+    if (this.isPayMongoEnabled()) {
       try {
         await this.createPayMongoCheckoutForBooking(
           createdBooking.id,
@@ -416,7 +408,13 @@ export class BookingsService {
       throw new BadRequestException('Online payment checkout is not enabled');
     }
 
-    if (booking.paymentStatus === BookingPaymentStatus.PAID) {
+    if (
+      [
+        BookingPaymentStatus.PAID,
+        BookingPaymentStatus.HELD,
+        BookingPaymentStatus.COMPLETED,
+      ].includes(booking.paymentStatus)
+    ) {
       return booking;
     }
 
@@ -435,27 +433,9 @@ export class BookingsService {
       throw new NotFoundException('Booking not found');
     }
 
-    if (booking.totalPaidAmount <= 0) {
-      throw new BadRequestException(
-        'Deposit payment must be completed before paying the remaining balance',
-      );
-    }
-
-    if (booking.remainingBalanceAmount <= 0) {
-      throw new BadRequestException('There is no remaining balance for this booking');
-    }
-
-    if (!this.isPayMongoEnabled()) {
-      throw new BadRequestException('Online payment checkout is not enabled');
-    }
-
-    await this.createPayMongoCheckoutForBooking(booking.id, customerId, true, true);
-    const cancelledBooking = await this.findById(booking.id);
-    if (cancelledBooking) {
-      await this.tryEnsureBookingDocuments(cancelledBooking.id);
-    }
-
-    return cancelledBooking;
+    throw new BadRequestException(
+      'Remaining-balance checkout is no longer supported. Full payment is required at booking checkout.',
+    );
   }
 
   async verifyPayMongoCheckout(
@@ -522,35 +502,17 @@ export class BookingsService {
       storedSessionId;
 
     const paidAt = new Date();
-    const payingRemainingBalance =
-      booking.totalPaidAmount >= booking.depositAmount &&
-      booking.remainingBalanceAmount > 0;
-
-    const initialPaymentAmount = this.toMoney(
-      booking.depositAmount > 0 ? booking.depositAmount : booking.totalAmount,
-    );
-
-    const nextTotalPaid = payingRemainingBalance
-      ? this.toMoney(booking.totalPaidAmount + booking.remainingBalanceAmount)
-      : this.toMoney(booking.totalPaidAmount + initialPaymentAmount);
-
-    const nextEscrowHeldAmount = this.toMoney(nextTotalPaid);
-    const nextRemainingBalance = this.toMoney(
-      Math.max(0, booking.totalAmount - nextTotalPaid),
-    );
+    const nextTotalPaid = this.toMoney(booking.totalAmount);
 
     await this.bookingsRepo.update(booking.id, {
-      paymentStatus:
-        nextRemainingBalance > 0
-          ? BookingPaymentStatus.PAID
-          : BookingPaymentStatus.HELD,
+      paymentStatus: BookingPaymentStatus.HELD,
       paymentPaidAt: paidAt,
       paymentReference,
       totalPaidAmount: nextTotalPaid,
-      escrowHeldAmount: nextEscrowHeldAmount,
-      remainingBalanceAmount: nextRemainingBalance,
-      depositPaidAt: booking.depositPaidAt || paidAt,
-      finalPaymentPaidAt: nextRemainingBalance > 0 ? null : paidAt,
+      escrowHeldAmount: nextTotalPaid,
+      remainingBalanceAmount: 0,
+      depositPaidAt: paidAt,
+      finalPaymentPaidAt: paidAt,
       escrowHeldAt: paidAt,
       paymentCheckoutSessionId: null,
       paymentCheckoutUrl: null,
@@ -561,7 +523,7 @@ export class BookingsService {
       {
         status: VendorPayoutStatus.HELD,
         heldAt: paidAt,
-        outstandingBalanceAmount: nextRemainingBalance,
+        outstandingBalanceAmount: 0,
       },
     );
 
@@ -619,8 +581,7 @@ export class BookingsService {
         BookingPaymentStatus.PAID,
         BookingPaymentStatus.HELD,
         BookingPaymentStatus.COMPLETED,
-      ].includes(booking.paymentStatus) &&
-      !(await this.allowOrdersWithoutPayment())
+      ].includes(booking.paymentStatus)
     ) {
       throw new BadRequestException(
         'Booking cannot be confirmed until payment is completed',
@@ -638,11 +599,14 @@ export class BookingsService {
       }
 
       if (
-        booking.remainingBalanceAmount > 0 &&
-        !(await this.allowOrdersWithoutPayment())
+        ![
+          BookingPaymentStatus.PAID,
+          BookingPaymentStatus.HELD,
+          BookingPaymentStatus.COMPLETED,
+        ].includes(booking.paymentStatus)
       ) {
         throw new BadRequestException(
-          'Remaining balance must be paid before completing this booking',
+          'Booking must be paid before completing this booking',
         );
       }
     }
@@ -760,15 +724,17 @@ export class BookingsService {
       return booking;
     }
 
-    const allowUnpaidOrders = await this.allowOrdersWithoutPayment();
-    if (booking.remainingBalanceAmount > 0 && !allowUnpaidOrders) {
+    if (
+      ![
+        BookingPaymentStatus.PAID,
+        BookingPaymentStatus.HELD,
+        BookingPaymentStatus.COMPLETED,
+      ].includes(booking.paymentStatus)
+    ) {
       throw new BadRequestException(
-        'Remaining balance must be settled before delivery can be confirmed',
+        'Payment must be settled before delivery can be confirmed',
       );
     }
-
-    const markPaymentCompleted =
-      booking.remainingBalanceAmount <= 0 || !allowUnpaidOrders;
 
     const proofCount = await this.bookingDeliveryProofRepo.count({
       where: { bookingId },
@@ -781,13 +747,9 @@ export class BookingsService {
       status: BookingStatus.COMPLETED,
       customerConfirmedDeliveryAt: new Date(),
       customerConfirmedDeliveryByUserId: actorUserId,
-      paymentStatus: markPaymentCompleted
-        ? BookingPaymentStatus.COMPLETED
-        : booking.paymentStatus,
-      totalPaidAmount: markPaymentCompleted
-        ? this.toMoney(booking.totalAmount)
-        : booking.totalPaidAmount,
-      remainingBalanceAmount: markPaymentCompleted ? 0 : booking.remainingBalanceAmount,
+      paymentStatus: BookingPaymentStatus.COMPLETED,
+      totalPaidAmount: this.toMoney(booking.totalAmount),
+      remainingBalanceAmount: 0,
       escrowReleasedAt: new Date(),
       escrowReleasedAmount: booking.escrowHeldAmount,
     });
@@ -797,9 +759,7 @@ export class BookingsService {
       {
         status: VendorPayoutStatus.READY,
         releaseOn: await this.computeVendorPayoutReleaseOn(booking.vendorId),
-        outstandingBalanceAmount: allowUnpaidOrders
-          ? booking.remainingBalanceAmount
-          : 0,
+        outstandingBalanceAmount: 0,
       },
     );
 
@@ -1439,7 +1399,7 @@ export class BookingsService {
     bookingId: string,
     customerId: string,
     forceNew = false,
-    forRemainingBalance = false,
+    _forRemainingBalance = false,
   ) {
     const booking = await this.findById(bookingId);
     if (!booking || booking.customerId !== customerId) {
@@ -1461,59 +1421,29 @@ export class BookingsService {
       throw new BadRequestException('Booking customer details are unavailable');
     }
 
-    if (forRemainingBalance && booking.remainingBalanceAmount <= 0) {
-      throw new BadRequestException('There is no remaining balance to pay');
-    }
-
     if (
-      !forRemainingBalance &&
-      booking.totalPaidAmount > 0 &&
-      booking.remainingBalanceAmount > 0
+      [
+        BookingPaymentStatus.HELD,
+        BookingPaymentStatus.COMPLETED,
+        BookingPaymentStatus.REFUNDED,
+      ].includes(booking.paymentStatus)
     ) {
-      throw new BadRequestException(
-        'Deposit is already paid. Use the remaining-balance checkout endpoint.',
-      );
-    }
-
-    const vendorMerchantId = String(
-      booking.vendor.paymongoMerchantId || '',
-    ).trim();
-    if (!vendorMerchantId) {
-      throw new BadRequestException(
-        'Vendor is not configured for PayMongo split payouts',
-      );
+      throw new BadRequestException('This booking is already settled');
     }
 
     const secretKey = String(process.env.PAYMONGO_SECRET_KEY || '').trim();
-    const platformMerchantId = String(
-      process.env.PAYMONGO_PLATFORM_MERCHANT_ID || '',
-    ).trim();
-    if (!secretKey || !platformMerchantId) {
-      throw new BadRequestException(
-        'PayMongo split payment is not fully configured on the server',
-      );
+    if (!secretKey) {
+      throw new BadRequestException('PAYMONGO_SECRET_KEY is not configured');
     }
 
-    const payableAmount = forRemainingBalance
-      ? this.toMoney(booking.remainingBalanceAmount)
-      : this.toMoney(
-          booking.totalPaidAmount > 0
-            ? booking.depositAmount
-            : booking.depositAmount || booking.totalAmount,
-        );
+    const payableAmount = this.toMoney(
+      Math.max(0, Number(booking.totalAmount || 0) - Number(booking.totalPaidAmount || 0)),
+    );
 
     const payableMinor = this.toMinorUnits(payableAmount);
     if (payableMinor <= 0) {
       throw new BadRequestException('Booking amount must be greater than zero');
     }
-
-    const splitPayment = this.buildSplitPaymentConfig(
-      booking,
-      vendorMerchantId,
-      platformMerchantId,
-      payableAmount,
-      forRemainingBalance,
-    );
 
     const baseApi = String(process.env.PAYMONGO_API_BASE_URL || 'https://api.paymongo.com/v1').replace(/\/$/, '');
     const successUrl = this.withBookingQuery(
@@ -1546,7 +1476,7 @@ export class BookingsService {
             {
               amount: payableMinor,
               quantity: 1,
-              name: `${forRemainingBalance ? 'Remaining Balance' : 'Booking Deposit'} - ${booking.vendor.businessName}`,
+              name: `Booking Payment - ${booking.vendor.businessName}`,
               description: `Booking #${booking.id}`,
               currency: 'PHP',
             },
@@ -1556,7 +1486,6 @@ export class BookingsService {
           send_email_receipt: false,
           show_description: true,
           show_line_items: true,
-          split_payment: splitPayment,
           success_url: successUrl,
         },
       },
@@ -1595,123 +1524,6 @@ export class BookingsService {
       paymentCheckoutUrl: checkoutUrl,
       paymentPaidAt: null,
     });
-  }
-
-  private buildSplitPaymentConfig(
-    booking: Booking,
-    transferToMerchantId: string,
-    platformMerchantId: string,
-    payableAmount: number,
-    forRemainingBalance: boolean,
-  ) {
-    const recipients: PayMongoRecipient[] = [];
-
-    const platformBps = this.computePlatformCommissionBps(
-      booking,
-      payableAmount,
-      forRemainingBalance,
-    );
-    if (platformBps > 0) {
-      recipients.push({
-        merchant_id: platformMerchantId,
-        split_type: 'percentage_net',
-        value: platformBps,
-      });
-    }
-
-    const deliveryMerchantId = String(
-      process.env.PAYMONGO_DELIVERY_MERCHANT_ID || '',
-    ).trim();
-    const deliveryFixed = this.toMinorUnits(
-      !forRemainingBalance && payableAmount >= Number(booking.totalAmount || 0)
-        ? booking.deliveryCharge
-        : 0,
-    );
-    if (deliveryMerchantId && deliveryFixed > 0) {
-      recipients.push({
-        merchant_id: deliveryMerchantId,
-        split_type: 'fixed',
-        value: deliveryFixed,
-      });
-    }
-
-    this.assertFixedSplitsWithinSafeNet(payableAmount, recipients);
-
-    return {
-      transfer_to: transferToMerchantId,
-      recipients,
-    };
-  }
-
-  private computePlatformCommissionBps(
-    booking: Booking,
-    payableAmount: number,
-    forRemainingBalance = false,
-  ) {
-    const total = Number(booking.totalAmount || 0);
-    const platformFee = Number(booking.platformFee || 0);
-    const checkoutAmount = Number(payableAmount || 0);
-
-    if (!Number.isFinite(platformFee) || platformFee <= 0) return 0;
-    if (!Number.isFinite(total) || total <= 0) return 0;
-    if (!Number.isFinite(checkoutAmount) || checkoutAmount <= 0) return 0;
-
-    const baseRatio = platformFee / total;
-    let platformShareAmount = checkoutAmount * baseRatio;
-
-    if (forRemainingBalance) {
-      const priorCheckoutAmount = Math.max(0, Number(booking.totalPaidAmount || 0));
-      const alreadyAllocated = priorCheckoutAmount * baseRatio;
-      platformShareAmount = Math.max(0, platformFee - alreadyAllocated);
-      platformShareAmount = Math.min(platformShareAmount, checkoutAmount);
-    }
-
-    if (platformShareAmount <= 0) return 0;
-
-    const bps = Math.round((platformShareAmount / checkoutAmount) * 10000);
-    return Math.max(1, Math.min(10000, bps));
-  }
-
-  private assertFixedSplitsWithinSafeNet(
-    totalAmount: number,
-    recipients: PayMongoRecipient[],
-  ) {
-    const fixedTotal = recipients
-      .filter((recipient) => recipient.split_type === 'fixed')
-      .reduce((sum, recipient) => sum + Math.max(0, Number(recipient.value || 0)), 0);
-
-    const percentageTotalBps = recipients
-      .filter((recipient) => recipient.split_type === 'percentage_net')
-      .reduce(
-        (sum, recipient) => sum + Math.max(0, Math.floor(Number(recipient.value || 0))),
-        0,
-      );
-
-    if (percentageTotalBps > 10000) {
-      throw new BadRequestException(
-        'Configured percentage split recipients exceed 100% of net amount.',
-      );
-    }
-
-    if (fixedTotal <= 0 && percentageTotalBps <= 0) return;
-
-    const grossMinor = this.toMinorUnits(totalAmount);
-    const bufferBpsRaw = Number(process.env.PAYMONGO_SPLIT_FEE_BUFFER_BPS || 300);
-    const bufferBps = Number.isFinite(bufferBpsRaw)
-      ? Math.min(Math.max(Math.floor(bufferBpsRaw), 0), 3000)
-      : 300;
-    const estimatedNet = Math.floor((grossMinor * (10000 - bufferBps)) / 10000);
-
-    const projectedPercentageTotal = Math.floor(
-      (estimatedNet * percentageTotalBps) / 10000,
-    );
-    const projectedTotalCommitted = fixedTotal + projectedPercentageTotal;
-
-    if (projectedTotalCommitted > estimatedNet) {
-      throw new BadRequestException(
-        'Configured split recipients exceed the safe net amount. Reduce recipient values or adjust PAYMONGO_SPLIT_FEE_BUFFER_BPS.',
-      );
-    }
   }
 
   private toMinorUnits(amount: number) {

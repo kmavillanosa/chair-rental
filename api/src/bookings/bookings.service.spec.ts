@@ -326,7 +326,7 @@ describe('BookingsService', () => {
     ).rejects.toBeInstanceOf(BadRequestException);
   });
 
-  it('marks payment as paid when session is valid and belongs to booking', async () => {
+  it('marks payment as held when session is valid and belongs to booking', async () => {
     const { service, mocks } = createService();
     const booking = {
       id: 'booking-1',
@@ -347,7 +347,7 @@ describe('BookingsService', () => {
       .mockResolvedValueOnce(booking as any)
       .mockResolvedValueOnce({
         ...booking,
-        paymentStatus: 'paid',
+        paymentStatus: 'held',
       } as any);
 
     fetchMock.mockResolvedValue({
@@ -368,22 +368,11 @@ describe('BookingsService', () => {
     expect(mocks.bookingsRepo.update).toHaveBeenCalledWith(
       'booking-1',
       expect.objectContaining({
-        paymentStatus: 'paid',
+        paymentStatus: 'held',
         paymentReference: 'pay_123',
       }),
     );
-    expect(result.paymentStatus).toBe('paid');
-  });
-
-  it('rejects unsafe split configurations where fixed+percentage exceed safe net', () => {
-    const { service } = createService();
-
-    expect(() =>
-      (service as any).assertFixedSplitsWithinSafeNet(100, [
-        { merchant_id: 'delivery', split_type: 'fixed', value: 6000 },
-        { merchant_id: 'platform', split_type: 'percentage_net', value: 5000 },
-      ]),
-    ).toThrow(BadRequestException);
+    expect(result.paymentStatus).toBe('held');
   });
 
   it('throws NotFoundException from getCancellationPreview when booking is missing', async () => {
@@ -555,7 +544,7 @@ describe('BookingsService', () => {
     expect(result.status).toBe('confirmed');
   });
 
-  it('updateStatus allows confirming an unpaid PayMongo booking when test mode flag is enabled', async () => {
+  it('updateStatus blocks confirming an unpaid PayMongo booking even when test mode flag is enabled', async () => {
     const { service, mocks } = createService();
     const booking = {
       id: 'booking-1',
@@ -570,14 +559,11 @@ describe('BookingsService', () => {
       allowOrdersWithoutPayment: true,
     });
 
-    vi.spyOn(service, 'findById')
-      .mockResolvedValueOnce(booking as any)
-      .mockResolvedValueOnce({ ...booking, status: 'confirmed' } as any);
+    vi.spyOn(service, 'findById').mockResolvedValue(booking as any);
 
-    const result = await service.updateStatus('booking-1', 'confirmed' as any, 'admin-1', 'admin' as any);
-
-    expect(mocks.bookingsRepo.update).toHaveBeenCalledWith('booking-1', { status: 'confirmed' });
-    expect(result.status).toBe('confirmed');
+    await expect(
+      service.updateStatus('booking-1', 'confirmed' as any, 'admin-1', 'admin' as any),
+    ).rejects.toBeInstanceOf(BadRequestException);
   });
 
   it('updateStatus keeps blocking unpaid PayMongo confirmation when test mode flag is disabled', async () => {
@@ -602,7 +588,7 @@ describe('BookingsService', () => {
     ).rejects.toBeInstanceOf(BadRequestException);
   });
 
-  it('create skips automatic checkout when unpaid-order test mode is enabled', async () => {
+  it('create starts automatic checkout when PayMongo is enabled', async () => {
     const { service, mocks } = createService();
     const manager = {
       findOne: vi.fn().mockResolvedValue({
@@ -630,7 +616,6 @@ describe('BookingsService', () => {
     });
     mocks.paymentsRepo.findOne.mockResolvedValue(null);
     mocks.settingsService.getFeatureFlagsSettings.mockResolvedValue({
-      allowOrdersWithoutPayment: true,
       launchNoCommissionEnabled: false,
       launchNoCommissionUntil: null,
       defaultPlatformCommissionRatePercent: 10,
@@ -641,11 +626,15 @@ describe('BookingsService', () => {
 
     vi.spyOn(service, 'findById').mockResolvedValue({
       id: 'booking-1',
+      customerId: 'customer-1',
+      vendorId: 'vendor-1',
       paymentProvider: 'paymongo',
-      paymentStatus: 'unpaid',
+      paymentStatus: 'pending',
     } as any);
 
-    const checkoutSpy = vi.spyOn(service as any, 'createPayMongoCheckoutForBooking');
+    const checkoutSpy = vi
+      .spyOn(service as any, 'createPayMongoCheckoutForBooking')
+      .mockResolvedValue(undefined);
 
     await service.create('customer-1', {
       vendorId: 'vendor-1',
@@ -654,7 +643,7 @@ describe('BookingsService', () => {
       items: [{ inventoryItemId: 'inv-1', quantity: 1 }],
     });
 
-    expect(checkoutSpy).not.toHaveBeenCalled();
+    expect(checkoutSpy).toHaveBeenCalledWith('booking-1', 'customer-1', false, false);
     expect(manager.create.mock.calls[0]?.[1]).toEqual(
       expect.objectContaining({
         paymentProvider: 'paymongo',

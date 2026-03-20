@@ -6,7 +6,6 @@ import AdminLayout from '../../components/layout/AdminLayout';
 import LoadingSpinner from '../../components/common/LoadingSpinner';
 import {
     getVendorKycSubmission,
-    provisionVendorMerchantId,
     reviewVendorRegistration,
 } from '../../api/vendors';
 import type { Vendor } from '../../types';
@@ -62,7 +61,6 @@ export default function VendorApplicantReview() {
     const [loadError, setLoadError] = useState('');
     const [notes, setNotes] = useState('');
     const [pendingDecision, setPendingDecision] = useState<'approve' | 'reject' | null>(null);
-    const [provisioningMerchant, setProvisioningMerchant] = useState(false);
 
     const previewDocuments = useMemo(() => {
         if (!applicant) return [];
@@ -144,7 +142,7 @@ export default function VendorApplicantReview() {
                     ? 'Applicant approved successfully.'
                     : 'Applicant declined successfully.',
             );
-            navigate('/admin/vendors', { replace: true });
+            navigate('/admin/vendors/applicants', { replace: true });
         } catch (error: any) {
             toast.error(
                 error?.response?.data?.message ||
@@ -152,25 +150,6 @@ export default function VendorApplicantReview() {
             );
         } finally {
             setPendingDecision(null);
-        }
-    };
-
-    const handleProvisionMerchant = async () => {
-        if (!applicant || applicant.paymongoMerchantId) return;
-
-        setProvisioningMerchant(true);
-        try {
-            const updated = await provisionVendorMerchantId(applicant.id);
-            setApplicant(updated);
-            setNotes((current) => current || updated.kycNotes || '');
-            toast.success('Merchant ID provisioned successfully.');
-        } catch (error: any) {
-            toast.error(
-                error?.response?.data?.message ||
-                'Failed to provision Merchant ID for this applicant.',
-            );
-        } finally {
-            setProvisioningMerchant(false);
         }
     };
 
@@ -189,7 +168,7 @@ export default function VendorApplicantReview() {
                     <Button
                         size="sm"
                         color="light"
-                        onClick={() => navigate('/admin/vendors')}
+                        onClick={() => navigate('/admin/vendors/applicants')}
                         className="!border-slate-200 !bg-white !text-slate-700 hover:!bg-slate-100"
                     >
                         Back to Applicants
@@ -213,7 +192,7 @@ export default function VendorApplicantReview() {
                     <Button
                         size="sm"
                         color="light"
-                        onClick={() => navigate('/admin/vendors')}
+                        onClick={() => navigate('/admin/vendors/applicants')}
                         className="!border-slate-200 !bg-white !text-slate-700 hover:!bg-slate-100"
                     >
                         Back to Applicants
@@ -262,39 +241,6 @@ export default function VendorApplicantReview() {
                         <p><span className="font-semibold">Address:</span> {applicant.address || '-'}</p>
                         <p><span className="font-semibold">Phone:</span> {applicant.phone || '-'}</p>
                     </div>
-
-                    <div className="mt-3 flex flex-wrap items-center gap-2">
-                        <Badge
-                            color={applicant.paymongoMerchantId
-                                ? 'success'
-                                : applicant.paymongoOnboardingStatus === 'failed'
-                                    ? 'failure'
-                                    : 'gray'}
-                        >
-                            Merchant: {applicant.paymongoMerchantId
-                                ? applicant.paymongoMerchantId
-                                : (applicant.paymongoOnboardingStatus || 'missing').replace(/_/g, ' ')}
-                        </Badge>
-
-                        {!applicant.paymongoMerchantId && (
-                            <Button
-                                size="xs"
-                                color="light"
-                                className="!border-slate-200 !bg-white !text-slate-700 hover:!bg-slate-100"
-                                onClick={handleProvisionMerchant}
-                                isProcessing={provisioningMerchant}
-                                disabled={provisioningMerchant}
-                            >
-                                Get Merchant ID
-                            </Button>
-                        )}
-                    </div>
-
-                    {applicant.paymongoOnboardingError && (
-                        <p className="mt-2 text-xs text-rose-700">
-                            Merchant onboarding error: {applicant.paymongoOnboardingError}
-                        </p>
-                    )}
 
                     {applicant.rejectionReason && (
                         <div className="mt-4 rounded-lg border border-rose-200 bg-rose-50 p-3 text-sm text-rose-700">

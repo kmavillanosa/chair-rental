@@ -25,13 +25,6 @@ const VendorVerificationStatus = {
   REJECTED: 'rejected',
 } as const;
 
-const VendorPayMongoOnboardingStatus = {
-  NOT_STARTED: 'not_started',
-  PROCESSING: 'processing',
-  PROVISIONED: 'provisioned',
-  FAILED: 'failed',
-} as const;
-
 const BusinessRegistrationType = {
   DTI: 'dti',
   SEC: 'sec',
@@ -93,7 +86,6 @@ vi.mock('./entities/vendor.entity', () => ({
   VendorRegistrationStatus,
   VendorKycStatus,
   VendorVerificationStatus,
-  VendorPayMongoOnboardingStatus,
 }));
 
 vi.mock('./entities/vendor-document.entity', () => ({
@@ -302,141 +294,6 @@ describe('VendorsService', () => {
     );
 
     expect(comparison).toBeLessThan(0);
-  });
-
-  it('normalizes existing merchant onboarding status to provisioned', async () => {
-    const { service, mocks } = createService();
-    const vendor = {
-      id: 'vendor-1',
-      paymongoMerchantId: 'merchant_123',
-      paymongoOnboardingStatus: VendorPayMongoOnboardingStatus.FAILED,
-      paymongoOnboardedAt: null,
-    };
-
-    const result = await (service as any).ensureVendorPayMongoMerchantOnApproval(vendor);
-
-    expect(result).toBe('merchant_123');
-    expect(mocks.vendorsRepo.update).toHaveBeenCalledWith(
-      'vendor-1',
-      expect.objectContaining({
-        paymongoOnboardingStatus: VendorPayMongoOnboardingStatus.PROVISIONED,
-      }),
-    );
-  });
-
-  it('blocks approval when merchant ID is required and onboarding is disabled', async () => {
-    const { service, mocks } = createService();
-    process.env.PAYMONGO_VENDOR_ONBOARDING_ENABLED = 'false';
-    process.env.PAYMONGO_VENDOR_ONBOARDING_REQUIRED = 'true';
-    mocks.settingsService.getFeatureFlagsSettings.mockResolvedValue({
-      allowKycWithoutMerchantId: false,
-    });
-
-    await expect(
-      (service as any).ensureVendorPayMongoMerchantOnApproval({
-        id: 'vendor-1',
-        paymongoMerchantId: null,
-        paymongoOnboardingStatus: VendorPayMongoOnboardingStatus.NOT_STARTED,
-        paymongoOnboardedAt: null,
-      }),
-    ).rejects.toBeInstanceOf(BadRequestException);
-  });
-
-  it('continues approval when onboarding fails but fallback is allowed', async () => {
-    const { service, mocks } = createService();
-    process.env.PAYMONGO_VENDOR_ONBOARDING_ENABLED = 'true';
-    mocks.settingsService.getFeatureFlagsSettings.mockResolvedValue({
-      allowKycWithoutMerchantId: true,
-    });
-
-    vi.spyOn(service as any, 'provisionPayMongoMerchantId').mockRejectedValue(
-      new Error('upstream outage'),
-    );
-
-    const result = await (service as any).ensureVendorPayMongoMerchantOnApproval({
-      id: 'vendor-1',
-      paymongoMerchantId: null,
-      paymongoOnboardingStatus: VendorPayMongoOnboardingStatus.NOT_STARTED,
-      paymongoOnboardedAt: null,
-      verificationStatus: VendorVerificationStatus.PENDING_VERIFICATION,
-    });
-
-    expect(result).toBeNull();
-    expect(mocks.vendorsRepo.update).toHaveBeenCalledWith(
-      'vendor-1',
-      expect.objectContaining({
-        paymongoOnboardingStatus: VendorPayMongoOnboardingStatus.FAILED,
-      }),
-    );
-  });
-
-  it('normalizes paymongo onboarding appendix payload fields', () => {
-    const { service } = createService();
-
-    const normalized = (service as any).normalizePayMongoOnboardingDataInput(
-      {
-        child_merchant: {
-          features: ['Payment_Gateway', 'BASIC_WALLET', 'basic_wallet'],
-          business: {
-            type: 'SOLE_PROPRIETOR',
-            trade_name: '  ACME Rentals  ',
-          },
-          e_wallet: {
-            provider: 'GCASH',
-          },
-          representative: {
-            nationality: 'phl',
-            source_of_funds: 'Salary',
-          },
-        },
-      },
-      VendorType.REGISTERED_BUSINESS,
-    );
-
-    const payload = JSON.parse(normalized);
-    expect(payload.child_merchant.business.type).toBe('sole_proprietor');
-    expect(payload.child_merchant.e_wallet.provider).toBe('gcash');
-    expect(payload.child_merchant.representative.nationality).toBe('PHL');
-    expect(payload.child_merchant.representative.source_of_funds).toBe('salary');
-    expect(payload.child_merchant.features).toEqual([
-      'payment_gateway',
-      'basic_wallet',
-    ]);
-  });
-
-  it('rejects conflicting paymongo wallet features', () => {
-    const { service } = createService();
-
-    expect(() =>
-      (service as any).normalizePayMongoOnboardingDataInput(
-        {
-          child_merchant: {
-            features: ['basic_wallet', 'standard_wallet'],
-          },
-        },
-        VendorType.INDIVIDUAL_OWNER,
-      ),
-    ).toThrow(BadRequestException);
-  });
-
-  it('uses vendor type fallback for child merchant business type', () => {
-    const { service } = createService();
-
-    const payload = (service as any).buildPayMongoChildMerchantCreatePayload({
-      id: 'vendor-1',
-      vendorType: VendorType.INDIVIDUAL_OWNER,
-      ownerFullName: 'Juan Dela Cruz',
-      businessName: null,
-      paymongoOnboardingData: JSON.stringify({
-        child_merchant: {
-          business: {
-            trade_name: 'Juan Rentals',
-          },
-        },
-      }),
-    });
-
-    expect(payload.data.attributes.business.type).toBe('individual');
   });
 
   describe('normalizeSlug', () => {

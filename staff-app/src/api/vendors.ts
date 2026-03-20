@@ -88,9 +88,6 @@ export const updateMyVendor = (data: Partial<Vendor>) =>
 export const verifyVendor = (id: string, isVerified: boolean) =>
   api.patch<Vendor>(`/vendors/${id}/verify`, { isVerified }).then(r => mapVendor(r.data));
 
-export const provisionVendorMerchantId = (id: string) =>
-  api.patch<Vendor>(`/vendors/${id}/provision-merchant`).then(r => mapVendor(r.data));
-
 export const warnVendor = (id: string) =>
   api.patch<Vendor>(`/vendors/${id}/warn`).then(r => mapVendor(r.data));
 

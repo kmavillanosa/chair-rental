@@ -32,11 +32,10 @@ describe('SettingsService', () => {
     process.env = { ...originalEnv };
   });
 
-  it('resolves feature flags with clamped values and onboarding fallback', async () => {
+  it('resolves feature flags with clamped values', async () => {
     const { service, mocks } = createService();
 
     process.env.PLATFORM_COMMISSION_RATE = '0.25';
-    process.env.PAYMONGO_VENDOR_ONBOARDING_REQUIRED = 'true';
 
     mocks.settingsRepo.find.mockResolvedValue([
       { key: 'flags.allowOrdersWithoutPayment', value: 'true' },
@@ -52,7 +51,6 @@ describe('SettingsService', () => {
     const result = await service.getFeatureFlagsSettings();
 
     expect(result).toEqual({
-      allowKycWithoutMerchantId: false,
       allowOrdersWithoutPayment: true,
       maintenanceModeEnabled: true,
       defaultPlatformCommissionRatePercent: 100,
@@ -72,12 +70,10 @@ describe('SettingsService', () => {
   it('updates feature flags using sanitized values and persists all keys', async () => {
     const { service, mocks } = createService();
 
-    process.env.PAYMONGO_VENDOR_ONBOARDING_REQUIRED = 'false';
     mocks.settingsRepo.find.mockResolvedValue([]);
     mocks.settingsRepo.findOne.mockResolvedValue(null);
 
     const result = await service.updateFeatureFlagsSettings({
-      allowKycWithoutMerchantId: true,
       allowOrdersWithoutPayment: true,
       maintenanceModeEnabled: true,
       defaultPlatformCommissionRatePercent: 999,
@@ -100,7 +96,7 @@ describe('SettingsService', () => {
     expect(result.cancellationHalfRefundMinDays).toBe(365);
     expect(result.cancellationHalfRefundPercent).toBe(0);
     expect(result.launchNoCommissionUntil).toBeNull();
-    expect(mocks.settingsRepo.save).toHaveBeenCalledTimes(14);
+    expect(mocks.settingsRepo.save).toHaveBeenCalledTimes(13);
   });
 
   it('getKycSettings returns defaults when no settings are stored', async () => {
@@ -150,7 +146,6 @@ describe('SettingsService', () => {
     ]);
 
     await service.updateFeatureFlagsSettings({
-      allowKycWithoutMerchantId: true,
       allowOrdersWithoutPayment: false,
       maintenanceModeEnabled: false,
       defaultPlatformCommissionRatePercent: 10,

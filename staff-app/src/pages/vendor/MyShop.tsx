@@ -13,7 +13,6 @@ type VendorForm = {
   address: string;
   description: string;
   phone: string;
-  paymongoMerchantId: string;
   latitude: number | null;
   longitude: number | null;
 };
@@ -58,7 +57,6 @@ export default function MyShop() {
     address: '',
     description: '',
     phone: '',
-    paymongoMerchantId: '',
     latitude: null,
     longitude: null,
   });
@@ -87,7 +85,6 @@ export default function MyShop() {
           address: v.address,
           description: v.description || '',
           phone: v.phone || '',
-          paymongoMerchantId: v.paymongoMerchantId || '',
           latitude: v.latitude != null ? Number(v.latitude) : null,
           longitude: v.longitude != null ? Number(v.longitude) : null,
         });
@@ -108,7 +105,6 @@ export default function MyShop() {
         address: form.address,
         description: form.description,
         phone: form.phone,
-        paymongoMerchantId: form.paymongoMerchantId.trim() || undefined,
         latitude: form.latitude ?? undefined,
         longitude: form.longitude ?? undefined,
       });
@@ -159,15 +155,6 @@ export default function MyShop() {
         <div>
           <label className="block text-xl font-semibold mb-2">Phone Number</label>
           <TextInput value={form.phone} onChange={(e) => setForm((f) => ({ ...f, phone: e.target.value }))} sizing="lg" />
-        </div>
-        <div>
-          <label className="block text-xl font-semibold mb-2">PayMongo Merchant ID</label>
-          <TextInput
-            value={form.paymongoMerchantId}
-            onChange={(e) => setForm((f) => ({ ...f, paymongoMerchantId: e.target.value }))}
-            placeholder="org_xxxxxxxxxxxxxxxxxx"
-            sizing="lg"
-          />
         </div>
         <div>
           <label className="block text-xl font-semibold mb-2">Description</label>

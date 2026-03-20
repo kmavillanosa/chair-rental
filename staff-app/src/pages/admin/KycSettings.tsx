@@ -49,7 +49,6 @@ const DEFAULT_SETTINGS: KycSettings = {
 };
 
 const DEFAULT_FEATURE_FLAGS: FeatureFlagsSettings = {
-    allowKycWithoutMerchantId: true,
     allowOrdersWithoutPayment: false,
     maintenanceModeEnabled: false,
     defaultPlatformCommissionRatePercent: 10,
@@ -154,7 +153,6 @@ export default function KycSettingsPage() {
         setSavingFeatureFlags(true);
         try {
             const updated = await updateFeatureFlagsSettings({
-                allowKycWithoutMerchantId: featureFlags.allowKycWithoutMerchantId,
                 allowOrdersWithoutPayment: featureFlags.allowOrdersWithoutPayment,
                 maintenanceModeEnabled: featureFlags.maintenanceModeEnabled,
                 defaultPlatformCommissionRatePercent: Number(
@@ -231,26 +229,6 @@ export default function KycSettingsPage() {
                                     setFeatureFlags((current) => ({
                                         ...current,
                                         launchNoCommissionEnabled: checked,
-                                    }))
-                                }
-                            />
-                        </div>
-                    </div>
-
-                    <div className="rounded-xl border border-slate-200 p-4">
-                        <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
-                            <div>
-                                <p className="text-lg font-semibold text-slate-900">Allow KYC Approval Without Merchant ID</p>
-                                <p className="text-sm text-slate-600">
-                                    When enabled, admin can approve KYC even if PayMongo merchant provisioning fails. Merchant ID can be provisioned later from Vendors.
-                                </p>
-                            </div>
-                            <FeatureFlagSwitch
-                                checked={featureFlags.allowKycWithoutMerchantId}
-                                onChange={(checked) =>
-                                    setFeatureFlags((current) => ({
-                                        ...current,
-                                        allowKycWithoutMerchantId: checked,
                                     }))
                                 }
                             />

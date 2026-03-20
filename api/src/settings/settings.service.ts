@@ -11,7 +11,6 @@ export type KycSettingsResponse = {
 };
 
 export type FeatureFlagsSettingsResponse = {
-  allowKycWithoutMerchantId: boolean;
   allowOrdersWithoutPayment: boolean;
   maintenanceModeEnabled: boolean;
   defaultPlatformCommissionRatePercent: number;
@@ -41,8 +40,6 @@ const FLAGS_FLAGGED_VENDOR_MAX_ACTIVE_LISTINGS_KEY =
   'flags.flaggedVendorMaxActiveListings';
 const FLAGS_PAYOUT_DELAY_DAYS_FOR_NEW_VENDORS_KEY =
   'flags.payoutDelayDaysForNewVendors';
-const FLAGS_ALLOW_KYC_WITHOUT_MERCHANT_ID_KEY =
-  'flags.allowKycWithoutMerchantId';
 const FLAGS_ALLOW_ORDERS_WITHOUT_PAYMENT_KEY =
   'flags.allowOrdersWithoutPayment';
 const FLAGS_MAINTENANCE_MODE_ENABLED_KEY =
@@ -109,7 +106,6 @@ export class SettingsService {
 
   async getFeatureFlagsSettings(): Promise<FeatureFlagsSettingsResponse> {
     const settingsMap = await this.findManyAsMap([
-      FLAGS_ALLOW_KYC_WITHOUT_MERCHANT_ID_KEY,
       FLAGS_ALLOW_ORDERS_WITHOUT_PAYMENT_KEY,
       FLAGS_MAINTENANCE_MODE_ENABLED_KEY,
       FLAGS_DEFAULT_PLATFORM_COMMISSION_RATE_PERCENT_KEY,
@@ -132,10 +128,6 @@ export class SettingsService {
     );
 
     return {
-      allowKycWithoutMerchantId: this.parseBooleanSetting(
-        settingsMap.get(FLAGS_ALLOW_KYC_WITHOUT_MERCHANT_ID_KEY),
-        this.getAllowKycWithoutMerchantIdFallback(),
-      ),
       allowOrdersWithoutPayment: this.parseBooleanSetting(
         settingsMap.get(FLAGS_ALLOW_ORDERS_WITHOUT_PAYMENT_KEY),
         false,
@@ -219,8 +211,6 @@ export class SettingsService {
     const current = await this.getFeatureFlagsSettings();
 
     const next: FeatureFlagsSettingsResponse = {
-      allowKycWithoutMerchantId:
-        payload.allowKycWithoutMerchantId ?? current.allowKycWithoutMerchantId,
       allowOrdersWithoutPayment:
         payload.allowOrdersWithoutPayment ?? current.allowOrdersWithoutPayment,
       maintenanceModeEnabled:
@@ -279,10 +269,6 @@ export class SettingsService {
       ),
     };
 
-    await this.upsertSetting(
-      FLAGS_ALLOW_KYC_WITHOUT_MERCHANT_ID_KEY,
-      String(next.allowKycWithoutMerchantId),
-    );
     await this.upsertSetting(
       FLAGS_ALLOW_ORDERS_WITHOUT_PAYMENT_KEY,
       String(next.allowOrdersWithoutPayment),
@@ -390,14 +376,6 @@ export class SettingsService {
     }
 
     return configured;
-  }
-
-  private getAllowKycWithoutMerchantIdFallback() {
-    const onboardingRequired = this.parseBooleanSetting(
-      process.env.PAYMONGO_VENDOR_ONBOARDING_REQUIRED,
-      false,
-    );
-    return !onboardingRequired;
   }
 
   private clampCommissionPercent(value: number) {
