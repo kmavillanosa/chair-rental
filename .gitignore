@@ -32,6 +32,9 @@ Thumbs.db
 # Coverage
 coverage/
 
+# Generated booking documents
+api/uploads/booking-documents/
+
 # TLS certificates (runtime only, never commit)
 nginx/certbot/conf/live/
 nginx/certbot/conf/archive/
