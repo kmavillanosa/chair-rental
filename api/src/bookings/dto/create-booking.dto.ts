@@ -2,6 +2,7 @@ import { Type } from 'class-transformer';
 import {
   ArrayMinSize,
   IsArray,
+  IsBoolean,
   IsDateString,
   IsInt,
   IsNumber,
@@ -71,6 +72,29 @@ export class CreateBookingDto {
   @IsNumber({ maxDecimalPlaces: 2 })
   @Min(0)
   serviceCharge?: number;
+
+  @IsOptional()
+  @Type(() => Number)
+  @IsNumber({ maxDecimalPlaces: 2 })
+  @Min(0)
+  distanceKm?: number;
+
+  @IsOptional()
+  @Type(() => Number)
+  @IsInt()
+  @Min(0)
+  helperCount?: number;
+
+  @IsOptional()
+  @Type(() => Number)
+  @IsNumber({ maxDecimalPlaces: 2 })
+  @Min(0)
+  waitingHours?: number;
+
+  @IsOptional()
+  @Type(() => Boolean)
+  @IsBoolean()
+  isNightDelivery?: boolean;
 
   @IsOptional()
   @IsString()

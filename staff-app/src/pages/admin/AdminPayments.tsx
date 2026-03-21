@@ -36,6 +36,25 @@ export default function AdminPayments() {
     return Number.isFinite(parsed) ? parsed : 0;
   };
 
+  const formatPayoutDestination = (vendor?: Vendor) => {
+    if (!vendor) {
+      return 'Not provided';
+    }
+
+    const payoutMethod = String(vendor.bankName || '').trim();
+    const payoutAccountName = String(vendor.bankAccountName || '').trim();
+    const payoutAccountMasked = String(vendor.bankAccountNumberMasked || '').trim() ||
+      (vendor.bankAccountLast4 ? `****${vendor.bankAccountLast4}` : '');
+
+    if (!payoutMethod && !payoutAccountName && !payoutAccountMasked) {
+      return 'Not provided';
+    }
+
+    return [payoutMethod || 'Account', payoutAccountName || 'Unnamed', payoutAccountMasked]
+      .filter(Boolean)
+      .join(' | ');
+  };
+
   const load = () => Promise.all([
     getAllPayments().then(setPayments),
     getAllPayouts().then(setPayouts),
@@ -68,8 +87,6 @@ export default function AdminPayments() {
       setSubmitting(false);
     }
   };
-
-  if (loading) return <AdminLayout><LoadingSpinner /></AdminLayout>;
 
   const handleReleasePayout = async (payout: VendorPayout) => {
     setReleasingPayoutId(payout.id);
@@ -193,6 +210,8 @@ export default function AdminPayments() {
     );
   }, [payouts, vendors]);
 
+  if (loading) return <AdminLayout><LoadingSpinner /></AdminLayout>;
+
   return (
     <AdminLayout>
       <div className="mb-6 flex items-center justify-between gap-3">
@@ -307,37 +326,47 @@ export default function AdminPayments() {
             <Table.HeadCell>Net Amount</Table.HeadCell>
             <Table.HeadCell>Outstanding</Table.HeadCell>
             <Table.HeadCell>Release On</Table.HeadCell>
+            <Table.HeadCell>Payout Destination</Table.HeadCell>
             <Table.HeadCell>Status</Table.HeadCell>
             <Table.HeadCell>Actions</Table.HeadCell>
           </Table.Head>
           <Table.Body>
-            {payouts.map((payout) => (
-              <Table.Row key={payout.id} className="text-sm">
-                <Table.Cell>{payout.vendor?.businessName || payout.vendorId}</Table.Cell>
-                <Table.Cell>{payout.bookingId.slice(0, 8)}...</Table.Cell>
-                <Table.Cell>{formatCurrency(toAmount(payout.grossAmount))}</Table.Cell>
-                <Table.Cell>{formatCurrency(toAmount(payout.platformFeeAmount))}</Table.Cell>
-                <Table.Cell className="font-semibold">{formatCurrency(payout.netAmount)}</Table.Cell>
-                <Table.Cell>{formatCurrency(payout.outstandingBalanceAmount)}</Table.Cell>
-                <Table.Cell>{payout.releaseOn ? formatDate(payout.releaseOn) : 'Immediate'}</Table.Cell>
-                <Table.Cell className="capitalize">{payout.status.replace('_', ' ')}</Table.Cell>
-                <Table.Cell>
-                  {payout.status === 'ready' ? (
-                    <Button
-                      size="sm"
-                      color="success"
-                      onClick={() => handleReleasePayout(payout)}
-                      isProcessing={releasingPayoutId === payout.id}
-                      disabled={releasingPayoutId === payout.id}
-                    >
-                      Release
-                    </Button>
-                  ) : (
-                    <span className="text-sm text-slate-500">No action</span>
-                  )}
-                </Table.Cell>
-              </Table.Row>
-            ))}
+            {payouts.map((payout) => {
+              const payoutVendor =
+                payout.vendor || vendors.find((vendor) => vendor.id === payout.vendorId);
+              const payoutDestination = formatPayoutDestination(payoutVendor);
+
+              return (
+                <Table.Row key={payout.id} className="text-sm">
+                  <Table.Cell>{payoutVendor?.businessName || payout.vendorId}</Table.Cell>
+                  <Table.Cell>{payout.bookingId.slice(0, 8)}...</Table.Cell>
+                  <Table.Cell>{formatCurrency(toAmount(payout.grossAmount))}</Table.Cell>
+                  <Table.Cell>{formatCurrency(toAmount(payout.platformFeeAmount))}</Table.Cell>
+                  <Table.Cell className="font-semibold">{formatCurrency(payout.netAmount)}</Table.Cell>
+                  <Table.Cell>{formatCurrency(payout.outstandingBalanceAmount)}</Table.Cell>
+                  <Table.Cell>{payout.releaseOn ? formatDate(payout.releaseOn) : 'Immediate'}</Table.Cell>
+                  <Table.Cell className="max-w-[260px] truncate" title={payoutDestination}>
+                    {payoutDestination}
+                  </Table.Cell>
+                  <Table.Cell className="capitalize">{payout.status.replace('_', ' ')}</Table.Cell>
+                  <Table.Cell>
+                    {payout.status === 'ready' ? (
+                      <Button
+                        size="sm"
+                        color="success"
+                        onClick={() => handleReleasePayout(payout)}
+                        isProcessing={releasingPayoutId === payout.id}
+                        disabled={releasingPayoutId === payout.id}
+                      >
+                        Release
+                      </Button>
+                    ) : (
+                      <span className="text-sm text-slate-500">No action</span>
+                    )}
+                  </Table.Cell>
+                </Table.Row>
+              );
+            })}
           </Table.Body>
         </Table>
       </div>

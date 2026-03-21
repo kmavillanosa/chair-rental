@@ -10,6 +10,9 @@ const mapItemType = (itemType: ItemType): ItemType => ({
 const mapInventoryItem = (item: InventoryItem): InventoryItem => ({
   ...item,
   pictureUrl: resolveMediaUrl(item.pictureUrl),
+  galleryPhotos: (item.galleryPhotos || [])
+    .map((photoUrl) => resolveMediaUrl(photoUrl))
+    .filter(Boolean),
   itemType: item.itemType ? mapItemType(item.itemType) : item.itemType,
 });
 

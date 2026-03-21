@@ -1,11 +1,12 @@
 import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Repository, DataSource } from 'typeorm';
+import { Repository, DataSource, In } from 'typeorm';
 import { InventoryItem } from './entities/inventory-item.entity';
 import { ItemType } from '../item-types/entities/item-type.entity';
 import { Booking, BookingStatus } from '../bookings/entities/booking.entity';
 import { BookingItem } from '../bookings/entities/booking-item.entity';
 import { Vendor, VendorVerificationStatus } from '../vendors/entities/vendor.entity';
+import { VendorItem } from '../vendors/entities/vendor-item.entity';
 import { SettingsService } from '../settings/settings.service';
 
 
@@ -73,17 +74,22 @@ export class InventoryService {
 
   async findByVendor(vendorId: string) {
     const items = await this.repo.find({ where: { vendorId }, relations: ['itemType', 'brand'] });
+    const itemsWithGalleryPhotos = await this.attachGalleryPhotos(items);
     
     // Return items with availableQuantity = total quantity
     // Date-aware availability is checked during booking
-    return items.map(item => ({
+    return itemsWithGalleryPhotos.map(item => ({
       ...item,
       availableQuantity: Number(item.quantity),
     }));
   }
 
   async findById(id: string) {
-    return this.repo.findOne({ where: { id }, relations: ['itemType', 'brand'] });
+    const item = await this.repo.findOne({ where: { id }, relations: ['itemType', 'brand'] });
+    if (!item) return null;
+
+    const [itemWithGalleryPhotos] = await this.attachGalleryPhotos([item]);
+    return itemWithGalleryPhotos || item;
   }
 
   async create(data: Partial<InventoryItem>) {
@@ -176,6 +182,73 @@ export class InventoryService {
   private normalizeOptionalText(input: unknown): string | null {
     const value = String(input ?? '').trim();
     return value || null;
+  }
+
+  private async attachGalleryPhotos<T extends InventoryItem>(items: T[]) {
+    if (!items.length) return [] as Array<T & { galleryPhotos: string[] }>;
+
+    const inventoryItemIds = items.map((item) => item.id).filter(Boolean);
+    if (!inventoryItemIds.length) {
+      return items.map((item) => ({ ...item, galleryPhotos: [] }));
+    }
+
+    const vendorItems = await this.dataSource.getRepository(VendorItem).find({
+      where: { inventoryItemId: In(inventoryItemIds) },
+      relations: ['photos'],
+    });
+
+    const galleryPhotosByInventoryId = new Map<string, string[]>();
+
+    for (const vendorItem of vendorItems) {
+      if (!vendorItem.inventoryItemId) continue;
+
+      const existingGalleryPhotos =
+        galleryPhotosByInventoryId.get(vendorItem.inventoryItemId) || [];
+
+      const galleryPhotos = (vendorItem.photos || [])
+        .slice()
+        .sort(
+          (left, right) =>
+            new Date(left.createdAt).getTime() - new Date(right.createdAt).getTime(),
+        )
+        .filter((photo) => this.isGalleryVendorPhotoMetadata(photo.metadata))
+        .map((photo) => String(photo.fileUrl || '').trim())
+        .filter((photoUrl): photoUrl is string => Boolean(photoUrl));
+
+      if (!galleryPhotos.length) continue;
+
+      const mergedGalleryPhotos = [...existingGalleryPhotos];
+      for (const galleryPhoto of galleryPhotos) {
+        if (!mergedGalleryPhotos.includes(galleryPhoto)) {
+          mergedGalleryPhotos.push(galleryPhoto);
+        }
+      }
+
+      galleryPhotosByInventoryId.set(
+        vendorItem.inventoryItemId,
+        mergedGalleryPhotos,
+      );
+    }
+
+    return items.map((item) => {
+      const galleryPhotos = galleryPhotosByInventoryId.get(item.id) || [];
+      return {
+        ...item,
+        pictureUrl: item.pictureUrl || galleryPhotos[0] || null,
+        galleryPhotos,
+      };
+    });
+  }
+
+  private isGalleryVendorPhotoMetadata(metadataRaw?: string | null) {
+    if (!metadataRaw) return false;
+
+    try {
+      const metadata = JSON.parse(metadataRaw);
+      return String(metadata?.category || '').trim().toLowerCase() === 'gallery';
+    } catch {
+      return false;
+    }
   }
 
   private async assertVendorCanCreateListing(vendorId: string) {

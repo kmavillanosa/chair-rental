@@ -24,6 +24,9 @@ import { BookingDocument } from './bookings/entities/booking-document.entity';
 import { VendorPayment } from './payments/entities/vendor-payment.entity';
 import { VendorPayout } from './payments/entities/vendor-payout.entity';
 import { DeliveryRate } from './payments/entities/delivery-rate.entity';
+import { VendorPricingConfig } from './payments/entities/vendor-pricing-config.entity';
+import { VendorDeliveryPricingTier } from './payments/entities/vendor-delivery-pricing-tier.entity';
+import { VendorHelperPricingTier } from './payments/entities/vendor-helper-pricing-tier.entity';
 import { VendorDocument } from './vendors/entities/vendor-document.entity';
 import { VendorVerificationStatusEntry } from './vendors/entities/vendor-verification-status.entity';
 import { VendorItem } from './vendors/entities/vendor-item.entity';
@@ -71,6 +74,9 @@ const uploadRootPath = process.env.UPLOAD_DIR || join(process.cwd(), 'uploads');
         VendorPayment,
         VendorPayout,
         DeliveryRate,
+        VendorPricingConfig,
+        VendorDeliveryPricingTier,
+        VendorHelperPricingTier,
         FraudAlert,
         BookingDispute,
         BookingDisputeEvidence,

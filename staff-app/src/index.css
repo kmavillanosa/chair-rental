@@ -122,3 +122,22 @@ h6 {
 .booking-calendar .rbc-today {
   background-color: #ecfdf5;
 }
+
+.booking-calendar .rbc-event {
+  padding: 0.12rem 0.38rem;
+}
+
+.booking-calendar .rbc-event-content {
+  font-size: 0.78rem;
+  font-weight: 500;
+  line-height: 1.25;
+  white-space: normal;
+  overflow: visible;
+  text-overflow: clip;
+  word-break: break-word;
+}
+
+.booking-calendar .rbc-event-label {
+  font-size: 0.72rem;
+  line-height: 1.15;
+}

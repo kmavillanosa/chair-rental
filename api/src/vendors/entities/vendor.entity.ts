@@ -111,6 +111,9 @@ export class Vendor {
   @Column({ type: 'text', nullable: true })
   description: string;
 
+  @Column({ type: 'json', nullable: true })
+  deliveryVehicles: { type: string; description?: string }[];
+
   @Column({ nullable: true })
   phone: string;
 

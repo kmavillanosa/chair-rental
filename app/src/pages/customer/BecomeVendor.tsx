@@ -85,6 +85,9 @@ interface FormState {
     latitude: string;
     longitude: string;
     phone: string;
+    bankName: string;
+    bankAccountName: string;
+    bankAccountNumber: string;
     socialMediaLink: string;
     description: string;
     subdomainSlug: string;
@@ -110,6 +113,9 @@ const INITIAL_FORM: FormState = {
     latitude: `${DEFAULT_VENDOR_LOCATION[0]}`,
     longitude: `${DEFAULT_VENDOR_LOCATION[1]}`,
     phone: '',
+    bankName: '',
+    bankAccountName: '',
+    bankAccountNumber: '',
     socialMediaLink: '',
     description: '',
     subdomainSlug: '',
@@ -365,6 +371,21 @@ export default function BecomeVendor() {
             return;
         }
 
+        if (!form.bankName.trim()) {
+            toast.error('Payout method (bank or e-wallet) is required.');
+            return;
+        }
+
+        if (!form.bankAccountName.trim()) {
+            toast.error('Payout account name is required.');
+            return;
+        }
+
+        if (!form.bankAccountNumber.trim()) {
+            toast.error('Payout account number is required.');
+            return;
+        }
+
         if (form.vendorType === 'registered_business') {
             if (!form.businessName.trim()) {
                 toast.error('Business name is required for registered businesses.');
@@ -423,6 +444,9 @@ export default function BecomeVendor() {
                 latitude: selectedLocation[0],
                 longitude: selectedLocation[1],
                 phone: form.phone.trim(),
+                bankName: form.bankName.trim(),
+                bankAccountName: form.bankAccountName.trim(),
+                bankAccountNumber: form.bankAccountNumber.trim(),
                 socialMediaLink: form.socialMediaLink.trim() || undefined,
                 description: form.description.trim() || undefined,
                 slug: slugAvailability.slug,
@@ -732,6 +756,45 @@ export default function BecomeVendor() {
                             }}
                             placeholder={t('becomeVendorPage.contactNumberPlaceholder')}
                         />
+                    </div>
+
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                        <div>
+                            <Label htmlFor="bankName" value="Payout Method" />
+                            <TextInput
+                                id="bankName"
+                                required
+                                value={form.bankName}
+                                onChange={(e) =>
+                                    setForm((prev) => ({ ...prev, bankName: e.target.value }))
+                                }
+                                placeholder="GCash / BDO / BPI"
+                            />
+                        </div>
+                        <div>
+                            <Label htmlFor="bankAccountName" value="Payout Account Name" />
+                            <TextInput
+                                id="bankAccountName"
+                                required
+                                value={form.bankAccountName}
+                                onChange={(e) =>
+                                    setForm((prev) => ({ ...prev, bankAccountName: e.target.value }))
+                                }
+                                placeholder="Account holder name"
+                            />
+                        </div>
+                        <div>
+                            <Label htmlFor="bankAccountNumber" value="Payout Account Number" />
+                            <TextInput
+                                id="bankAccountNumber"
+                                required
+                                value={form.bankAccountNumber}
+                                onChange={(e) =>
+                                    setForm((prev) => ({ ...prev, bankAccountNumber: e.target.value }))
+                                }
+                                placeholder="0917... or bank account no."
+                            />
+                        </div>
                     </div>
 
                     {kycSettings.requireOtpBeforeVendorRegistration ? (

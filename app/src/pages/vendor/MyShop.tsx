@@ -14,6 +14,9 @@ type VendorForm = {
     address: string;
     description: string;
     phone: string;
+    bankName: string;
+    bankAccountName: string;
+    bankAccountNumber: string;
     latitude: number | null;
     longitude: number | null;
 };
@@ -61,6 +64,9 @@ export default function MyShop() {
         address: '',
         description: '',
         phone: '',
+        bankName: '',
+        bankAccountName: '',
+        bankAccountNumber: '',
         latitude: null,
         longitude: null,
     });
@@ -82,6 +88,9 @@ export default function MyShop() {
                     address: vendorData.address,
                     description: vendorData.description || '',
                     phone: vendorData.phone || '',
+                    bankName: vendorData.bankName || '',
+                    bankAccountName: vendorData.bankAccountName || '',
+                    bankAccountNumber: '',
                     latitude: vendorData.latitude != null ? Number(vendorData.latitude) : null,
                     longitude: vendorData.longitude != null ? Number(vendorData.longitude) : null,
                 });
@@ -96,17 +105,28 @@ export default function MyShop() {
     const handleSave = async () => {
         setSaving(true);
         try {
-            await updateMyVendor({
+            const updatePayload: Partial<Vendor> = {
                 businessName: form.businessName,
                 address: form.address,
                 description: form.description,
                 phone: form.phone,
+                bankName: form.bankName.trim(),
+                bankAccountName: form.bankAccountName.trim(),
                 latitude: form.latitude ?? undefined,
                 longitude: form.longitude ?? undefined,
-            });
+            };
+
+            if (form.bankAccountNumber.trim()) {
+                updatePayload.bankAccountNumber = form.bankAccountNumber.trim();
+            }
+
+            await updateMyVendor(updatePayload);
             toast.success(t('myShopPage.toastUpdated'));
-        } catch {
-            toast.error('Could not save shop details. Please try again.');
+        } catch (error: any) {
+            toast.error(
+                error?.response?.data?.message ||
+                'Could not save shop details. Please try again.',
+            );
         } finally {
             setSaving(false);
         }
@@ -158,6 +178,47 @@ export default function MyShop() {
                 <div>
                     <label className="block text-xl font-semibold mb-2">{t('common.phoneNumber')}</label>
                     <TextInput value={form.phone} onChange={(event) => setForm((current) => ({ ...current, phone: event.target.value }))} sizing="lg" />
+                </div>
+
+                <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
+                    <div>
+                        <label className="block text-base font-semibold mb-2">Payout Method</label>
+                        <TextInput
+                            value={form.bankName}
+                            onChange={(event) =>
+                                setForm((current) => ({ ...current, bankName: event.target.value }))
+                            }
+                            sizing="lg"
+                            placeholder="GCash / BDO / BPI"
+                        />
+                    </div>
+                    <div>
+                        <label className="block text-base font-semibold mb-2">Payout Account Name</label>
+                        <TextInput
+                            value={form.bankAccountName}
+                            onChange={(event) =>
+                                setForm((current) => ({ ...current, bankAccountName: event.target.value }))
+                            }
+                            sizing="lg"
+                            placeholder="Account holder name"
+                        />
+                    </div>
+                    <div>
+                        <label className="block text-base font-semibold mb-2">Payout Account Number</label>
+                        <TextInput
+                            value={form.bankAccountNumber}
+                            onChange={(event) =>
+                                setForm((current) => ({ ...current, bankAccountNumber: event.target.value }))
+                            }
+                            sizing="lg"
+                            placeholder="Leave blank to keep current"
+                        />
+                        {vendor?.bankAccountNumberMasked ? (
+                            <p className="mt-1 text-xs text-gray-500">
+                                Current: {vendor.bankName || 'Account'} {vendor.bankAccountNumberMasked}
+                            </p>
+                        ) : null}
+                    </div>
                 </div>
 
                 <div>

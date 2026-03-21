@@ -17,8 +17,11 @@ import KycSettingsPage from './pages/admin/KycSettings'
 import VendorDashboard from './pages/vendor/VendorDashboard'
 import Inventory from './pages/vendor/Inventory'
 import VendorBookings from './pages/vendor/VendorBookings'
+import VendorBookingsCalendar from './pages/vendor/VendorBookingsCalendar'
 import VendorBookingDetails from './pages/vendor/VendorBookingDetails'
-import Pricing from './pages/vendor/Pricing'
+import DistancePricing from './pages/vendor/DistancePricing'
+import HelperPricing from './pages/vendor/HelperPricing'
+import VendorDeliveryVehicles from './pages/vendor/VendorDeliveryVehicles'
 import MyShop from './pages/vendor/MyShop'
 import VendorPayments from './pages/vendor/VendorPayments'
 import LegalDocumentPage from './pages/LegalDocumentPage'
@@ -92,8 +95,11 @@ export default function App() {
         <Route path="/vendor" element={<ProtectedRoute role="vendor"><VendorDashboard /></ProtectedRoute>} />
         <Route path="/vendor/inventory" element={<ProtectedRoute role="vendor"><Inventory /></ProtectedRoute>} />
         <Route path="/vendor/bookings" element={<ProtectedRoute role="vendor"><VendorBookings /></ProtectedRoute>} />
+        <Route path="/vendor/bookings/calendar" element={<ProtectedRoute role="vendor"><VendorBookingsCalendar /></ProtectedRoute>} />
         <Route path="/vendor/bookings/:bookingId" element={<ProtectedRoute role="vendor"><VendorBookingDetails /></ProtectedRoute>} />
-        <Route path="/vendor/pricing" element={<ProtectedRoute role="vendor"><Pricing /></ProtectedRoute>} />
+        <Route path="/vendor/pricing/distance" element={<ProtectedRoute role="vendor"><DistancePricing /></ProtectedRoute>} />
+        <Route path="/vendor/pricing/helpers" element={<ProtectedRoute role="vendor"><HelperPricing /></ProtectedRoute>} />
+        <Route path="/vendor/vehicles" element={<ProtectedRoute role="vendor"><VendorDeliveryVehicles /></ProtectedRoute>} />
         <Route path="/vendor/shop" element={<ProtectedRoute role="vendor"><MyShop /></ProtectedRoute>} />
         <Route path="/vendor/payments" element={<ProtectedRoute role="vendor"><VendorPayments /></ProtectedRoute>} />
         <Route path="/" element={<ProtectedRoute><StaffHome /></ProtectedRoute>} />

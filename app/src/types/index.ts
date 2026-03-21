@@ -73,9 +73,15 @@ export interface Vendor {
   longitude?: number;
   slug: string;
   description?: string;
+  deliveryVehicles?: { type: string; description?: string }[];
   phone?: string;
   phoneOtpVerifiedAt?: string;
   socialMediaLink?: string;
+  bankName?: string;
+  bankAccountName?: string;
+  bankAccountNumberMasked?: string;
+  bankAccountLast4?: string;
+  bankAccountNumber?: string;
   logoUrl?: string;
   registrationStatus?: VendorRegistrationStatus;
   kycStatus?: VendorKycStatus;
@@ -155,6 +161,7 @@ export interface InventoryItem {
   ratePerDay: number;
   condition?: string;
   pictureUrl?: string;
+  galleryPhotos?: string[];
   createdAt: string;
 }
 
@@ -401,4 +408,45 @@ export interface DeliveryRate {
   distanceKm: number;
   chargeAmount: number;
   helpersCount: number;
+}
+
+export type HelpersPricingMode = 'tiered' | 'fixed' | 'hourly';
+
+export interface VendorDeliveryPricingTier {
+  id: string;
+  pricingConfigId: string;
+  minDistanceKm: number;
+  maxDistanceKm: number;
+  priceAmount: number;
+  sortOrder: number;
+}
+
+export interface VendorHelperPricingTier {
+  id: string;
+  pricingConfigId: string;
+  helperCount: number;
+  priceAmount: number;
+  sortOrder: number;
+}
+
+export interface VendorPricingConfig {
+  id: string;
+  vendorId: string;
+  deliveryFreeRadiusKm: number;
+  deliveryPerKmEnabled: boolean;
+  deliveryPerKmRate: number | null;
+  helpersEnabled: boolean;
+  helpersPricingMode: HelpersPricingMode;
+  helpersFixedPrice: number | null;
+  helpersHourlyRate: number | null;
+  helpersMaxCount: number;
+  waitingFeePerHour: number;
+  nightSurcharge: number;
+  minOrderAmount: number;
+  isActive: boolean;
+  notes?: string | null;
+  deliveryTiers: VendorDeliveryPricingTier[];
+  helperTiers: VendorHelperPricingTier[];
+  createdAt: string;
+  updatedAt: string;
 }

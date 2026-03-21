@@ -1,6 +1,18 @@
-import { Controller, Get, Post, Patch, Delete, Param, Body, UseGuards, Request } from '@nestjs/common';
+import {
+  Controller,
+  Get,
+  Post,
+  Patch,
+  Delete,
+  Param,
+  Body,
+  UseGuards,
+  Request,
+  Query,
+} from '@nestjs/common';
 import { ApiTags, ApiBearerAuth } from '@nestjs/swagger';
 import { PaymentsService } from './payments.service';
+import { PricingCalculationService } from './services/pricing-calculation.service';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
 import { RolesGuard } from '../auth/roles.guard';
 import { Roles } from '../auth/roles.decorator';
@@ -10,7 +22,10 @@ import { CreatePaymentDto } from './dto/create-payment.dto';
 import { MarkPaidDto } from './dto/mark-paid.dto';
 import { CreateDeliveryRateDto } from './dto/create-delivery-rate.dto';
 import { UpdateDeliveryRateDto } from './dto/update-delivery-rate.dto';
+import { PricingQuoteRequestDto } from './dto/pricing-quote-request.dto';
+import { UpdateVendorPricingConfigDto } from './dto/update-vendor-pricing-config.dto';
 import { VendorPayoutStatus } from './entities/vendor-payout.entity';
+import { VendorPricingConfigService } from './services/vendor-pricing-config.service';
 
 @ApiTags('payments')
 @Controller('payments')
@@ -18,6 +33,8 @@ export class PaymentsController {
   constructor(
     private readonly service: PaymentsService,
     private readonly vendorsService: VendorsService,
+    private readonly pricingCalculationService: PricingCalculationService,
+    private readonly vendorPricingConfigService: VendorPricingConfigService,
   ) {}
 
   @UseGuards(JwtAuthGuard, RolesGuard)
@@ -130,5 +147,59 @@ export class PaymentsController {
   async deleteDeliveryRate(@Request() req, @Param('id') id: string) {
     const vendor = await this.vendorsService.findByUserId(req.user.id);
     return this.service.deleteDeliveryRate(vendor.id, id);
+  }
+
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles(UserRole.VENDOR)
+  @ApiBearerAuth()
+  @Get('vendors/my/pricing-config')
+  async getMyPricingConfig(@Request() req) {
+    const vendor = await this.vendorsService.findByUserId(req.user.id);
+    return this.vendorPricingConfigService.getOrBootstrapByVendorId(vendor.id);
+  }
+
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles(UserRole.VENDOR)
+  @ApiBearerAuth()
+  @Patch('vendors/my/pricing-config')
+  async updateMyPricingConfig(
+    @Request() req,
+    @Body() body: UpdateVendorPricingConfigDto,
+  ) {
+    const vendor = await this.vendorsService.findByUserId(req.user.id);
+    return this.vendorPricingConfigService.updateByVendorId(vendor.id, body);
+  }
+
+  // PUBLIC PRICING QUOTE ENDPOINT
+  // Used by customers to get real-time pricing for a vendor (no auth required).
+  @Post('vendors/:vendorId/pricing-quote')
+  createPricingQuote(
+    @Param('vendorId') vendorId: string,
+    @Body() quoteRequest: PricingQuoteRequestDto,
+  ) {
+    return this.calculatePricingQuote(vendorId, quoteRequest);
+  }
+
+  // Compatibility endpoint for callers that still use GET + query params.
+  @Get('vendors/:vendorId/pricing-quote')
+  async getPricingQuote(
+    @Param('vendorId') vendorId: string,
+    @Query() quoteRequest: PricingQuoteRequestDto,
+  ) {
+    return this.calculatePricingQuote(vendorId, quoteRequest);
+  }
+
+  private calculatePricingQuote(
+    vendorId: string,
+    quoteRequest: PricingQuoteRequestDto,
+  ) {
+    return this.pricingCalculationService.calculateQuote(
+      vendorId,
+      quoteRequest.baseRentalCost,
+      quoteRequest.distanceKm,
+      quoteRequest.helperCount || 0,
+      quoteRequest.waitingHours || 0,
+      quoteRequest.isNightDelivery || false,
+    );
   }
 }

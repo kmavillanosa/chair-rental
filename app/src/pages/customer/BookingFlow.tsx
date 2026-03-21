@@ -775,6 +775,10 @@ export default function BookingFlow() {
         endDate,
         deliveryAddress,
         deliveryCharge,
+        distanceKm: deliveryDistanceKm,
+        helperCount: parsedHelpersNeeded,
+        waitingHours: 0,
+        isNightDelivery: false,
         deliveryLatitude: deliveryCoordinates.lat,
         deliveryLongitude: deliveryCoordinates.lng,
         notes,
@@ -823,6 +827,18 @@ export default function BookingFlow() {
     const baseName = item.itemType?.name || t('common.na');
     return item.color ? `${baseName} (${item.color})` : baseName;
   };
+
+  const getItemImageUrls = (item: InventoryItem) => {
+    const galleryPhotos = (item.galleryPhotos || []).filter(Boolean);
+    if (galleryPhotos.length) {
+      return galleryPhotos;
+    }
+
+    const fallbackPhoto = item.pictureUrl || item.itemType?.pictureUrl;
+    return fallbackPhoto ? [fallbackPhoto] : [];
+  };
+
+  const getPrimaryItemImageUrl = (item: InventoryItem) => getItemImageUrls(item)[0] || '';
 
   const hasDateAvailabilityData = Boolean(startDate && endDate && Object.keys(availabilityMap).length > 0);
   const hasPartiallyUnavailableItems = hasDateAvailabilityData && inventory.some(item => {
@@ -893,18 +909,37 @@ export default function BookingFlow() {
             {inventory.map(item => {
               const availQty = getAvailableQuantity(item.id);
               const currentQty = cart[item.id] || 0;
-              const itemPictureUrl = item.pictureUrl || item.itemType?.pictureUrl;
+              const itemImageUrls = getItemImageUrls(item);
+              const itemPictureUrl = getPrimaryItemImageUrl(item);
+              const additionalItemImages = itemImageUrls.slice(1, 5);
 
               return (
                 <div
                   key={item.id}
                   className={`bg-white rounded-2xl shadow p-5 flex items-center justify-between ${availQty <= 0 ? 'opacity-50 pointer-events-none' : ''}`}
                 >
-                  <div className="flex items-center gap-3">
+                  <div className="flex items-start gap-3">
                     {itemPictureUrl && <img src={itemPictureUrl} alt={item.itemType?.name || 'Item'} className="h-16 w-16 rounded-lg object-cover" />}
                     <div>
                       <p className="text-xl font-bold">{getItemDisplayName(item)}</p>
                       <p className="text-gray-500">{t('bookingFlow.itemAvailabilityLine', { rate: formatCurrency(item.ratePerDay), count: availQty })}</p>
+                      {additionalItemImages.length > 0 && (
+                        <div className="mt-2 flex flex-wrap items-center gap-1.5">
+                          {additionalItemImages.map((imageUrl, index) => (
+                            <img
+                              key={`${item.id}-gallery-${index}`}
+                              src={imageUrl}
+                              alt={`${item.itemType?.name || 'Item'} photo ${index + 2}`}
+                              className="h-9 w-9 rounded-md object-cover"
+                            />
+                          ))}
+                          {itemImageUrls.length > 5 && (
+                            <span className="rounded-full bg-slate-100 px-2 py-1 text-xs font-medium text-slate-500">
+                              +{itemImageUrls.length - 5} more
+                            </span>
+                          )}
+                        </div>
+                      )}
                       {availQty <= 0 && (
                         <p className="mt-1 text-sm font-semibold text-red-600">{t('bookingFlow.outOfStock')}</p>
                       )}
@@ -1159,7 +1194,7 @@ export default function BookingFlow() {
             <div className="bg-white rounded-2xl shadow p-6 space-y-3">
               <h3 className="text-xl font-bold text-gray-700">📦 {t('bookingFlow.itemsHeading')}</h3>
               {cartItems.map(i => {
-                const itemPictureUrl = i.pictureUrl || i.itemType?.pictureUrl;
+                const itemPictureUrl = getPrimaryItemImageUrl(i);
 
                 return (
                   <div key={i.id} className="flex justify-between text-xl">

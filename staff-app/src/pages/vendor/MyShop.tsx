@@ -13,6 +13,9 @@ type VendorForm = {
   address: string;
   description: string;
   phone: string;
+  bankName: string;
+  bankAccountName: string;
+  bankAccountNumber: string;
   latitude: number | null;
   longitude: number | null;
 };
@@ -57,6 +60,9 @@ export default function MyShop() {
     address: '',
     description: '',
     phone: '',
+    bankName: '',
+    bankAccountName: '',
+    bankAccountNumber: '',
     latitude: null,
     longitude: null,
   });
@@ -85,6 +91,9 @@ export default function MyShop() {
           address: v.address,
           description: v.description || '',
           phone: v.phone || '',
+          bankName: v.bankName || '',
+          bankAccountName: v.bankAccountName || '',
+          bankAccountNumber: '',
           latitude: v.latitude != null ? Number(v.latitude) : null,
           longitude: v.longitude != null ? Number(v.longitude) : null,
         });
@@ -100,17 +109,28 @@ export default function MyShop() {
     setSaving(true);
 
     try {
-      await updateMyVendor({
+      const updatePayload: Partial<Vendor> = {
         businessName: form.businessName,
         address: form.address,
         description: form.description,
         phone: form.phone,
+        bankName: form.bankName.trim(),
+        bankAccountName: form.bankAccountName.trim(),
         latitude: form.latitude ?? undefined,
         longitude: form.longitude ?? undefined,
-      });
+      };
+
+      if (form.bankAccountNumber.trim()) {
+        updatePayload.bankAccountNumber = form.bankAccountNumber.trim();
+      }
+
+      await updateMyVendor(updatePayload);
       toast.success('Shop updated! ✅');
-    } catch {
-      toast.error('Could not save shop details. Please try again.');
+    } catch (error: any) {
+      toast.error(
+        error?.response?.data?.message ||
+        'Could not save shop details. Please try again.',
+      );
     } finally {
       setSaving(false);
     }
@@ -155,6 +175,40 @@ export default function MyShop() {
         <div>
           <label className="block text-xl font-semibold mb-2">Phone Number</label>
           <TextInput value={form.phone} onChange={(e) => setForm((f) => ({ ...f, phone: e.target.value }))} sizing="lg" />
+        </div>
+        <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
+          <div>
+            <label className="block text-base font-semibold mb-2">Payout Method</label>
+            <TextInput
+              value={form.bankName}
+              onChange={(e) => setForm((f) => ({ ...f, bankName: e.target.value }))}
+              sizing="lg"
+              placeholder="GCash / BDO / BPI"
+            />
+          </div>
+          <div>
+            <label className="block text-base font-semibold mb-2">Payout Account Name</label>
+            <TextInput
+              value={form.bankAccountName}
+              onChange={(e) => setForm((f) => ({ ...f, bankAccountName: e.target.value }))}
+              sizing="lg"
+              placeholder="Account holder name"
+            />
+          </div>
+          <div>
+            <label className="block text-base font-semibold mb-2">Payout Account Number</label>
+            <TextInput
+              value={form.bankAccountNumber}
+              onChange={(e) => setForm((f) => ({ ...f, bankAccountNumber: e.target.value }))}
+              sizing="lg"
+              placeholder="Leave blank to keep current"
+            />
+            {vendor?.bankAccountNumberMasked ? (
+              <p className="mt-1 text-xs text-gray-500">
+                Current: {vendor.bankName || 'Account'} {vendor.bankAccountNumberMasked}
+              </p>
+            ) : null}
+          </div>
         </div>
         <div>
           <label className="block text-xl font-semibold mb-2">Description</label>

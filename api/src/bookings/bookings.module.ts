@@ -17,6 +17,7 @@ import { SettingsModule } from '../settings/settings.module';
 import { FraudModule } from '../fraud/fraud.module';
 import { User } from '../users/entities/user.entity';
 import { ChatModule } from '../chat/chat.module';
+import { PaymentsModule } from '../payments/payments.module';
 
 @Module({
   imports: [
@@ -34,6 +35,7 @@ import { ChatModule } from '../chat/chat.module';
       User,
     ]),
     VendorsModule,
+    PaymentsModule,
     SettingsModule,
     FraudModule,
     ChatModule,

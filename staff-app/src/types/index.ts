@@ -74,9 +74,15 @@ export interface Vendor {
   longitude?: number;
   slug: string;
   description?: string;
+  deliveryVehicles?: { type: string; description?: string }[];
   phone?: string;
   phoneOtpVerifiedAt?: string;
   socialMediaLink?: string;
+  bankName?: string;
+  bankAccountName?: string;
+  bankAccountNumberMasked?: string;
+  bankAccountLast4?: string;
+  bankAccountNumber?: string;
   logoUrl?: string;
   registrationStatus?: VendorRegistrationStatus;
   kycStatus?: VendorKycStatus;
@@ -156,6 +162,7 @@ export interface InventoryItem {
   ratePerDay: number;
   condition?: string;
   pictureUrl?: string;
+  galleryPhotos?: string[];
   createdAt: string;
 }
 

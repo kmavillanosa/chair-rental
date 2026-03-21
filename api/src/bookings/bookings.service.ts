@@ -24,6 +24,8 @@ import {
 import { InventoryItem } from '../inventory/entities/inventory-item.entity';
 import { VendorPayment, PaymentStatus } from '../payments/entities/vendor-payment.entity';
 import { VendorPayout, VendorPayoutStatus } from '../payments/entities/vendor-payout.entity';
+import { PricingCalculationService } from '../payments/services/pricing-calculation.service';
+import { PricingConfigBootstrapService } from '../payments/services/pricing-config-bootstrap.service';
 import { differenceInDays } from 'date-fns';
 import { Vendor } from '../vendors/entities/vendor.entity';
 import { SettingsService } from '../settings/settings.service';
@@ -45,6 +47,10 @@ type CreateBookingPayload = {
   deliveryLongitude?: number;
   deliveryCharge?: number;
   serviceCharge?: number;
+  distanceKm?: number;
+  helperCount?: number;
+  waitingHours?: number;
+  isNightDelivery?: boolean;
   notes?: string;
   depositPercentage?: number;
 };
@@ -111,6 +117,8 @@ export class BookingsService {
     private readonly settingsService: SettingsService,
     private readonly fraudService: FraudService,
     private readonly rocketchatService: RocketChatService,
+    private readonly pricingBootstrapService: PricingConfigBootstrapService,
+    private readonly pricingCalculationService: PricingCalculationService,
   ) {}
 
   findByVendor(vendorId: string) {
@@ -167,8 +175,19 @@ export class BookingsService {
       data.endDate,
     );
     const normalizedItems = this.normalizeBookingItems(data.items);
-    const delivery = this.parseNonNegativeMoney(data.deliveryCharge, 'deliveryCharge');
-    const service = this.parseNonNegativeMoney(data.serviceCharge, 'serviceCharge');
+    const requestedDeliveryCharge = this.parseNonNegativeMoney(
+      data.deliveryCharge,
+      'deliveryCharge',
+    );
+    const requestedServiceCharge = this.parseNonNegativeMoney(
+      data.serviceCharge,
+      'serviceCharge',
+    );
+    const helperCount =
+      this.parseOptionalNonNegativeInteger(data.helperCount, 'helperCount') || 0;
+    const waitingHours =
+      this.parseOptionalNonNegativeNumber(data.waitingHours, 'waitingHours') || 0;
+    const isNightDelivery = this.parseOptionalBoolean(data.isNightDelivery, false);
     const { deliveryLatitude, deliveryLongitude } =
       this.normalizeDeliveryCoordinates(
         data.deliveryLatitude,
@@ -179,6 +198,13 @@ export class BookingsService {
     if (!vendor) {
       throw new BadRequestException('Vendor not found');
     }
+
+    const resolvedDistanceKm = this.resolveDistanceKmForPricing(
+      data.distanceKm,
+      vendor,
+      deliveryLatitude,
+      deliveryLongitude,
+    );
 
     // Check vendor has no overdue payments
     const overduePayment = await this.paymentsRepo.findOne({
@@ -249,6 +275,33 @@ export class BookingsService {
         const subtotal = Number(invItem.ratePerDay) * item.quantity * days;
         subtotalItems += subtotal;
         bookingItems.push({ inventoryItemId: item.inventoryItemId, quantity: item.quantity, ratePerDay: invItem.ratePerDay, subtotal });
+      }
+
+      let delivery = requestedDeliveryCharge;
+      let service = requestedServiceCharge;
+
+      if (resolvedDistanceKm !== null) {
+        await this.pricingBootstrapService.bootstrapPricingConfigForVendor(
+          data.vendorId,
+        );
+
+        const quote = await this.pricingCalculationService.calculateQuote(
+          data.vendorId,
+          subtotalItems,
+          resolvedDistanceKm,
+          helperCount,
+          waitingHours,
+          isNightDelivery,
+        );
+
+        delivery = this.toMoney(quote.deliveryFee);
+        service = this.toMoney(
+          quote.helperFee + quote.waitingFee + quote.nightSurcharge,
+        );
+      } else if (helperCount > 0 || waitingHours > 0 || isNightDelivery) {
+        throw new BadRequestException(
+          'distanceKm or delivery coordinates are required to calculate helper and surcharge fees',
+        );
       }
 
       const platformFee = subtotalItems * commissionRate;
@@ -2355,6 +2408,117 @@ export class BookingsService {
     }
 
     return this.toMoney(parsed);
+  }
+
+  private parseOptionalNonNegativeNumber(value: unknown, fieldName: string) {
+    if (value === undefined || value === null || value === '') {
+      return null;
+    }
+
+    const parsed = Number(value);
+    if (!Number.isFinite(parsed) || parsed < 0) {
+      throw new BadRequestException(
+        `${fieldName} must be a non-negative number`,
+      );
+    }
+
+    return this.toMoney(parsed);
+  }
+
+  private parseOptionalNonNegativeInteger(value: unknown, fieldName: string) {
+    if (value === undefined || value === null || value === '') {
+      return null;
+    }
+
+    const parsed = Number(value);
+    if (!Number.isInteger(parsed) || parsed < 0) {
+      throw new BadRequestException(
+        `${fieldName} must be a non-negative integer`,
+      );
+    }
+
+    return parsed;
+  }
+
+  private parseOptionalBoolean(value: unknown, defaultValue: boolean) {
+    if (value === undefined || value === null || value === '') {
+      return defaultValue;
+    }
+
+    if (typeof value === 'boolean') {
+      return value;
+    }
+
+    const normalized = String(value).trim().toLowerCase();
+    if (['1', 'true', 'yes', 'on'].includes(normalized)) {
+      return true;
+    }
+
+    if (['0', 'false', 'no', 'off'].includes(normalized)) {
+      return false;
+    }
+
+    throw new BadRequestException('isNightDelivery must be a boolean');
+  }
+
+  private resolveDistanceKmForPricing(
+    distanceKmRaw: unknown,
+    vendor: Vendor,
+    deliveryLatitude: number | null,
+    deliveryLongitude: number | null,
+  ) {
+    const explicitDistanceKm = this.parseOptionalNonNegativeNumber(
+      distanceKmRaw,
+      'distanceKm',
+    );
+
+    if (explicitDistanceKm !== null) {
+      return explicitDistanceKm;
+    }
+
+    const vendorLatitude = Number((vendor as any).latitude);
+    const vendorLongitude = Number((vendor as any).longitude);
+
+    if (
+      !Number.isFinite(vendorLatitude) ||
+      !Number.isFinite(vendorLongitude) ||
+      deliveryLatitude === null ||
+      deliveryLongitude === null
+    ) {
+      return null;
+    }
+
+    return this.toMoney(
+      this.calculateHaversineDistanceKm(
+        vendorLatitude,
+        vendorLongitude,
+        deliveryLatitude,
+        deliveryLongitude,
+      ),
+    );
+  }
+
+  private calculateHaversineDistanceKm(
+    startLatitude: number,
+    startLongitude: number,
+    endLatitude: number,
+    endLongitude: number,
+  ) {
+    const earthRadiusKm = 6371;
+    const toRadians = (value: number) => (value * Math.PI) / 180;
+
+    const dLat = toRadians(endLatitude - startLatitude);
+    const dLng = toRadians(endLongitude - startLongitude);
+    const lat1 = toRadians(startLatitude);
+    const lat2 = toRadians(endLatitude);
+
+    const sinDLat = Math.sin(dLat / 2);
+    const sinDLng = Math.sin(dLng / 2);
+    const a =
+      sinDLat * sinDLat + Math.cos(lat1) * Math.cos(lat2) * sinDLng * sinDLng;
+    const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+
+    return earthRadiusKm * c;
   }
 
   private normalizeDeliveryCoordinates(latitudeRaw?: number, longitudeRaw?: number) {

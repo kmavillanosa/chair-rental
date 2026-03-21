@@ -110,7 +110,7 @@ export default function VendorDashboard() {
 
   return (
     <VendorLayout>
-      {vendor?.warningCount && vendor.warningCount > 0 && (
+      {(vendor?.warningCount ?? 0) > 0 && (
         <div className="mb-4 rounded border-l-4 border-red-400 bg-red-50 p-3 text-sm text-red-700">
           You have {vendor.warningCount} warning(s). At 3 warnings, your account will be suspended for 7 days.
         </div>

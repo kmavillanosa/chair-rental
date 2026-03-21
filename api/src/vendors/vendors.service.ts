@@ -41,6 +41,7 @@ import { UserRole } from '../users/entities/user.entity';
 import { Booking, BookingStatus } from '../bookings/entities/booking.entity';
 import { EmailService } from '../common/email.service';
 import { SettingsService } from '../settings/settings.service';
+import { PricingConfigBootstrapService } from '../payments/services/pricing-config-bootstrap.service';
 
 type JsonRecord = Record<string, any>;
 
@@ -73,6 +74,7 @@ export class VendorsService {
     private readonly usersService: UsersService,
     private readonly emailService: EmailService,
     private readonly settingsService: SettingsService,
+    private readonly pricingBootstrapService: PricingConfigBootstrapService,
   ) {}
 
   async findAll() {
@@ -110,7 +112,12 @@ export class VendorsService {
   }
 
   async create(data: Partial<Vendor> & { userEmail?: string; email?: string }) {
-    const { userEmail, email, ...vendorInput } = data as any;
+    const {
+      userEmail,
+      email,
+      bankAccountNumber: bankAccountNumberInput,
+      ...vendorInput
+    } = data as any;
     const requestedUserId = this.normalizeText(vendorInput.userId);
     const requestedUserEmail = this.normalizeText(userEmail || email);
 
@@ -148,6 +155,24 @@ export class VendorsService {
         ? this.mapVendorTypeToVerifiedStatus(normalizedVendorType)
         : VendorVerificationStatus.PENDING_VERIFICATION);
 
+    const bankName = this.normalizeText(vendorInput.bankName);
+    const bankAccountName = this.normalizeText(vendorInput.bankAccountName);
+    const bankAccountNumber = this.normalizeBankAccountNumber(
+      bankAccountNumberInput,
+    );
+    const bankAccountStorage = bankAccountNumber
+      ? this.buildBankAccountStorage(bankAccountNumber)
+      : null;
+
+    if (
+      (bankName || bankAccountName || bankAccountStorage) &&
+      (!bankName || !bankAccountName || !bankAccountStorage)
+    ) {
+      throw new BadRequestException(
+        'Complete payout account details are required: payout method, account name, and account number',
+      );
+    }
+
     const vendorData: Partial<Vendor> = {
       ...vendorInput,
       userId: resolvedUserId,
@@ -163,6 +188,11 @@ export class VendorsService {
       governmentIdNumber: this.normalizeIdentifier(vendorInput.governmentIdNumber),
       phone: this.normalizePhone(vendorInput.phone),
       socialMediaLink: this.normalizeText(vendorInput.socialMediaLink),
+      bankName,
+      bankAccountName,
+      bankAccountNumberMasked: bankAccountStorage?.masked || null,
+      bankAccountLast4: bankAccountStorage?.last4 || null,
+      bankAccountHash: bankAccountStorage?.hash || null,
       registrationStatus:
         vendorInput.registrationStatus || VendorRegistrationStatus.APPROVED,
       kycStatus: vendorInput.kycStatus || VendorKycStatus.APPROVED,
@@ -331,8 +361,23 @@ export class VendorsService {
     const governmentIdNumber = this.normalizeIdentifier(
       data.governmentIdNumber || data.govIdNumber,
     );
+    const bankName = this.normalizeText(
+      data.bankName || data.payoutMethod || data.payoutChannel,
+    );
+    const bankAccountName = this.normalizeText(
+      data.bankAccountName || data.payoutAccountName,
+    );
+    const bankAccountNumber = this.normalizeBankAccountNumber(
+      data.bankAccountNumber || data.payoutAccountNumber || data.gcashNumber,
+    );
 
     const existing = await this.findByUserIdRaw(userId, true);
+    const bankAccountStorage = bankAccountNumber
+      ? this.buildBankAccountStorage(bankAccountNumber)
+      : null;
+    const resolvedBankName = bankName || existing?.bankName || null;
+    const resolvedBankAccountName =
+      bankAccountName || existing?.bankAccountName || null;
     if (
       existing &&
       existing.registrationStatus === VendorRegistrationStatus.APPROVED &&
@@ -350,6 +395,12 @@ export class VendorsService {
       businessRegistrationType,
       businessRegistrationNumber,
       governmentIdNumber,
+      bankName,
+      bankAccountName,
+      bankAccountNumber,
+      hasStoredBankAccount: Boolean(existing?.bankAccountHash),
+      hasStoredBankName: Boolean(existing?.bankName),
+      hasStoredBankAccountName: Boolean(existing?.bankAccountName),
     });
 
     const kycSettings = await this.settingsService.getKycSettings();
@@ -450,6 +501,12 @@ export class VendorsService {
       phoneOtpVerifiedAt:
         otpChallenge?.verifiedAt || existing?.phoneOtpVerifiedAt || null,
       socialMediaLink: this.normalizeText(data.socialMediaLink),
+      bankName: resolvedBankName,
+      bankAccountName: resolvedBankAccountName,
+      bankAccountNumberMasked:
+        bankAccountStorage?.masked || existing?.bankAccountNumberMasked || null,
+      bankAccountLast4: bankAccountStorage?.last4 || existing?.bankAccountLast4 || null,
+      bankAccountHash: bankAccountStorage?.hash || existing?.bankAccountHash || null,
       logoUrl: this.normalizeText(data.logoUrl),
       kycDocumentUrl: candidateGovernmentIdUrl,
       kycNotes: this.normalizeText(data.kycNotes),
@@ -510,23 +567,102 @@ export class VendorsService {
   }
 
   async update(id: string, data: Partial<Vendor>) {
-    const { ...safeData } = data as any;
+    const existing = await this.findByIdRaw(id, false);
+    if (!existing) {
+      throw new NotFoundException('Vendor not found');
+    }
+
+    const {
+      bankName: bankNameInput,
+      bankAccountName: bankAccountNameInput,
+      bankAccountNumber: bankAccountNumberInput,
+      ...safeData
+    } = data as any;
 
     const payload: Partial<Vendor> = {
       ...safeData,
-      vendorType: this.normalizeVendorType(safeData.vendorType),
-      businessRegistrationType: this.normalizeBusinessRegistrationType(
-        safeData.businessRegistrationType,
-      ),
-      businessRegistrationNumber: this.normalizeIdentifier(
-        safeData.businessRegistrationNumber,
-      ),
-      birTin: this.normalizeTin(safeData.birTin),
-      ownerFullName: this.normalizeText(safeData.ownerFullName),
-      governmentIdNumber: this.normalizeIdentifier(safeData.governmentIdNumber),
-      phone: this.normalizePhone(safeData.phone),
-      socialMediaLink: this.normalizeText(safeData.socialMediaLink),
     };
+
+    if (Object.prototype.hasOwnProperty.call(safeData, 'vendorType')) {
+      payload.vendorType = this.normalizeVendorType(safeData.vendorType);
+    }
+    if (Object.prototype.hasOwnProperty.call(safeData, 'businessRegistrationType')) {
+      payload.businessRegistrationType = this.normalizeBusinessRegistrationType(
+        safeData.businessRegistrationType,
+      );
+    }
+    if (Object.prototype.hasOwnProperty.call(safeData, 'businessRegistrationNumber')) {
+      payload.businessRegistrationNumber = this.normalizeIdentifier(
+        safeData.businessRegistrationNumber,
+      );
+    }
+    if (Object.prototype.hasOwnProperty.call(safeData, 'birTin')) {
+      payload.birTin = this.normalizeTin(safeData.birTin);
+    }
+    if (Object.prototype.hasOwnProperty.call(safeData, 'ownerFullName')) {
+      payload.ownerFullName = this.normalizeText(safeData.ownerFullName);
+    }
+    if (Object.prototype.hasOwnProperty.call(safeData, 'governmentIdNumber')) {
+      payload.governmentIdNumber = this.normalizeIdentifier(
+        safeData.governmentIdNumber,
+      );
+    }
+    if (Object.prototype.hasOwnProperty.call(safeData, 'phone')) {
+      payload.phone = this.normalizePhone(safeData.phone);
+    }
+    if (Object.prototype.hasOwnProperty.call(safeData, 'socialMediaLink')) {
+      payload.socialMediaLink = this.normalizeText(safeData.socialMediaLink);
+    }
+
+    const hasBankNameInput = Object.prototype.hasOwnProperty.call(data, 'bankName');
+    const hasBankAccountNameInput = Object.prototype.hasOwnProperty.call(
+      data,
+      'bankAccountName',
+    );
+    const hasBankAccountNumberInput = Object.prototype.hasOwnProperty.call(
+      data,
+      'bankAccountNumber',
+    );
+
+    const nextBankName = hasBankNameInput
+      ? this.normalizeText(bankNameInput)
+      : existing.bankName;
+    const nextBankAccountName = hasBankAccountNameInput
+      ? this.normalizeText(bankAccountNameInput)
+      : existing.bankAccountName;
+    const nextBankAccountNumber = hasBankAccountNumberInput
+      ? this.normalizeBankAccountNumber(bankAccountNumberInput)
+      : null;
+    const nextBankAccountStorage = nextBankAccountNumber
+      ? this.buildBankAccountStorage(nextBankAccountNumber)
+      : null;
+    const nextBankAccountHash = hasBankAccountNumberInput
+      ? nextBankAccountStorage?.hash || null
+      : existing.bankAccountHash;
+
+    const payoutInputTouched =
+      hasBankNameInput || hasBankAccountNameInput || hasBankAccountNumberInput;
+    if (
+      payoutInputTouched &&
+      (nextBankName || nextBankAccountName || nextBankAccountHash) &&
+      (!nextBankName || !nextBankAccountName || !nextBankAccountHash)
+    ) {
+      throw new BadRequestException(
+        'Complete payout account details are required: payout method, account name, and account number',
+      );
+    }
+
+    if (hasBankNameInput) {
+      payload.bankName = nextBankName;
+    }
+    if (hasBankAccountNameInput) {
+      payload.bankAccountName = nextBankAccountName;
+    }
+    if (hasBankAccountNumberInput) {
+      payload.bankAccountNumberMasked = nextBankAccountStorage?.masked || null;
+      payload.bankAccountLast4 = nextBankAccountStorage?.last4 || null;
+      payload.bankAccountHash = nextBankAccountStorage?.hash || null;
+    }
 
     await this.vendorsRepo.update(id, payload);
     return this.findById(id, true);
@@ -654,6 +790,18 @@ export class VendorsService {
         vendor.vendorType || 'registered_business',
         vendor.businessName,
       );
+
+      // Bootstrap pricing configuration for vendor
+      try {
+        await this.pricingBootstrapService.bootstrapPricingConfigForVendor(id);
+      } catch (error) {
+        this.logger.error(
+          `Failed to bootstrap pricing config for vendor ${id}: ${
+            error instanceof Error ? error.message : String(error)
+          }`,
+        );
+        // Don't fail the whole approval process if pricing bootstrap fails
+      }
     } else {
       await this.vendorsRepo.update(id, {
         registrationStatus: VendorRegistrationStatus.REJECTED,
@@ -1788,6 +1936,40 @@ export class VendorsService {
     return normalized;
   }
 
+  private normalizeBankAccountNumber(input: unknown): string | null {
+    const normalized = String(input || '').trim();
+    if (!normalized) return null;
+
+    const digitsOnly = normalized.replace(/[^0-9]/g, '');
+    if (!digitsOnly) {
+      throw new BadRequestException(
+        'Payout account number must contain numeric digits',
+      );
+    }
+
+    if (digitsOnly.length < 8 || digitsOnly.length > 32) {
+      throw new BadRequestException(
+        'Payout account number must be between 8 and 32 digits',
+      );
+    }
+
+    return digitsOnly;
+  }
+
+  private buildBankAccountStorage(accountNumber: string) {
+    const normalized = this.normalizeBankAccountNumber(accountNumber);
+    if (!normalized) {
+      throw new BadRequestException('Payout account number is required');
+    }
+
+    const last4 = normalized.slice(-4);
+    return {
+      masked: `${'*'.repeat(Math.max(normalized.length - 4, 0))}${last4}`,
+      last4,
+      hash: this.hashValue(`bank-account::${normalized}`),
+    };
+  }
+
   private normalizeEmail(input: unknown): string | null {
     const normalized = String(input || '').trim().toLowerCase();
     if (!normalized) return null;
@@ -1988,6 +2170,12 @@ export class VendorsService {
     businessRegistrationType: BusinessRegistrationType | null;
     businessRegistrationNumber: string | null;
     governmentIdNumber: string | null;
+    bankName?: string | null;
+    bankAccountName?: string | null;
+    bankAccountNumber?: string | null;
+    hasStoredBankAccount?: boolean;
+    hasStoredBankName?: boolean;
+    hasStoredBankAccountName?: boolean;
   }) {
     if (!payload.address) {
       throw new BadRequestException('Address is required');
@@ -2004,6 +2192,26 @@ export class VendorsService {
       throw new BadRequestException(
         'Government ID number is required and must be 6 to 32 characters',
       );
+    }
+
+    const hasPayoutMethod = Boolean(payload.bankName || payload.hasStoredBankName);
+    const hasPayoutAccountName = Boolean(
+      payload.bankAccountName || payload.hasStoredBankAccountName,
+    );
+    const hasPayoutAccountNumber = Boolean(
+      payload.bankAccountNumber || payload.hasStoredBankAccount,
+    );
+
+    if (!hasPayoutMethod) {
+      throw new BadRequestException('Payout method (bank or e-wallet) is required');
+    }
+
+    if (!hasPayoutAccountName) {
+      throw new BadRequestException('Payout account name is required');
+    }
+
+    if (!hasPayoutAccountNumber) {
+      throw new BadRequestException('Payout account number is required');
     }
 
     if (payload.vendorType === VendorType.REGISTERED_BUSINESS) {
@@ -2135,6 +2343,11 @@ export class VendorsService {
       businessRegistrationType: vendor.businessRegistrationType,
       businessRegistrationNumber: vendor.businessRegistrationNumber,
       governmentIdNumber: vendor.governmentIdNumber,
+      bankName: vendor.bankName,
+      bankAccountName: vendor.bankAccountName,
+      hasStoredBankAccount: Boolean(vendor.bankAccountHash),
+      hasStoredBankName: Boolean(vendor.bankName),
+      hasStoredBankAccountName: Boolean(vendor.bankAccountName),
     });
 
     const requiredDocs = [

@@ -1,4 +1,4 @@
-import { Module } from '@nestjs/common';
+import { Module, forwardRef } from '@nestjs/common';
 import { TypeOrmModule } from '@nestjs/typeorm';
 import { VendorsService } from './vendors.service';
 import { VendorsController } from './vendors.controller';
@@ -14,6 +14,7 @@ import { UsersModule } from '../users/users.module';
 import { Booking } from '../bookings/entities/booking.entity';
 import { EmailService } from '../common/email.service';
 import { SettingsModule } from '../settings/settings.module';
+import { PaymentsModule } from '../payments/payments.module';
 
 @Module({
   imports: [
@@ -30,6 +31,7 @@ import { SettingsModule } from '../settings/settings.module';
     ]),
     UsersModule,
     SettingsModule,
+    forwardRef(() => PaymentsModule),
   ],
   providers: [VendorsService, EmailService],
   controllers: [VendorsController],
