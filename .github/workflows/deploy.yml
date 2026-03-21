@@ -225,6 +225,9 @@ jobs:
           npm run build --prefix api
           VITE_VENDOR_DOMAIN="${VITE_VENDOR_DOMAIN}" VITE_API_URL="${VITE_API_URL}" VITE_VENDOR_LOGIN_URL="${VITE_VENDOR_LOGIN_URL}" npm run build --prefix app
           VITE_VENDOR_DOMAIN="${VITE_VENDOR_DOMAIN}" VITE_API_URL="${VITE_API_URL}" npm run build --prefix staff-app
+          BUILD_TIMESTAMP="$(date -u +"%Y-%m-%dT%H:%M:%SZ")"
+          printf '{"commit":"%s","builtAt":"%s"}\n' "${GITHUB_SHA}" "${BUILD_TIMESTAMP}" > app/dist/version.json
+          printf '{"commit":"%s","builtAt":"%s"}\n' "${GITHUB_SHA}" "${BUILD_TIMESTAMP}" > staff-app/dist/version.json
 
       - name: Create deploy bundle
         id: bundle
@@ -280,6 +283,7 @@ jobs:
         env:
           VPS_HOST: ${{ secrets.VPS_HOST }}
           VPS_USER: ${{ secrets.VPS_USER }}
+          DEPLOY_SHA: ${{ github.sha }}
         run: |
           set -euo pipefail
           SSH_OPTS="-o BatchMode=yes -o StrictHostKeyChecking=no -o ConnectTimeout=90 -o ConnectionAttempts=5 -o ServerAliveInterval=15 -o ServerAliveCountMax=60 -o TCPKeepAlive=yes"
@@ -287,7 +291,7 @@ jobs:
 
           scp $SSH_OPTS "$ARTIFACT_PATH" "$VPS_USER@$VPS_HOST:/tmp/chair-rental-deploy-bundle.tgz"
 
-          ssh $SSH_OPTS "$VPS_USER@$VPS_HOST" "bash -s" <<'REMOTE'
+          ssh $SSH_OPTS "$VPS_USER@$VPS_HOST" "DEPLOY_SHA='$DEPLOY_SHA' bash -s" <<'REMOTE'
           set -euo pipefail
           cd /root/chair-rental
 
@@ -328,6 +332,22 @@ jobs:
             docker compose -f docker-compose.yml -f docker-compose.release.yml ps >&2
             exit 1
           fi
+
+          APP_VERSION_JSON="$(docker compose -f docker-compose.yml -f docker-compose.release.yml exec -T app sh -lc 'cat /usr/share/nginx/html/version.json')"
+          STAFF_VERSION_JSON="$(docker compose -f docker-compose.yml -f docker-compose.release.yml exec -T staff_app sh -lc 'cat /usr/share/nginx/html/version.json')"
+          echo "app version.json: ${APP_VERSION_JSON}"
+          echo "staff_app version.json: ${STAFF_VERSION_JSON}"
+
+          if ! echo "$APP_VERSION_JSON" | grep -q "\"commit\":\"$DEPLOY_SHA\""; then
+            echo "ERROR: app commit does not match expected ${DEPLOY_SHA}." >&2
+            exit 1
+          fi
+
+          if ! echo "$STAFF_VERSION_JSON" | grep -q "\"commit\":\"$DEPLOY_SHA\""; then
+            echo "ERROR: staff_app commit does not match expected ${DEPLOY_SHA}." >&2
+            exit 1
+          fi
+
           docker compose -f docker-compose.yml -f docker-compose.release.yml ps
           REMOTE
 
