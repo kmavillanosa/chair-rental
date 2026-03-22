@@ -284,6 +284,7 @@ jobs:
           VPS_HOST: ${{ secrets.VPS_HOST }}
           VPS_USER: ${{ secrets.VPS_USER }}
           DEPLOY_SHA: ${{ github.sha }}
+          STAFF_FRONTEND_URL: ${{ secrets.STAFF_FRONTEND_URL }}
         run: |
           set -euo pipefail
           SSH_OPTS="-o BatchMode=yes -o StrictHostKeyChecking=no -o ConnectTimeout=90 -o ConnectionAttempts=5 -o ServerAliveInterval=15 -o ServerAliveCountMax=60 -o TCPKeepAlive=yes"
@@ -350,6 +351,16 @@ jobs:
 
           docker compose -f docker-compose.yml -f docker-compose.release.yml ps
           REMOTE
+
+          STAFF_PORTAL_BASE_URL="${STAFF_FRONTEND_URL:-https://vendors.rentalbasic.com}"
+          STAFF_PORTAL_BASE_URL="${STAFF_PORTAL_BASE_URL%/}"
+          PUBLIC_STAFF_VERSION_JSON="$(curl -fsSL "${STAFF_PORTAL_BASE_URL}/version.json?sha=${DEPLOY_SHA}")"
+          echo "public staff version.json: ${PUBLIC_STAFF_VERSION_JSON}"
+
+          if ! echo "$PUBLIC_STAFF_VERSION_JSON" | grep -q "\"commit\":\"$DEPLOY_SHA\""; then
+            echo "ERROR: Public staff portal at ${STAFF_PORTAL_BASE_URL} is not serving commit ${DEPLOY_SHA}." >&2
+            exit 1
+          fi
 
   post_deploy_db_checks:
     runs-on: ubuntu-latest
