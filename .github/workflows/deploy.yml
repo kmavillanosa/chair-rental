@@ -285,6 +285,7 @@ jobs:
           VPS_USER: ${{ secrets.VPS_USER }}
           DEPLOY_SHA: ${{ github.sha }}
           STAFF_FRONTEND_URL: ${{ secrets.STAFF_FRONTEND_URL }}
+          VENDOR_DOMAIN: ${{ secrets.VENDOR_DOMAIN }}
         run: |
           set -euo pipefail
           SSH_OPTS="-o BatchMode=yes -o StrictHostKeyChecking=no -o ConnectTimeout=90 -o ConnectionAttempts=5 -o ServerAliveInterval=15 -o ServerAliveCountMax=60 -o TCPKeepAlive=yes"
@@ -372,19 +373,42 @@ jobs:
 
           STAFF_PORTAL_BASE_URL="${STAFF_FRONTEND_URL:-https://vendors.rentalbasic.com}"
           STAFF_PORTAL_BASE_URL="${STAFF_PORTAL_BASE_URL%/}"
-          PUBLIC_STAFF_VERSION_JSON="$(curl -fsSL "${STAFF_PORTAL_BASE_URL}/version.json?sha=${DEPLOY_SHA}")"
+          EXPECTED_STAFF_HOST="vendors.${VENDOR_DOMAIN:-rentalbasic.com}"
+          PUBLIC_STAFF_HOST="$(printf '%s\n' "$STAFF_PORTAL_BASE_URL" | sed -E 's#^https?://([^/]+).*$#\1#')"
+          PUBLIC_STAFF_HEADERS="$(mktemp)"
+          PUBLIC_STAFF_BODY="$(mktemp)"
+          trap 'rm -f "$PUBLIC_STAFF_HEADERS" "$PUBLIC_STAFF_BODY"' EXIT
+          set +e
+          PUBLIC_STAFF_HTTP_CODE="$(curl -sSL -D "$PUBLIC_STAFF_HEADERS" -o "$PUBLIC_STAFF_BODY" -w '%{http_code}' "${STAFF_PORTAL_BASE_URL}/version.json?sha=${DEPLOY_SHA}")"
+          PUBLIC_STAFF_CURL_EXIT=$?
+          set -e
+          if ! echo "$PUBLIC_STAFF_HTTP_CODE" | grep -Eq '^[0-9]{3}$'; then
+            PUBLIC_STAFF_HTTP_CODE="000"
+          fi
+          PUBLIC_STAFF_VERSION_JSON="$(cat "$PUBLIC_STAFF_BODY")"
+
+          echo "expected staff host: ${EXPECTED_STAFF_HOST}"
+          echo "public staff host: ${PUBLIC_STAFF_HOST}"
+          echo "public staff curl exit: ${PUBLIC_STAFF_CURL_EXIT}"
+          echo "public staff HTTP status: ${PUBLIC_STAFF_HTTP_CODE}"
+          echo "public staff response headers:"
+          cat "$PUBLIC_STAFF_HEADERS"
           echo "public staff version.json: ${PUBLIC_STAFF_VERSION_JSON}"
 
-          if ! echo "$PUBLIC_STAFF_VERSION_JSON" | grep -q "\"commit\":\"$DEPLOY_SHA\""; then
+          if [ "$PUBLIC_STAFF_CURL_EXIT" -ne 0 ] || [ "$PUBLIC_STAFF_HTTP_CODE" -lt 200 ] || [ "$PUBLIC_STAFF_HTTP_CODE" -ge 400 ] || ! echo "$PUBLIC_STAFF_VERSION_JSON" | grep -q "\"commit\":\"$DEPLOY_SHA\""; then
             echo "ERROR: Public staff portal at ${STAFF_PORTAL_BASE_URL} is not serving commit ${DEPLOY_SHA}." >&2
+            echo "VPS-local proxy check passed, so the mismatch is now between the public URL and the VPS listener or DNS path." >&2
+            if [ "$PUBLIC_STAFF_HOST" != "$EXPECTED_STAFF_HOST" ]; then
+              echo "STAFF_FRONTEND_URL is pointing to ${PUBLIC_STAFF_HOST}, but the expected production host is ${EXPECTED_STAFF_HOST}." >&2
+            fi
+            echo "Public DNS lookup for ${PUBLIC_STAFF_HOST}:" >&2
+            getent ahostsv4 "$PUBLIC_STAFF_HOST" >&2 || true
+            echo "Public response headers:" >&2
+            cat "$PUBLIC_STAFF_HEADERS" >&2 || true
+            echo "Public response body:" >&2
+            cat "$PUBLIC_STAFF_BODY" >&2 || true
             echo "Current service status:" >&2
-            ssh $SSH_OPTS "$VPS_USER@$VPS_HOST" "bash -s" <<'DIAG'
-            set -euo pipefail
-            cd /root/chair-rental
-            docker compose -f docker-compose.yml -f docker-compose.release.yml ps >&2 || true
-            docker compose -f docker-compose.yml -f docker-compose.release.yml logs --tail=100 nginx_proxy >&2 || true
-            ss -ltnp | grep -E ':(80|443)\s' >&2 || true
-            DIAG
+            ssh $SSH_OPTS "$VPS_USER@$VPS_HOST" "set -euo pipefail; cd /root/chair-rental; docker compose -f docker-compose.yml -f docker-compose.release.yml ps >&2 || true; docker compose -f docker-compose.yml -f docker-compose.release.yml logs --tail=100 nginx_proxy >&2 || true; ss -ltnp | grep -E ':(80|443)\\s' >&2 || true"
             exit 1
           fi
 
