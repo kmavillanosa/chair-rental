@@ -10,28 +10,30 @@ on:
       - main
       - master
 
+concurrency:
+  group: deploy-${{ github.ref }}
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+
 jobs:
   pull_repo:
     runs-on: ubuntu-latest
     timeout-minutes: 10
+    needs: [build_artifact]
+    if: github.event_name == 'push'
 
     steps:
-      - name: Skip pull stage for pull requests
-        if: github.event_name != 'push'
-        run: echo "Pull stage runs only on push deployments."
-
       - name: Install SSH key
-        if: github.event_name == 'push'
         uses: webfactory/ssh-agent@v0.9.1
         with:
           ssh-private-key: ${{ secrets.VPS_SSH_KEY }}
 
       - name: Verify loaded SSH key
-        if: github.event_name == 'push'
         run: ssh-add -l
 
       - name: Pull latest code on VPS
-        if: github.event_name == 'push'
         env:
           VPS_HOST: ${{ secrets.VPS_HOST }}
           VPS_USER: ${{ secrets.VPS_USER }}
@@ -158,7 +160,6 @@ jobs:
   test:
     runs-on: ubuntu-latest
     timeout-minutes: 30
-    needs: [pull_repo]
     strategy:
       fail-fast: false
       matrix:
@@ -183,10 +184,15 @@ jobs:
           cache-dependency-path: ${{ matrix.project }}/package-lock.json
 
       - name: Install dependencies
-        run: npm ci
+        run: npm ci --prefer-offline --no-audit
 
-      - name: Run unit tests with coverage thresholds
-        run: npm run test:coverage
+      - name: Run unit tests (pull requests)
+        if: github.event_name == 'pull_request'
+        run: npm run test -- --passWithNoTests=false
+
+      - name: Run unit tests with coverage (push)
+        if: github.event_name == 'push'
+        run: npm run test:coverage -- --passWithNoTests=false
 
   build_artifact:
     runs-on: ubuntu-latest
@@ -211,9 +217,9 @@ jobs:
       - name: Install dependencies
         run: |
           set -euo pipefail
-          npm ci --prefix api
-          npm ci --prefix app
-          npm ci --prefix staff-app
+          npm ci --prefer-offline --no-audit --prefix api
+          npm ci --prefer-offline --no-audit --prefix app
+          npm ci --prefer-offline --no-audit --prefix staff-app
 
       - name: Build project artifacts
         env:
@@ -261,7 +267,7 @@ jobs:
   deploy_containers:
     runs-on: ubuntu-latest
     timeout-minutes: 40
-    needs: [build_artifact]
+    needs: [pull_repo]
     if: github.event_name == 'push'
 
     steps:
@@ -279,23 +285,27 @@ jobs:
           name: deploy-bundle
           path: ./deploy-bundle
 
-      - name: Upload artifact and rebuild containers on VPS
+      - name: Upload artifact and deploy containers on VPS
         env:
           VPS_HOST: ${{ secrets.VPS_HOST }}
           VPS_USER: ${{ secrets.VPS_USER }}
           DEPLOY_SHA: ${{ github.sha }}
           STAFF_FRONTEND_URL: ${{ secrets.STAFF_FRONTEND_URL }}
           VENDOR_DOMAIN: ${{ secrets.VENDOR_DOMAIN }}
+          FORCE_NO_CACHE: ${{ vars.FORCE_NO_CACHE }}
         run: |
           set -euo pipefail
           SSH_OPTS="-o BatchMode=yes -o StrictHostKeyChecking=no -o ConnectTimeout=90 -o ConnectionAttempts=5 -o ServerAliveInterval=15 -o ServerAliveCountMax=60 -o TCPKeepAlive=yes"
           ARTIFACT_PATH="$(ls -1 ./deploy-bundle/*.tgz | head -n 1)"
+          FORCE_NO_CACHE="${FORCE_NO_CACHE:-false}"
 
           scp $SSH_OPTS "$ARTIFACT_PATH" "$VPS_USER@$VPS_HOST:/tmp/chair-rental-deploy-bundle.tgz"
 
-          ssh $SSH_OPTS "$VPS_USER@$VPS_HOST" "DEPLOY_SHA='$DEPLOY_SHA' bash -s" <<'REMOTE'
+          ssh $SSH_OPTS "$VPS_USER@$VPS_HOST" "DEPLOY_SHA='$DEPLOY_SHA' FORCE_NO_CACHE='$FORCE_NO_CACHE' bash -s" <<'REMOTE'
           set -euo pipefail
           cd /root/chair-rental
+          export DOCKER_BUILDKIT=1
+          export COMPOSE_DOCKER_CLI_BUILD=1
 
           rm -rf api/dist app/dist staff-app/dist
           tar -xzf /tmp/chair-rental-deploy-bundle.tgz -C /root/chair-rental
@@ -322,8 +332,33 @@ jobs:
             bash nginx/certbot-init.sh
           fi
 
-          docker compose -f docker-compose.yml -f docker-compose.release.yml build --pull --no-cache api app staff_app
-          docker compose -f docker-compose.yml -f docker-compose.release.yml up -d mysql
+          echo "=== PREP: warm docker image cache ==="
+          for IMAGE in node:18-alpine nginx:alpine mysql:8.0 phpmyadmin:latest; do
+            docker pull "$IMAGE" >/dev/null 2>&1 || true
+          done
+
+          echo "=== BUILD: api app staff_app (cache-enabled by default) ==="
+          BUILD_FLAGS=(--pull)
+          case "${FORCE_NO_CACHE:-false}" in
+            true|TRUE|1|yes|YES|on|ON)
+              BUILD_FLAGS+=(--no-cache)
+              echo "Build cache disabled via FORCE_NO_CACHE=${FORCE_NO_CACHE}"
+              ;;
+            *)
+              echo "Build cache enabled"
+              ;;
+          esac
+          BUILD_LOG="$(mktemp)"
+          if ! docker compose -f docker-compose.yml -f docker-compose.release.yml build "${BUILD_FLAGS[@]}" api app staff_app > "$BUILD_LOG" 2>&1; then
+            echo "ERROR: docker build failed:" >&2
+            cat "$BUILD_LOG" >&2
+            rm -f "$BUILD_LOG"
+            exit 1
+          fi
+          rm -f "$BUILD_LOG"
+          echo "Build complete."
+
+          docker compose -f docker-compose.yml -f docker-compose.release.yml up -d mysql > /dev/null 2>&1
 
           echo "Running migrations before recreating app services..."
           docker compose -f docker-compose.yml -f docker-compose.release.yml run --rm api npm run db:migrate
@@ -331,78 +366,86 @@ jobs:
           echo "Removing existing frontend/proxy containers to force clean recreation..."
           docker compose -f docker-compose.yml -f docker-compose.release.yml rm -sf app staff_app nginx_proxy || true
 
-          docker compose -f docker-compose.yml -f docker-compose.release.yml up -d --force-recreate api app staff_app phpmyadmin nginx_proxy
-          if ! docker compose -f docker-compose.yml -f docker-compose.release.yml ps --status running --services | grep -qx 'phpmyadmin'; then
-            echo "ERROR: phpmyadmin is not running after deploy." >&2
-            docker compose -f docker-compose.yml -f docker-compose.release.yml ps >&2
+          echo "=== UP (force-recreate: api app staff_app phpmyadmin nginx_proxy) ==="
+          UP_LOG="$(mktemp)"
+          if ! docker compose -f docker-compose.yml -f docker-compose.release.yml up -d --force-recreate api app staff_app phpmyadmin nginx_proxy > "$UP_LOG" 2>&1; then
+            echo "ERROR: docker compose up failed:" >&2
+            cat "$UP_LOG" >&2
+            rm -f "$UP_LOG"
+            exit 1
+          fi
+          rm -f "$UP_LOG"
+
+          echo "=== HEALTH: running services ==="
+          RUNNING_SERVICES="$(docker compose -f docker-compose.yml -f docker-compose.release.yml ps --status running --services)"
+          echo "$RUNNING_SERVICES"
+          for SVC in phpmyadmin nginx_proxy api app staff_app; do
+            if ! echo "$RUNNING_SERVICES" | grep -qx "$SVC"; then
+              echo "ERROR: $SVC is not running after deploy." >&2
+              docker compose -f docker-compose.yml -f docker-compose.release.yml logs --tail=50 "$SVC" >&2 || true
+              ss -ltnp | grep -E ':(80|443)\s' >&2 || true
+              exit 1
+            fi
+          done
+
+          echo "=== VERIFY: container images ==="
+          docker inspect -f '  {{.Name}}  created={{.Created}}' chair_rental_app chair_rental_staff_app chair_rental_proxy
+
+          echo "=== VERIFY: version.json in containers ==="
+          APP_VERSION_JSON="$(docker compose -f docker-compose.yml -f docker-compose.release.yml exec -T app sh -lc 'cat /usr/share/nginx/html/version.json' 2>/dev/null || echo 'NOT_FOUND')"
+          STAFF_VERSION_JSON="$(docker compose -f docker-compose.yml -f docker-compose.release.yml exec -T staff_app sh -lc 'cat /usr/share/nginx/html/version.json' 2>/dev/null || echo 'NOT_FOUND')"
+          echo "  app:       ${APP_VERSION_JSON}"
+          echo "  staff_app: ${STAFF_VERSION_JSON}"
+
+          if ! echo "$APP_VERSION_JSON" | grep -q "\"service\":\"app\"" || ! echo "$APP_VERSION_JSON" | grep -q "\"commit\":\"$DEPLOY_SHA\""; then
+            echo "ERROR: app container has wrong version.json (expected service=app commit=${DEPLOY_SHA})" >&2
+            echo "  actual: ${APP_VERSION_JSON}" >&2
+            docker compose -f docker-compose.yml -f docker-compose.release.yml exec -T app sh -lc 'ls /usr/share/nginx/html/' >&2 || true
             exit 1
           fi
 
-          if ! docker compose -f docker-compose.yml -f docker-compose.release.yml ps --status running --services | grep -qx 'nginx_proxy'; then
-            echo "ERROR: nginx_proxy is not running after deploy." >&2
-            docker compose -f docker-compose.yml -f docker-compose.release.yml ps >&2
-            docker compose -f docker-compose.yml -f docker-compose.release.yml logs --tail=100 nginx_proxy >&2 || true
-            ss -ltnp | grep -E ':(80|443)\s' >&2 || true
+          if ! echo "$STAFF_VERSION_JSON" | grep -q "\"service\":\"staff_app\"" || ! echo "$STAFF_VERSION_JSON" | grep -q "\"commit\":\"$DEPLOY_SHA\""; then
+            echo "ERROR: staff_app container has wrong version.json (expected service=staff_app commit=${DEPLOY_SHA})" >&2
+            echo "  actual: ${STAFF_VERSION_JSON}" >&2
+            docker compose -f docker-compose.yml -f docker-compose.release.yml exec -T staff_app sh -lc 'ls /usr/share/nginx/html/' >&2 || true
             exit 1
           fi
 
-          echo "Container image IDs and created timestamps:"
-          docker inspect -f '{{.Name}} image={{.Image}} created={{.Created}}' chair_rental_app chair_rental_staff_app chair_rental_proxy
-
-          APP_VERSION_JSON="$(docker compose -f docker-compose.yml -f docker-compose.release.yml exec -T app sh -lc 'cat /usr/share/nginx/html/version.json')"
-          STAFF_VERSION_JSON="$(docker compose -f docker-compose.yml -f docker-compose.release.yml exec -T staff_app sh -lc 'cat /usr/share/nginx/html/version.json')"
-          echo "app version.json: ${APP_VERSION_JSON}"
-          echo "staff_app version.json: ${STAFF_VERSION_JSON}"
-
-          if ! echo "$APP_VERSION_JSON" | grep -q "\"service\":\"app\""; then
-            echo "ERROR: app version.json is not labeled as service app." >&2
-            exit 1
-          fi
-
-          if ! echo "$APP_VERSION_JSON" | grep -q "\"commit\":\"$DEPLOY_SHA\""; then
-            echo "ERROR: app commit does not match expected ${DEPLOY_SHA}." >&2
-            exit 1
-          fi
-
-          if ! echo "$STAFF_VERSION_JSON" | grep -q "\"service\":\"staff_app\""; then
-            echo "ERROR: staff_app version.json is not labeled as service staff_app." >&2
-            exit 1
-          fi
-
-          if ! echo "$STAFF_VERSION_JSON" | grep -q "\"commit\":\"$DEPLOY_SHA\""; then
-            echo "ERROR: staff_app commit does not match expected ${DEPLOY_SHA}." >&2
-            exit 1
-          fi
-
-          HOST_APP_VERSION_JSON="$(curl -fsSL "http://127.0.0.1:43171/version.json" || true)"
-          HOST_STAFF_VERSION_JSON="$(curl -fsSL "http://127.0.0.1:43172/version.json" || true)"
-          echo "host app (43171) version.json: ${HOST_APP_VERSION_JSON}"
-          echo "host staff_app (43172) version.json: ${HOST_STAFF_VERSION_JSON}"
+          echo "=== VERIFY: host ports (app:43171, staff_app:43172) ==="
+          HOST_APP_VERSION_JSON="$(curl -fsSL 'http://127.0.0.1:43171/version.json' || echo 'CURL_FAILED')"
+          HOST_STAFF_VERSION_JSON="$(curl -fsSL 'http://127.0.0.1:43172/version.json' || echo 'CURL_FAILED')"
+          echo "  43171: ${HOST_APP_VERSION_JSON}"
+          echo "  43172: ${HOST_STAFF_VERSION_JSON}"
 
           if ! echo "$HOST_APP_VERSION_JSON" | grep -q "\"service\":\"app\"" || ! echo "$HOST_APP_VERSION_JSON" | grep -q "\"commit\":\"$DEPLOY_SHA\""; then
-            echo "ERROR: Host port 43171 is not serving app commit ${DEPLOY_SHA}." >&2
+            echo "ERROR: port 43171 is not serving app commit ${DEPLOY_SHA}" >&2
             exit 1
           fi
 
           if ! echo "$HOST_STAFF_VERSION_JSON" | grep -q "\"service\":\"staff_app\"" || ! echo "$HOST_STAFF_VERSION_JSON" | grep -q "\"commit\":\"$DEPLOY_SHA\""; then
-            echo "ERROR: Host port 43172 is not serving staff_app commit ${DEPLOY_SHA}." >&2
+            echo "ERROR: port 43172 is not serving staff_app commit ${DEPLOY_SHA}" >&2
             exit 1
           fi
 
+          echo "=== VERIFY: local nginx proxy ==="
           VENDORS_HOST="vendors.${VENDOR_DOMAIN:-rentalbasic.com}"
-          LOCAL_PROXY_STAFF_VERSION_JSON="$(curl -kfsSL --resolve "${VENDORS_HOST}:443:127.0.0.1" "https://${VENDORS_HOST}/version.json?sha=${DEPLOY_SHA}")"
-          echo "local proxy vendors host: ${VENDORS_HOST}"
-          echo "local proxy staff version.json: ${LOCAL_PROXY_STAFF_VERSION_JSON}"
+          LOCAL_PROXY_STAFF_VERSION_JSON="$(curl -kfsSL --resolve "${VENDORS_HOST}:443:127.0.0.1" "https://${VENDORS_HOST}/version.json" || echo 'CURL_FAILED')"
+          echo "  ${VENDORS_HOST}: ${LOCAL_PROXY_STAFF_VERSION_JSON}"
 
           if ! echo "$LOCAL_PROXY_STAFF_VERSION_JSON" | grep -q "\"service\":\"staff_app\"" || ! echo "$LOCAL_PROXY_STAFF_VERSION_JSON" | grep -q "\"commit\":\"$DEPLOY_SHA\""; then
-            echo "ERROR: VPS local HTTPS listener is not serving staff_app commit ${DEPLOY_SHA} for host ${VENDORS_HOST}." >&2
-            docker compose -f docker-compose.yml -f docker-compose.release.yml logs --tail=100 nginx_proxy >&2 || true
+            echo "ERROR: local nginx proxy is not serving staff_app commit ${DEPLOY_SHA} for host ${VENDORS_HOST}" >&2
+            docker compose -f docker-compose.yml -f docker-compose.release.yml logs --tail=50 nginx_proxy >&2 || true
             exit 1
           fi
 
+          echo "=== MAINT: prune dangling docker layers ==="
+          docker image prune -f --filter "dangling=true" >/dev/null 2>&1 || true
+
+          echo "=== VPS CHECKS PASSED ==="
           docker compose -f docker-compose.yml -f docker-compose.release.yml ps
           REMOTE
 
+          echo "=== VERIFY: public staff URL ==="
           STAFF_PORTAL_BASE_URL="${STAFF_FRONTEND_URL:-https://vendors.rentalbasic.com}"
           STAFF_PORTAL_BASE_URL="${STAFF_PORTAL_BASE_URL%/}"
           EXPECTED_STAFF_HOST="vendors.${VENDOR_DOMAIN:-rentalbasic.com}"
@@ -411,38 +454,31 @@ jobs:
           PUBLIC_STAFF_BODY="$(mktemp)"
           trap 'rm -f "$PUBLIC_STAFF_HEADERS" "$PUBLIC_STAFF_BODY"' EXIT
           set +e
-          PUBLIC_STAFF_HTTP_CODE="$(curl -sSL -D "$PUBLIC_STAFF_HEADERS" -o "$PUBLIC_STAFF_BODY" -w '%{http_code}' "${STAFF_PORTAL_BASE_URL}/version.json?sha=${DEPLOY_SHA}")"
+          PUBLIC_STAFF_HTTP_CODE="$(curl -sSL -D "$PUBLIC_STAFF_HEADERS" -o "$PUBLIC_STAFF_BODY" -w '%{http_code}' "${STAFF_PORTAL_BASE_URL}/version.json")"
           PUBLIC_STAFF_CURL_EXIT=$?
           set -e
           if ! echo "$PUBLIC_STAFF_HTTP_CODE" | grep -Eq '^[0-9]{3}$'; then
             PUBLIC_STAFF_HTTP_CODE="000"
           fi
           PUBLIC_STAFF_VERSION_JSON="$(cat "$PUBLIC_STAFF_BODY")"
-
-          echo "expected staff host: ${EXPECTED_STAFF_HOST}"
-          echo "public staff host: ${PUBLIC_STAFF_HOST}"
-          echo "public staff curl exit: ${PUBLIC_STAFF_CURL_EXIT}"
-          echo "public staff HTTP status: ${PUBLIC_STAFF_HTTP_CODE}"
-          echo "public staff response headers:"
-          cat "$PUBLIC_STAFF_HEADERS"
-          echo "public staff version.json: ${PUBLIC_STAFF_VERSION_JSON}"
+          echo "  host: ${PUBLIC_STAFF_HOST}  HTTP: ${PUBLIC_STAFF_HTTP_CODE}  version: ${PUBLIC_STAFF_VERSION_JSON}"
 
           if [ "$PUBLIC_STAFF_CURL_EXIT" -ne 0 ] || [ "$PUBLIC_STAFF_HTTP_CODE" -lt 200 ] || [ "$PUBLIC_STAFF_HTTP_CODE" -ge 400 ] || ! echo "$PUBLIC_STAFF_VERSION_JSON" | grep -q "\"service\":\"staff_app\"" || ! echo "$PUBLIC_STAFF_VERSION_JSON" | grep -q "\"commit\":\"$DEPLOY_SHA\""; then
-            echo "ERROR: Public staff portal at ${STAFF_PORTAL_BASE_URL} is not serving commit ${DEPLOY_SHA}." >&2
-            echo "VPS-local proxy check passed, so the mismatch is now between the public URL and the VPS listener or DNS path." >&2
+            echo "ERROR: ${STAFF_PORTAL_BASE_URL} is not serving staff_app commit ${DEPLOY_SHA} (HTTP ${PUBLIC_STAFF_HTTP_CODE}, curl exit ${PUBLIC_STAFF_CURL_EXIT})" >&2
             if [ "$PUBLIC_STAFF_HOST" != "$EXPECTED_STAFF_HOST" ]; then
-              echo "STAFF_FRONTEND_URL is pointing to ${PUBLIC_STAFF_HOST}, but the expected production host is ${EXPECTED_STAFF_HOST}." >&2
+              echo "  STAFF_FRONTEND_URL host (${PUBLIC_STAFF_HOST}) differs from expected (${EXPECTED_STAFF_HOST})." >&2
             fi
-            echo "Public DNS lookup for ${PUBLIC_STAFF_HOST}:" >&2
-            getent ahostsv4 "$PUBLIC_STAFF_HOST" >&2 || true
-            echo "Public response headers:" >&2
+            echo "--- Response headers ---" >&2
             cat "$PUBLIC_STAFF_HEADERS" >&2 || true
-            echo "Public response body:" >&2
+            echo "--- Response body ---" >&2
             cat "$PUBLIC_STAFF_BODY" >&2 || true
-            echo "Current service status:" >&2
-            ssh $SSH_OPTS "$VPS_USER@$VPS_HOST" "set -euo pipefail; cd /root/chair-rental; docker compose -f docker-compose.yml -f docker-compose.release.yml ps >&2 || true; docker compose -f docker-compose.yml -f docker-compose.release.yml logs --tail=100 nginx_proxy >&2 || true; ss -ltnp | grep -E ':(80|443)\\s' >&2 || true"
+            echo "--- DNS: ${PUBLIC_STAFF_HOST} ---" >&2
+            getent ahostsv4 "$PUBLIC_STAFF_HOST" >&2 || true
+            echo "--- VPS status ---" >&2
+            ssh $SSH_OPTS "$VPS_USER@$VPS_HOST" "set -euo pipefail; cd /root/chair-rental; docker compose -f docker-compose.yml -f docker-compose.release.yml ps >&2 || true; docker compose -f docker-compose.yml -f docker-compose.release.yml logs --tail=50 nginx_proxy >&2 || true; ss -ltnp | grep -E ':(80|443)\\s' >&2 || true"
             exit 1
           fi
+          echo "=== DEPLOY COMPLETE: staff_app commit ${DEPLOY_SHA} is live at ${STAFF_PORTAL_BASE_URL} ==="
 
   post_deploy_db_checks:
     runs-on: ubuntu-latest
