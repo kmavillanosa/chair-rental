@@ -61,6 +61,47 @@ export class AuthService {
     };
   }
 
+  async impersonateAs(
+    adminUserId: string,
+    targetUserId: string,
+  ) {
+    const adminUser = await this.validateAuthenticatedUser(adminUserId, false);
+    if (adminUser.role !== UserRole.ADMIN) {
+      throw new ForbiddenException('Only admins can impersonate accounts');
+    }
+
+    const targetUser = await this.validateAuthenticatedUser(targetUserId, false);
+    if (![UserRole.VENDOR, UserRole.CUSTOMER].includes(targetUser.role)) {
+      throw new ForbiddenException(
+        'Admins can only impersonate vendor or customer accounts',
+      );
+    }
+
+    const payload = {
+      sub: targetUser.id,
+      email: targetUser.email,
+      role: targetUser.role,
+      impersonatedByUserId: adminUser.id,
+      impersonatedByRole: adminUser.role,
+    };
+
+    return {
+      access_token: this.jwtService.sign(payload),
+      user: {
+        id: targetUser.id,
+        email: targetUser.email,
+        name: targetUser.name,
+        role: targetUser.role,
+        avatar: targetUser.avatar,
+      },
+      impersonation: {
+        active: true,
+        impersonatedByUserId: adminUser.id,
+        impersonatedByRole: adminUser.role,
+      },
+    };
+  }
+
   async validateAuthenticatedUser(
     userId: string,
     forLogin = false,

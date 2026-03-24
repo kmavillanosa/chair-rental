@@ -19,6 +19,9 @@ export default function AuthCallback() {
         login(token, data);
         if (data.role === 'admin') navigate('/admin');
         else if (data.role === 'vendor') navigate('/vendor');
+        else if (data.role === 'customer' && data.impersonation?.active) {
+          navigate('/customer');
+        }
         else {
           // Redirect customer to main app with token
           const appUrl = window.location.origin.replace(/\/staff-app$/, '/app');

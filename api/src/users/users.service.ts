@@ -14,8 +14,21 @@ export class UsersService {
     return this.usersRepo.find();
   }
 
+  findCustomers() {
+    return this.usersRepo.find({
+      where: { role: UserRole.CUSTOMER },
+      order: { createdAt: 'DESC' },
+    });
+  }
+
   findById(id: string) {
     return this.usersRepo.findOne({ where: { id } });
+  }
+
+  findCustomerById(id: string) {
+    return this.usersRepo.findOne({
+      where: { id, role: UserRole.CUSTOMER },
+    });
   }
 
   findByEmail(email: string) {
@@ -55,5 +68,10 @@ export class UsersService {
   async setActive(id: string, isActive: boolean) {
     await this.usersRepo.update(id, { isActive });
     return this.findById(id);
+  }
+
+  async setCustomerActive(id: string, isActive: boolean) {
+    await this.usersRepo.update({ id, role: UserRole.CUSTOMER }, { isActive });
+    return this.findCustomerById(id);
   }
 }

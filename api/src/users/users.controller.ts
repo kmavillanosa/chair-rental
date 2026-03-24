@@ -1,4 +1,13 @@
-import { Controller, Get, Param, Patch, Body, UseGuards, Request } from '@nestjs/common';
+import {
+  Controller,
+  Get,
+  Param,
+  Patch,
+  Body,
+  UseGuards,
+  Request,
+  NotFoundException,
+} from '@nestjs/common';
 import { ApiTags, ApiBearerAuth } from '@nestjs/swagger';
 import { UsersService } from './users.service';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
@@ -16,6 +25,41 @@ export class UsersController {
   @Get('me')
   getMe(@Request() req) {
     return req.user;
+  }
+
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles(UserRole.ADMIN)
+  @ApiBearerAuth()
+  @Get('customers')
+  findAllCustomers() {
+    return this.usersService.findCustomers();
+  }
+
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles(UserRole.ADMIN)
+  @ApiBearerAuth()
+  @Get('customers/:id')
+  async findCustomerById(@Param('id') id: string) {
+    const customer = await this.usersService.findCustomerById(id);
+    if (!customer) {
+      throw new NotFoundException('Customer account not found');
+    }
+    return customer;
+  }
+
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles(UserRole.ADMIN)
+  @ApiBearerAuth()
+  @Patch('customers/:id/active')
+  async setCustomerActive(
+    @Param('id') id: string,
+    @Body('isActive') isActive: boolean,
+  ) {
+    const customer = await this.usersService.setCustomerActive(id, isActive);
+    if (!customer) {
+      throw new NotFoundException('Customer account not found');
+    }
+    return customer;
   }
 
   @UseGuards(JwtAuthGuard, RolesGuard)

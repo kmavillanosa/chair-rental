@@ -1604,13 +1604,10 @@ export class BookingsService {
   }
 
   /**
-   * Returns a PayMongo `split_payment` block when all prerequisites are met:
-   *   - PAYMONGO_SPLIT_ENABLED env var is truthy
-   *   - PAYMONGO_PLATFORM_MERCHANT_ID env var is set
-   *   - Vendor has a paymongoMerchantId configured
+   * Returns a PayMongo `split_payment` block when split mode is enabled.
    * Vendor is always set as `transfer_to` (receives the net remainder).
    * Platform commission is a `percentage_net` recipient entry in basis points.
-   * Returns null when prerequisites are not met, allowing checkout to proceed without split.
+   * Returns null only when split mode is disabled.
    */
   private buildSplitPaymentBlock(
     booking: { vendor: { paymongoMerchantId?: string | null }; totalAmount: number; platformFee: number },
@@ -1623,14 +1620,16 @@ export class BookingsService {
 
     const platformMerchantId = String(process.env.PAYMONGO_PLATFORM_MERCHANT_ID || '').trim();
     if (!platformMerchantId) {
-      this.logger.warn('PAYMONGO_PLATFORM_MERCHANT_ID is not set; proceeding without split_payment');
-      return null;
+      throw new BadRequestException(
+        'Payment split is enabled but PAYMONGO_PLATFORM_MERCHANT_ID is missing. Please contact support.',
+      );
     }
 
     const vendorMerchantId = String(booking.vendor.paymongoMerchantId || '').trim();
     if (!vendorMerchantId) {
-      this.logger.warn('Vendor has no paymongoMerchantId; proceeding without split_payment');
-      return null;
+      throw new BadRequestException(
+        'This vendor has no PayMongo merchant ID configured yet. Please request the vendor to provide their merchant ID before checkout.',
+      );
     }
 
     const commissionBps = this.commissionRateToBps(commissionRate);

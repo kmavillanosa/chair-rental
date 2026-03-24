@@ -4,6 +4,7 @@ import { useAuthStore } from '../../store/authStore';
 
 const adminLinks = [
   { to: '/admin', label: 'Overview', exact: true },
+  { to: '/admin/customers', label: 'Customers', exact: true },
   { to: '/admin/vendors/applicants', label: 'Applicants' },
   { to: '/admin/vendors', label: 'Vendors', exact: true },
   { to: '/admin/item-types', label: 'Item Types' },
@@ -178,8 +179,9 @@ function SidebarLink({ link, onNavigate, location }: { link: MenuLink; onNavigat
 
 export default function Sidebar({ role, className = '', onNavigate }: Props) {
   const location = useLocation();
-  const { logout, user } = useAuthStore();
+  const { logout, user, adminToken, adminUser, stopImpersonation } = useAuthStore();
   const links = role === 'admin' ? adminLinks : vendorLinks;
+  const isImpersonating = Boolean(user?.impersonation?.active && adminToken && adminUser);
 
   return (
     <aside className={`flex h-full min-h-0 w-64 shrink-0 flex-col border-r border-[#2d3f63] bg-[#1f2944] text-slate-100 shadow-lg ${className}`.trim()}>
@@ -206,6 +208,18 @@ export default function Sidebar({ role, className = '', onNavigate }: Props) {
           : (links as MenuLink[]).map((link) => <SidebarLink key={link.label} link={link} onNavigate={onNavigate} location={location} />)}
       </nav>
       <div className="border-t border-[#2d3f63] p-4">
+        {isImpersonating && (
+          <button
+            onClick={() => {
+              onNavigate?.();
+              stopImpersonation();
+              window.location.href = '/admin';
+            }}
+            className="mb-3 w-full rounded-lg border border-[#b7e92f]/70 bg-[#b7e92f] px-4 py-2 text-left text-sm font-semibold text-[#1f2944] transition hover:brightness-95"
+          >
+            Return to Admin
+          </button>
+        )}
         <div className="mb-3 flex items-start gap-3">
           {user?.avatar && <img src={user.avatar} className="h-10 w-10 shrink-0 rounded-full" alt="" />}
           <div className="min-w-0">

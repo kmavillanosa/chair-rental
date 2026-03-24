@@ -1,12 +1,41 @@
-import { Controller, Get, Req, Res, UseGuards } from '@nestjs/common';
+import {
+  BadRequestException,
+  Body,
+  Controller,
+  Get,
+  Post,
+  Req,
+  Res,
+  UseGuards,
+} from '@nestjs/common';
 import { AuthGuard } from '@nestjs/passport';
-import { ApiTags } from '@nestjs/swagger';
+import { ApiBearerAuth, ApiTags } from '@nestjs/swagger';
 import { AuthService } from './auth.service';
+import { JwtAuthGuard } from './jwt-auth.guard';
+import { RolesGuard } from './roles.guard';
+import { Roles } from './roles.decorator';
+import { UserRole } from '../users/entities/user.entity';
 
 @ApiTags('auth')
 @Controller('auth')
 export class AuthController {
   constructor(private readonly authService: AuthService) {}
+
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles(UserRole.ADMIN)
+  @ApiBearerAuth()
+  @Post('impersonate')
+  async impersonate(
+    @Req() req,
+    @Body('targetUserId') targetUserId: string,
+  ) {
+    const normalizedTargetUserId = String(targetUserId || '').trim();
+    if (!normalizedTargetUserId) {
+      throw new BadRequestException('targetUserId is required');
+    }
+
+    return this.authService.impersonateAs(req.user.id, normalizedTargetUserId);
+  }
 
   @Get('google')
   @UseGuards(AuthGuard('google'))

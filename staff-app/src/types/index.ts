@@ -56,6 +56,11 @@ export interface User {
   role: UserRole;
   isActive: boolean;
   createdAt: string;
+  impersonation?: {
+    active: boolean;
+    impersonatedByUserId?: string;
+    impersonatedByRole?: UserRole;
+  };
 }
 
 export interface Vendor {

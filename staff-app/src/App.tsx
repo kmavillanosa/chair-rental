@@ -14,6 +14,7 @@ import AdminPayments from './pages/admin/AdminPayments'
 import FraudAlertsPage from './pages/admin/FraudAlerts'
 import DisputesPage from './pages/admin/DisputesPage'
 import KycSettingsPage from './pages/admin/KycSettings'
+import CustomersList from './pages/admin/CustomersList'
 import VendorDashboard from './pages/vendor/VendorDashboard'
 import Inventory from './pages/vendor/Inventory'
 import VendorBookings from './pages/vendor/VendorBookings'
@@ -24,6 +25,7 @@ import HelperPricing from './pages/vendor/HelperPricing'
 import VendorDeliveryVehicles from './pages/vendor/VendorDeliveryVehicles'
 import MyShop from './pages/vendor/MyShop'
 import VendorPayments from './pages/vendor/VendorPayments'
+import MyBookings from './pages/customer/MyBookings'
 import LegalDocumentPage from './pages/LegalDocumentPage'
 
 function ProtectedRoute({ children, role }: { children: React.ReactNode; role?: string }) {
@@ -37,6 +39,7 @@ function StaffHome() {
   const { user } = useAuthStore()
   if (user?.role === 'admin') return <Navigate to="/admin" replace />
   if (user?.role === 'vendor') return <Navigate to="/vendor" replace />
+  if (user?.role === 'customer') return <Navigate to="/customer" replace />
   return <Navigate to="/login" replace />
 }
 
@@ -82,6 +85,7 @@ export default function App() {
         <Route path="/login" element={<Login />} />
         <Route path="/auth/callback" element={<AuthCallback />} />
         <Route path="/admin" element={<ProtectedRoute role="admin"><AdminDashboard /></ProtectedRoute>} />
+        <Route path="/admin/customers" element={<ProtectedRoute role="admin"><CustomersList /></ProtectedRoute>} />
         <Route path="/admin/vendors" element={<ProtectedRoute role="admin"><VendorsList /></ProtectedRoute>} />
         <Route path="/admin/vendors/applicants" element={<ProtectedRoute role="admin"><VendorApplicantsList /></ProtectedRoute>} />
         <Route path="/admin/vendors/applicants/:vendorId" element={<ProtectedRoute role="admin"><VendorApplicantReview /></ProtectedRoute>} />
@@ -102,6 +106,8 @@ export default function App() {
         <Route path="/vendor/vehicles" element={<ProtectedRoute role="vendor"><VendorDeliveryVehicles /></ProtectedRoute>} />
         <Route path="/vendor/shop" element={<ProtectedRoute role="vendor"><MyShop /></ProtectedRoute>} />
         <Route path="/vendor/payments" element={<ProtectedRoute role="vendor"><VendorPayments /></ProtectedRoute>} />
+        <Route path="/customer" element={<ProtectedRoute role="customer"><MyBookings /></ProtectedRoute>} />
+        <Route path="/my-bookings" element={<ProtectedRoute role="customer"><MyBookings /></ProtectedRoute>} />
         <Route path="/" element={<ProtectedRoute><StaffHome /></ProtectedRoute>} />
         <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>

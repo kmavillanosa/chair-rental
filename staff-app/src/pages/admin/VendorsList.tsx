@@ -3,6 +3,8 @@ import { Badge, Button, Modal, Select, Table, TextInput } from 'flowbite-react';
 import toast from 'react-hot-toast';
 import { useNavigate } from 'react-router-dom';
 import AdminLayout from '../../components/layout/AdminLayout';
+import { impersonateUser } from '../../api/auth';
+import { useAuthStore } from '../../store/authStore';
 import {
   clearVendorWarnings,
   createVendor,
@@ -33,6 +35,8 @@ export default function VendorsList() {
   const [suspendTargetVendor, setSuspendTargetVendor] = useState<Vendor | null>(null);
   const [suspendingVendor, setSuspendingVendor] = useState(false);
   const [hardDeletingVendorId, setHardDeletingVendorId] = useState<string | null>(null);
+  const [impersonatingVendorId, setImpersonatingVendorId] = useState<string | null>(null);
+  const startImpersonation = useAuthStore((state) => state.startImpersonation);
   const [createForm, setCreateForm] = useState({
     userEmail: '',
     businessName: '',
@@ -206,6 +210,26 @@ export default function VendorsList() {
       toast.error(error?.response?.data?.message || 'Failed to hard-delete vendor.');
     } finally {
       setHardDeletingVendorId(null);
+    }
+  };
+
+  const handleImpersonateVendor = async (vendor: Vendor) => {
+    const vendorUserId = String(vendor.user?.id || '').trim();
+    if (!vendorUserId) {
+      toast.error('Vendor user account is missing.');
+      return;
+    }
+
+    setImpersonatingVendorId(vendor.id);
+    try {
+      const result = await impersonateUser(vendorUserId);
+      startImpersonation(result.access_token, result.user);
+      toast.success(`Now impersonating ${vendor.businessName}.`);
+      window.location.href = '/vendor';
+    } catch (error: any) {
+      toast.error(error?.response?.data?.message || 'Failed to impersonate vendor account.');
+    } finally {
+      setImpersonatingVendorId(null);
     }
   };
 
@@ -534,6 +558,16 @@ export default function VendorsList() {
                           disabled={hardDeletingVendorId === vendor.id}
                         >
                           Hard Delete
+                        </Button>
+                        <Button
+                          size="xs"
+                          color="light"
+                          className={neutralActionClass}
+                          onClick={() => handleImpersonateVendor(vendor)}
+                          isProcessing={impersonatingVendorId === vendor.id}
+                          disabled={impersonatingVendorId === vendor.id || !vendor.isActive}
+                        >
+                          Impersonate
                         </Button>
                       </div>
                     </Table.Cell>

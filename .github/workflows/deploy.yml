@@ -450,33 +450,77 @@ jobs:
           STAFF_PORTAL_BASE_URL="${STAFF_PORTAL_BASE_URL%/}"
           EXPECTED_STAFF_HOST="vendors.${VENDOR_DOMAIN:-rentalbasic.com}"
           PUBLIC_STAFF_HOST="$(printf '%s\n' "$STAFF_PORTAL_BASE_URL" | sed -E 's#^https?://([^/]+).*$#\1#')"
-          PUBLIC_STAFF_HEADERS="$(mktemp)"
-          PUBLIC_STAFF_BODY="$(mktemp)"
-          trap 'rm -f "$PUBLIC_STAFF_HEADERS" "$PUBLIC_STAFF_BODY"' EXIT
-          set +e
-          PUBLIC_STAFF_HTTP_CODE="$(curl -sSL -D "$PUBLIC_STAFF_HEADERS" -o "$PUBLIC_STAFF_BODY" -w '%{http_code}' "${STAFF_PORTAL_BASE_URL}/version.json")"
-          PUBLIC_STAFF_CURL_EXIT=$?
-          set -e
-          if ! echo "$PUBLIC_STAFF_HTTP_CODE" | grep -Eq '^[0-9]{3}$'; then
-            PUBLIC_STAFF_HTTP_CODE="000"
-          fi
-          PUBLIC_STAFF_VERSION_JSON="$(cat "$PUBLIC_STAFF_BODY")"
-          echo "  host: ${PUBLIC_STAFF_HOST}  HTTP: ${PUBLIC_STAFF_HTTP_CODE}  version: ${PUBLIC_STAFF_VERSION_JSON}"
+          PUBLIC_VERIFY_OK=0
+          PUBLIC_STAFF_HEADERS=""
+          PUBLIC_STAFF_BODY=""
+          PUBLIC_STAFF_HTTP_CODE="000"
+          PUBLIC_STAFF_CURL_EXIT=1
+          PUBLIC_STAFF_VERSION_JSON=""
 
-          if [ "$PUBLIC_STAFF_CURL_EXIT" -ne 0 ] || [ "$PUBLIC_STAFF_HTTP_CODE" -lt 200 ] || [ "$PUBLIC_STAFF_HTTP_CODE" -ge 400 ] || ! echo "$PUBLIC_STAFF_VERSION_JSON" | grep -q "\"service\":\"staff_app\"" || ! echo "$PUBLIC_STAFF_VERSION_JSON" | grep -q "\"commit\":\"$DEPLOY_SHA\""; then
+          for attempt in 1 2 3 4 5 6; do
+            PUBLIC_STAFF_HEADERS="$(mktemp)"
+            PUBLIC_STAFF_BODY="$(mktemp)"
+
+            CACHE_BUSTER="$(date +%s)-$attempt"
+            TARGET_URL="${STAFF_PORTAL_BASE_URL}/version.json?ci=${CACHE_BUSTER}"
+
+            set +e
+            PUBLIC_STAFF_HTTP_CODE="$(curl -sSL \
+              -H 'Cache-Control: no-cache, no-store, max-age=0' \
+              -H 'Pragma: no-cache' \
+              -D "$PUBLIC_STAFF_HEADERS" \
+              -o "$PUBLIC_STAFF_BODY" \
+              -w '%{http_code}' \
+              "$TARGET_URL")"
+            PUBLIC_STAFF_CURL_EXIT=$?
+            set -e
+
+            if ! echo "$PUBLIC_STAFF_HTTP_CODE" | grep -Eq '^[0-9]{3}$'; then
+              PUBLIC_STAFF_HTTP_CODE="000"
+            fi
+
+            PUBLIC_STAFF_VERSION_JSON="$(cat "$PUBLIC_STAFF_BODY")"
+            echo "  attempt ${attempt}: host=${PUBLIC_STAFF_HOST} HTTP=${PUBLIC_STAFF_HTTP_CODE} version=${PUBLIC_STAFF_VERSION_JSON}"
+
+            if [ "$PUBLIC_STAFF_CURL_EXIT" -eq 0 ] \
+              && [ "$PUBLIC_STAFF_HTTP_CODE" -ge 200 ] \
+              && [ "$PUBLIC_STAFF_HTTP_CODE" -lt 400 ] \
+              && echo "$PUBLIC_STAFF_VERSION_JSON" | grep -q "\"service\":\"staff_app\"" \
+              && echo "$PUBLIC_STAFF_VERSION_JSON" | grep -q "\"commit\":\"$DEPLOY_SHA\""; then
+              PUBLIC_VERIFY_OK=1
+              break
+            fi
+
+            rm -f "$PUBLIC_STAFF_HEADERS" "$PUBLIC_STAFF_BODY"
+            PUBLIC_STAFF_HEADERS=""
+            PUBLIC_STAFF_BODY=""
+            sleep 10
+          done
+
+          if [ "$PUBLIC_VERIFY_OK" -ne 1 ]; then
             echo "ERROR: ${STAFF_PORTAL_BASE_URL} is not serving staff_app commit ${DEPLOY_SHA} (HTTP ${PUBLIC_STAFF_HTTP_CODE}, curl exit ${PUBLIC_STAFF_CURL_EXIT})" >&2
             if [ "$PUBLIC_STAFF_HOST" != "$EXPECTED_STAFF_HOST" ]; then
               echo "  STAFF_FRONTEND_URL host (${PUBLIC_STAFF_HOST}) differs from expected (${EXPECTED_STAFF_HOST})." >&2
             fi
             echo "--- Response headers ---" >&2
-            cat "$PUBLIC_STAFF_HEADERS" >&2 || true
+            if [ -n "$PUBLIC_STAFF_HEADERS" ] && [ -f "$PUBLIC_STAFF_HEADERS" ]; then
+              cat "$PUBLIC_STAFF_HEADERS" >&2 || true
+            fi
             echo "--- Response body ---" >&2
-            cat "$PUBLIC_STAFF_BODY" >&2 || true
+            if [ -n "$PUBLIC_STAFF_BODY" ] && [ -f "$PUBLIC_STAFF_BODY" ]; then
+              cat "$PUBLIC_STAFF_BODY" >&2 || true
+            fi
             echo "--- DNS: ${PUBLIC_STAFF_HOST} ---" >&2
             getent ahostsv4 "$PUBLIC_STAFF_HOST" >&2 || true
             echo "--- VPS status ---" >&2
             ssh $SSH_OPTS "$VPS_USER@$VPS_HOST" "set -euo pipefail; cd /root/chair-rental; docker compose -f docker-compose.yml -f docker-compose.release.yml ps >&2 || true; docker compose -f docker-compose.yml -f docker-compose.release.yml logs --tail=50 nginx_proxy >&2 || true; ss -ltnp | grep -E ':(80|443)\\s' >&2 || true"
             exit 1
+          fi
+          if [ -n "$PUBLIC_STAFF_HEADERS" ] && [ -f "$PUBLIC_STAFF_HEADERS" ]; then
+            rm -f "$PUBLIC_STAFF_HEADERS"
+          fi
+          if [ -n "$PUBLIC_STAFF_BODY" ] && [ -f "$PUBLIC_STAFF_BODY" ]; then
+            rm -f "$PUBLIC_STAFF_BODY"
           fi
           echo "=== DEPLOY COMPLETE: staff_app commit ${DEPLOY_SHA} is live at ${STAFF_PORTAL_BASE_URL} ==="
 
