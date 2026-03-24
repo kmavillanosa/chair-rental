@@ -1,11 +1,7 @@
-name: Deploy to VPS
+name: Upload artifact and deploy containers on VPS
 
 on:
   push:
-    branches:
-      - main
-      - master
-  pull_request:
     branches:
       - main
       - master
@@ -18,30 +14,106 @@ permissions:
   contents: read
 
 jobs:
-  pull_repo:
+  build_artifact:
+    name: Build and upload artifact
     runs-on: ubuntu-latest
-    timeout-minutes: 10
-    needs: [build_artifact]
-    if: github.event_name == 'push'
+    timeout-minutes: 35
 
     steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+          cache-dependency-path: |
+            api/package-lock.json
+            app/package-lock.json
+            staff-app/package-lock.json
+
+      - name: Install dependencies
+        run: |
+          set -euo pipefail
+          npm ci --prefer-offline --no-audit --prefix api
+          npm ci --prefer-offline --no-audit --prefix app
+          npm ci --prefer-offline --no-audit --prefix staff-app
+
+      - name: Build artifacts
+        env:
+          VITE_VENDOR_DOMAIN: ${{ secrets.VENDOR_DOMAIN }}
+          VITE_API_URL: ${{ secrets.VITE_API_URL }}
+          VITE_VENDOR_LOGIN_URL: ${{ secrets.VITE_VENDOR_LOGIN_URL }}
+        run: |
+          set -euo pipefail
+
+          npm run build --prefix api
+          VITE_VENDOR_DOMAIN="${VITE_VENDOR_DOMAIN}" VITE_API_URL="${VITE_API_URL}" VITE_VENDOR_LOGIN_URL="${VITE_VENDOR_LOGIN_URL}" npm run build --prefix app
+          VITE_VENDOR_DOMAIN="${VITE_VENDOR_DOMAIN}" VITE_API_URL="${VITE_API_URL}" npm run build --prefix staff-app
+
+          BUILD_TIMESTAMP="$(date -u +"%Y-%m-%dT%H:%M:%SZ")"
+          printf '{"service":"app","commit":"%s","builtAt":"%s"}\n' "${GITHUB_SHA}" "${BUILD_TIMESTAMP}" > app/dist/version.json
+          printf '{"service":"staff_app","commit":"%s","builtAt":"%s"}\n' "${GITHUB_SHA}" "${BUILD_TIMESTAMP}" > staff-app/dist/version.json
+
+      - name: Create deploy bundle
+        run: |
+          set -euo pipefail
+          tar -czf chair-rental-deploy-bundle.tgz \
+            docker-compose.yml \
+            docker-compose.release.yml \
+            nginx \
+            api/package.json \
+            api/package-lock.json \
+            api/Dockerfile.release \
+            api/dist \
+            api/uploads \
+            app/nginx.conf \
+            app/Dockerfile.release \
+            app/dist \
+            staff-app/nginx.conf \
+            staff-app/Dockerfile.release \
+            staff-app/dist
+
+      - name: Upload deploy bundle artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: deploy-bundle
+          path: chair-rental-deploy-bundle.tgz
+          retention-days: 7
+
+  deploy_containers:
+    name: Deploy containers on VPS
+    runs-on: ubuntu-latest
+    timeout-minutes: 35
+    needs: [build_artifact]
+
+    steps:
+      - name: Download deploy bundle artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: deploy-bundle
+          path: .
+
       - name: Install SSH key
         uses: webfactory/ssh-agent@v0.9.1
         with:
           ssh-private-key: ${{ secrets.VPS_SSH_KEY }}
 
-      - name: Verify loaded SSH key
-        run: ssh-add -l
-
-      - name: Pull latest code on VPS
+      - name: Deploy on VPS
         env:
           VPS_HOST: ${{ secrets.VPS_HOST }}
           VPS_USER: ${{ secrets.VPS_USER }}
-          DEPLOY_BRANCH: ${{ github.ref_name }}
           DEPLOY_SHA: ${{ github.sha }}
+          FORCE_NO_CACHE: ${{ secrets.FORCE_NO_CACHE }}
+
           API_PORT: ${{ secrets.API_PORT }}
           DB_SYNC: ${{ secrets.DB_SYNC }}
           FRONTEND_URL: ${{ secrets.FRONTEND_URL }}
+          STAFF_FRONTEND_URL: ${{ secrets.STAFF_FRONTEND_URL }}
+          VENDOR_DOMAIN: ${{ secrets.VENDOR_DOMAIN }}
+          VITE_API_URL: ${{ secrets.VITE_API_URL }}
+          VITE_VENDOR_LOGIN_URL: ${{ secrets.VITE_VENDOR_LOGIN_URL }}
           GMAIL_APP_PASSWORD: ${{ secrets.GMAIL_APP_PASSWORD }}
           GMAIL_USER: ${{ secrets.GMAIL_USER }}
           GOOGLE_CALLBACK_URL: ${{ secrets.GOOGLE_CALLBACK_URL }}
@@ -67,10 +139,7 @@ jobs:
           ROCKETCHAT_URL: ${{ secrets.ROCKETCHAT_URL }}
           ROCKETCHAT_USER_SECRET: ${{ secrets.ROCKETCHAT_USER_SECRET }}
           ROCKETCHAT_WEBHOOK_SECRET: ${{ secrets.ROCKETCHAT_WEBHOOK_SECRET }}
-          STAFF_FRONTEND_URL: ${{ secrets.STAFF_FRONTEND_URL }}
-          VENDOR_DOMAIN: ${{ secrets.VENDOR_DOMAIN }}
-          VITE_API_URL: ${{ secrets.VITE_API_URL }}
-          VITE_VENDOR_LOGIN_URL: ${{ secrets.VITE_VENDOR_LOGIN_URL }}
+
           TLS_AUTO_PROVISION: ${{ secrets.TLS_AUTO_PROVISION }}
           CERTBOT_DOMAIN: ${{ secrets.CERTBOT_DOMAIN }}
           CERTBOT_EMAIL: ${{ secrets.CERTBOT_EMAIL }}
@@ -81,15 +150,24 @@ jobs:
           HOSTINGER_API_BASE_URL: ${{ secrets.HOSTINGER_API_BASE_URL }}
         run: |
           set -euo pipefail
-          SSH_OPTS="-o BatchMode=yes -o StrictHostKeyChecking=no -o ConnectTimeout=90 -o ConnectionAttempts=5 -o ServerAliveInterval=15 -o ServerAliveCountMax=60 -o TCPKeepAlive=yes"
 
-          ssh $SSH_OPTS "$VPS_USER@$VPS_HOST" "bash -s" <<REMOTE
+          SSH_OPTS="-o BatchMode=yes -o StrictHostKeyChecking=no -o ConnectTimeout=90 -o ConnectionAttempts=5"
+
+          scp $SSH_OPTS chair-rental-deploy-bundle.tgz "$VPS_USER@$VPS_HOST:/tmp/chair-rental-deploy-bundle.tgz"
+
+          ssh $SSH_OPTS "$VPS_USER@$VPS_HOST" "DEPLOY_SHA='$DEPLOY_SHA' FORCE_NO_CACHE='${FORCE_NO_CACHE:-false}' bash -s" <<'REMOTE'
           set -euo pipefail
-          export GIT_TERMINAL_PROMPT=0
-          if [ ! -d /root/chair-rental/.git ]; then
-            git clone --branch ${DEPLOY_BRANCH} https://github.com/kmavillanosa/chair-rental.git /root/chair-rental
-          fi
+
+          mkdir -p /root/chair-rental
           cd /root/chair-rental
+
+          export DOCKER_BUILDKIT=1
+          export COMPOSE_DOCKER_CLI_BUILD=1
+
+          rm -rf api/dist app/dist staff-app/dist
+          tar -xzf /tmp/chair-rental-deploy-bundle.tgz -C /root/chair-rental
+          rm -f /tmp/chair-rental-deploy-bundle.tgz
+          mkdir -p api/uploads
 
           cat > .env <<'ENVVARS'
           MYSQL_ROOT_PASSWORD=${MYSQL_ROOT_PASSWORD}
@@ -136,451 +214,31 @@ jobs:
 
           chmod 600 .env
 
-          git fetch --prune origin ${DEPLOY_BRANCH}
-
-          if git show-ref --verify --quiet "refs/heads/${DEPLOY_BRANCH}"; then
-            git checkout ${DEPLOY_BRANCH}
-          else
-            git checkout -b ${DEPLOY_BRANCH} --track origin/${DEPLOY_BRANCH}
-          fi
-
-          # Force-sync tracked files on VPS so local drift cannot block deploy.
-          git reset --hard origin/${DEPLOY_BRANCH}
-
-          CURRENT_SHA=\$(git rev-parse HEAD)
-          echo "Synced /root/chair-rental to \${CURRENT_SHA} on branch ${DEPLOY_BRANCH}"
-
-          EXPECTED_SHA="${DEPLOY_SHA:-}"
-          if [ -n "\$EXPECTED_SHA" ] && [ "\$CURRENT_SHA" != "\$EXPECTED_SHA" ]; then
-            echo "ERROR: Expected commit \$EXPECTED_SHA but VPS is at \${CURRENT_SHA}." >&2
-            exit 1
-          fi
-          REMOTE
-
-  test:
-    runs-on: ubuntu-latest
-    timeout-minutes: 30
-    strategy:
-      fail-fast: false
-      matrix:
-        project:
-          - app
-          - staff-app
-          - api
-
-    defaults:
-      run:
-        working-directory: ${{ matrix.project }}
-
-    steps:
-      - name: Checkout
-        uses: actions/checkout@v4
-
-      - name: Setup Node.js
-        uses: actions/setup-node@v4
-        with:
-          node-version: 20
-          cache: npm
-          cache-dependency-path: ${{ matrix.project }}/package-lock.json
-
-      - name: Install dependencies
-        run: npm ci --prefer-offline --no-audit
-
-      - name: Run unit tests (pull requests)
-        if: github.event_name == 'pull_request'
-        run: npm run test -- --passWithNoTests=false
-
-      - name: Run unit tests with coverage (push)
-        if: github.event_name == 'push'
-        run: npm run test:coverage -- --passWithNoTests=false
-
-  build_artifact:
-    runs-on: ubuntu-latest
-    timeout-minutes: 40
-    needs: [test]
-    if: github.event_name == 'push'
-
-    steps:
-      - name: Checkout
-        uses: actions/checkout@v4
-
-      - name: Setup Node.js
-        uses: actions/setup-node@v4
-        with:
-          node-version: 20
-          cache: npm
-          cache-dependency-path: |
-            api/package-lock.json
-            app/package-lock.json
-            staff-app/package-lock.json
-
-      - name: Install dependencies
-        run: |
-          set -euo pipefail
-          npm ci --prefer-offline --no-audit --prefix api
-          npm ci --prefer-offline --no-audit --prefix app
-          npm ci --prefer-offline --no-audit --prefix staff-app
-
-      - name: Build project artifacts
-        env:
-          VITE_VENDOR_DOMAIN: ${{ secrets.VENDOR_DOMAIN }}
-          VITE_API_URL: ${{ secrets.VITE_API_URL }}
-          VITE_VENDOR_LOGIN_URL: ${{ secrets.VITE_VENDOR_LOGIN_URL }}
-        run: |
-          set -euo pipefail
-          npm run build --prefix api
-          VITE_VENDOR_DOMAIN="${VITE_VENDOR_DOMAIN}" VITE_API_URL="${VITE_API_URL}" VITE_VENDOR_LOGIN_URL="${VITE_VENDOR_LOGIN_URL}" npm run build --prefix app
-          VITE_VENDOR_DOMAIN="${VITE_VENDOR_DOMAIN}" VITE_API_URL="${VITE_API_URL}" npm run build --prefix staff-app
-          BUILD_TIMESTAMP="$(date -u +"%Y-%m-%dT%H:%M:%SZ")"
-          printf '{"service":"app","commit":"%s","builtAt":"%s"}\n' "${GITHUB_SHA}" "${BUILD_TIMESTAMP}" > app/dist/version.json
-          printf '{"service":"staff_app","commit":"%s","builtAt":"%s"}\n' "${GITHUB_SHA}" "${BUILD_TIMESTAMP}" > staff-app/dist/version.json
-
-      - name: Create deploy bundle
-        id: bundle
-        run: |
-          set -euo pipefail
-          ARTIFACT_FILE="chair-rental-deploy-bundle-${GITHUB_SHA}.tgz"
-          tar -czf "$ARTIFACT_FILE" \
-            docker-compose.yml \
-            docker-compose.release.yml \
-            nginx \
-            api/package.json \
-            api/package-lock.json \
-            api/Dockerfile.release \
-            api/dist \
-            api/uploads \
-            app/nginx.conf \
-            app/Dockerfile.release \
-            app/dist \
-            staff-app/nginx.conf \
-            staff-app/Dockerfile.release \
-            staff-app/dist
-          echo "artifact_file=$ARTIFACT_FILE" >> "$GITHUB_OUTPUT"
-
-      - name: Upload deploy bundle artifact
-        uses: actions/upload-artifact@v4
-        with:
-          name: deploy-bundle
-          path: ${{ steps.bundle.outputs.artifact_file }}
-          retention-days: 7
-
-  deploy_containers:
-    runs-on: ubuntu-latest
-    timeout-minutes: 40
-    needs: [pull_repo]
-    if: github.event_name == 'push'
-
-    steps:
-      - name: Install SSH key
-        uses: webfactory/ssh-agent@v0.9.1
-        with:
-          ssh-private-key: ${{ secrets.VPS_SSH_KEY }}
-
-      - name: Verify loaded SSH key
-        run: ssh-add -l
-
-      - name: Download deploy bundle
-        uses: actions/download-artifact@v4
-        with:
-          name: deploy-bundle
-          path: ./deploy-bundle
-
-      - name: Upload artifact and deploy containers on VPS
-        env:
-          VPS_HOST: ${{ secrets.VPS_HOST }}
-          VPS_USER: ${{ secrets.VPS_USER }}
-          DEPLOY_SHA: ${{ github.sha }}
-          STAFF_FRONTEND_URL: ${{ secrets.STAFF_FRONTEND_URL }}
-          VENDOR_DOMAIN: ${{ secrets.VENDOR_DOMAIN }}
-          FORCE_NO_CACHE: ${{ vars.FORCE_NO_CACHE }}
-        run: |
-          set -euo pipefail
-          SSH_OPTS="-o BatchMode=yes -o StrictHostKeyChecking=no -o ConnectTimeout=90 -o ConnectionAttempts=5 -o ServerAliveInterval=15 -o ServerAliveCountMax=60 -o TCPKeepAlive=yes"
-          ARTIFACT_PATH="$(ls -1 ./deploy-bundle/*.tgz | head -n 1)"
-          FORCE_NO_CACHE="${FORCE_NO_CACHE:-false}"
-
-          scp $SSH_OPTS "$ARTIFACT_PATH" "$VPS_USER@$VPS_HOST:/tmp/chair-rental-deploy-bundle.tgz"
-
-          ssh $SSH_OPTS "$VPS_USER@$VPS_HOST" "DEPLOY_SHA='$DEPLOY_SHA' FORCE_NO_CACHE='$FORCE_NO_CACHE' bash -s" <<'REMOTE'
-          set -euo pipefail
-          cd /root/chair-rental
-          export DOCKER_BUILDKIT=1
-          export COMPOSE_DOCKER_CLI_BUILD=1
-
-          rm -rf api/dist app/dist staff-app/dist
-          tar -xzf /tmp/chair-rental-deploy-bundle.tgz -C /root/chair-rental
-          rm -f /tmp/chair-rental-deploy-bundle.tgz
-          mkdir -p api/uploads
-
           set -a
           . ./.env
           set +a
 
           if [ "${TLS_AUTO_PROVISION:-false}" = "true" ]; then
-            DOMAIN_FOR_CERT="${CERTBOT_DOMAIN:-${HOSTINGER_ZONE:-rentalbasic.com}}"
-            EMAIL_FOR_CERT="${CERTBOT_EMAIL:-}"
-
-            if [ -z "$EMAIL_FOR_CERT" ]; then
-              echo "TLS_AUTO_PROVISION=true but CERTBOT_EMAIL is empty." >&2
-              exit 1
-            fi
-
-            DOMAIN="$DOMAIN_FOR_CERT" \
-            EMAIL="$EMAIL_FOR_CERT" \
+            DOMAIN="${CERTBOT_DOMAIN:-${HOSTINGER_ZONE:-rentalbasic.com}}" \
+            EMAIL="${CERTBOT_EMAIL:-}" \
             DNS_PROVIDER=hostinger \
             FORCE_RENEWAL=false \
             bash nginx/certbot-init.sh
           fi
 
-          echo "=== PREP: warm docker image cache ==="
-          for IMAGE in node:18-alpine nginx:alpine mysql:8.0 phpmyadmin:latest; do
-            docker pull "$IMAGE" >/dev/null 2>&1 || true
-          done
-
-          echo "=== BUILD: api app staff_app (cache-enabled by default) ==="
           BUILD_FLAGS=(--pull)
           case "${FORCE_NO_CACHE:-false}" in
             true|TRUE|1|yes|YES|on|ON)
               BUILD_FLAGS+=(--no-cache)
-              echo "Build cache disabled via FORCE_NO_CACHE=${FORCE_NO_CACHE}"
-              ;;
-            *)
-              echo "Build cache enabled"
               ;;
           esac
-          BUILD_LOG="$(mktemp)"
-          if ! docker compose -f docker-compose.yml -f docker-compose.release.yml build "${BUILD_FLAGS[@]}" api app staff_app > "$BUILD_LOG" 2>&1; then
-            echo "ERROR: docker build failed:" >&2
-            cat "$BUILD_LOG" >&2
-            rm -f "$BUILD_LOG"
-            exit 1
-          fi
-          rm -f "$BUILD_LOG"
-          echo "Build complete."
 
-          docker compose -f docker-compose.yml -f docker-compose.release.yml up -d mysql > /dev/null 2>&1
+          docker compose -f docker-compose.yml -f docker-compose.release.yml build "${BUILD_FLAGS[@]}" api app staff_app
 
-          echo "Running migrations before recreating app services..."
+          docker compose -f docker-compose.yml -f docker-compose.release.yml up -d --force-recreate mysql
           docker compose -f docker-compose.yml -f docker-compose.release.yml run --rm api npm run db:migrate
+          docker compose -f docker-compose.yml -f docker-compose.release.yml up -d --force-recreate api app staff_app phpmyadmin nginx_proxy
 
-          echo "Removing existing frontend/proxy containers to force clean recreation..."
-          docker compose -f docker-compose.yml -f docker-compose.release.yml rm -sf app staff_app nginx_proxy || true
-
-          echo "=== UP (force-recreate: api app staff_app phpmyadmin nginx_proxy) ==="
-          UP_LOG="$(mktemp)"
-          if ! docker compose -f docker-compose.yml -f docker-compose.release.yml up -d --force-recreate api app staff_app phpmyadmin nginx_proxy > "$UP_LOG" 2>&1; then
-            echo "ERROR: docker compose up failed:" >&2
-            cat "$UP_LOG" >&2
-            rm -f "$UP_LOG"
-            exit 1
-          fi
-          rm -f "$UP_LOG"
-
-          echo "=== HEALTH: running services ==="
-          RUNNING_SERVICES="$(docker compose -f docker-compose.yml -f docker-compose.release.yml ps --status running --services)"
-          echo "$RUNNING_SERVICES"
-          for SVC in phpmyadmin nginx_proxy api app staff_app; do
-            if ! echo "$RUNNING_SERVICES" | grep -qx "$SVC"; then
-              echo "ERROR: $SVC is not running after deploy." >&2
-              docker compose -f docker-compose.yml -f docker-compose.release.yml logs --tail=50 "$SVC" >&2 || true
-              ss -ltnp | grep -E ':(80|443)\s' >&2 || true
-              exit 1
-            fi
-          done
-
-          echo "=== VERIFY: container images ==="
-          docker inspect -f '  {{.Name}}  created={{.Created}}' chair_rental_app chair_rental_staff_app chair_rental_proxy
-
-          echo "=== VERIFY: version.json in containers ==="
-          APP_VERSION_JSON="$(docker compose -f docker-compose.yml -f docker-compose.release.yml exec -T app sh -lc 'cat /usr/share/nginx/html/version.json' 2>/dev/null || echo 'NOT_FOUND')"
-          STAFF_VERSION_JSON="$(docker compose -f docker-compose.yml -f docker-compose.release.yml exec -T staff_app sh -lc 'cat /usr/share/nginx/html/version.json' 2>/dev/null || echo 'NOT_FOUND')"
-          echo "  app:       ${APP_VERSION_JSON}"
-          echo "  staff_app: ${STAFF_VERSION_JSON}"
-
-          if ! echo "$APP_VERSION_JSON" | grep -q "\"service\":\"app\"" || ! echo "$APP_VERSION_JSON" | grep -q "\"commit\":\"$DEPLOY_SHA\""; then
-            echo "ERROR: app container has wrong version.json (expected service=app commit=${DEPLOY_SHA})" >&2
-            echo "  actual: ${APP_VERSION_JSON}" >&2
-            docker compose -f docker-compose.yml -f docker-compose.release.yml exec -T app sh -lc 'ls /usr/share/nginx/html/' >&2 || true
-            exit 1
-          fi
-
-          if ! echo "$STAFF_VERSION_JSON" | grep -q "\"service\":\"staff_app\"" || ! echo "$STAFF_VERSION_JSON" | grep -q "\"commit\":\"$DEPLOY_SHA\""; then
-            echo "ERROR: staff_app container has wrong version.json (expected service=staff_app commit=${DEPLOY_SHA})" >&2
-            echo "  actual: ${STAFF_VERSION_JSON}" >&2
-            docker compose -f docker-compose.yml -f docker-compose.release.yml exec -T staff_app sh -lc 'ls /usr/share/nginx/html/' >&2 || true
-            exit 1
-          fi
-
-          echo "=== VERIFY: host ports (app:43171, staff_app:43172) ==="
-          HOST_APP_VERSION_JSON="$(curl -fsSL 'http://127.0.0.1:43171/version.json' || echo 'CURL_FAILED')"
-          HOST_STAFF_VERSION_JSON="$(curl -fsSL 'http://127.0.0.1:43172/version.json' || echo 'CURL_FAILED')"
-          echo "  43171: ${HOST_APP_VERSION_JSON}"
-          echo "  43172: ${HOST_STAFF_VERSION_JSON}"
-
-          if ! echo "$HOST_APP_VERSION_JSON" | grep -q "\"service\":\"app\"" || ! echo "$HOST_APP_VERSION_JSON" | grep -q "\"commit\":\"$DEPLOY_SHA\""; then
-            echo "ERROR: port 43171 is not serving app commit ${DEPLOY_SHA}" >&2
-            exit 1
-          fi
-
-          if ! echo "$HOST_STAFF_VERSION_JSON" | grep -q "\"service\":\"staff_app\"" || ! echo "$HOST_STAFF_VERSION_JSON" | grep -q "\"commit\":\"$DEPLOY_SHA\""; then
-            echo "ERROR: port 43172 is not serving staff_app commit ${DEPLOY_SHA}" >&2
-            exit 1
-          fi
-
-          echo "=== VERIFY: local nginx proxy ==="
-          VENDORS_HOST="vendors.${VENDOR_DOMAIN:-rentalbasic.com}"
-          LOCAL_PROXY_STAFF_VERSION_JSON="$(curl -kfsSL --resolve "${VENDORS_HOST}:443:127.0.0.1" "https://${VENDORS_HOST}/version.json" || echo 'CURL_FAILED')"
-          echo "  ${VENDORS_HOST}: ${LOCAL_PROXY_STAFF_VERSION_JSON}"
-
-          if ! echo "$LOCAL_PROXY_STAFF_VERSION_JSON" | grep -q "\"service\":\"staff_app\"" || ! echo "$LOCAL_PROXY_STAFF_VERSION_JSON" | grep -q "\"commit\":\"$DEPLOY_SHA\""; then
-            echo "ERROR: local nginx proxy is not serving staff_app commit ${DEPLOY_SHA} for host ${VENDORS_HOST}" >&2
-            docker compose -f docker-compose.yml -f docker-compose.release.yml logs --tail=50 nginx_proxy >&2 || true
-            exit 1
-          fi
-
-          echo "=== MAINT: prune dangling docker layers ==="
-          docker image prune -f --filter "dangling=true" >/dev/null 2>&1 || true
-
-          echo "=== VPS CHECKS PASSED ==="
+          echo "=== DEPLOYED SHA: ${DEPLOY_SHA} ==="
           docker compose -f docker-compose.yml -f docker-compose.release.yml ps
-          REMOTE
-
-          echo "=== VERIFY: public staff URL ==="
-          STAFF_PORTAL_BASE_URL="${STAFF_FRONTEND_URL:-https://vendors.rentalbasic.com}"
-          STAFF_PORTAL_BASE_URL="${STAFF_PORTAL_BASE_URL%/}"
-          EXPECTED_STAFF_HOST="vendors.${VENDOR_DOMAIN:-rentalbasic.com}"
-          PUBLIC_STAFF_HOST="$(printf '%s\n' "$STAFF_PORTAL_BASE_URL" | sed -E 's#^https?://([^/]+).*$#\1#')"
-          PUBLIC_VERIFY_OK=0
-          PUBLIC_STAFF_HEADERS=""
-          PUBLIC_STAFF_BODY=""
-          PUBLIC_STAFF_HTTP_CODE="000"
-          PUBLIC_STAFF_CURL_EXIT=1
-          PUBLIC_STAFF_VERSION_JSON=""
-
-          for attempt in 1 2 3 4 5 6; do
-            PUBLIC_STAFF_HEADERS="$(mktemp)"
-            PUBLIC_STAFF_BODY="$(mktemp)"
-
-            CACHE_BUSTER="$(date +%s)-$attempt"
-            TARGET_URL="${STAFF_PORTAL_BASE_URL}/version.json?ci=${CACHE_BUSTER}"
-
-            set +e
-            PUBLIC_STAFF_HTTP_CODE="$(curl -sSL \
-              -H 'Cache-Control: no-cache, no-store, max-age=0' \
-              -H 'Pragma: no-cache' \
-              -D "$PUBLIC_STAFF_HEADERS" \
-              -o "$PUBLIC_STAFF_BODY" \
-              -w '%{http_code}' \
-              "$TARGET_URL")"
-            PUBLIC_STAFF_CURL_EXIT=$?
-            set -e
-
-            if ! echo "$PUBLIC_STAFF_HTTP_CODE" | grep -Eq '^[0-9]{3}$'; then
-              PUBLIC_STAFF_HTTP_CODE="000"
-            fi
-
-            PUBLIC_STAFF_VERSION_JSON="$(cat "$PUBLIC_STAFF_BODY")"
-            echo "  attempt ${attempt}: host=${PUBLIC_STAFF_HOST} HTTP=${PUBLIC_STAFF_HTTP_CODE} version=${PUBLIC_STAFF_VERSION_JSON}"
-
-            if [ "$PUBLIC_STAFF_CURL_EXIT" -eq 0 ] \
-              && [ "$PUBLIC_STAFF_HTTP_CODE" -ge 200 ] \
-              && [ "$PUBLIC_STAFF_HTTP_CODE" -lt 400 ] \
-              && echo "$PUBLIC_STAFF_VERSION_JSON" | grep -q "\"service\":\"staff_app\"" \
-              && echo "$PUBLIC_STAFF_VERSION_JSON" | grep -q "\"commit\":\"$DEPLOY_SHA\""; then
-              PUBLIC_VERIFY_OK=1
-              break
-            fi
-
-            rm -f "$PUBLIC_STAFF_HEADERS" "$PUBLIC_STAFF_BODY"
-            PUBLIC_STAFF_HEADERS=""
-            PUBLIC_STAFF_BODY=""
-            sleep 10
-          done
-
-          if [ "$PUBLIC_VERIFY_OK" -ne 1 ]; then
-            echo "ERROR: ${STAFF_PORTAL_BASE_URL} is not serving staff_app commit ${DEPLOY_SHA} (HTTP ${PUBLIC_STAFF_HTTP_CODE}, curl exit ${PUBLIC_STAFF_CURL_EXIT})" >&2
-            if [ "$PUBLIC_STAFF_HOST" != "$EXPECTED_STAFF_HOST" ]; then
-              echo "  STAFF_FRONTEND_URL host (${PUBLIC_STAFF_HOST}) differs from expected (${EXPECTED_STAFF_HOST})." >&2
-            fi
-            echo "--- Response headers ---" >&2
-            if [ -n "$PUBLIC_STAFF_HEADERS" ] && [ -f "$PUBLIC_STAFF_HEADERS" ]; then
-              cat "$PUBLIC_STAFF_HEADERS" >&2 || true
-            fi
-            echo "--- Response body ---" >&2
-            if [ -n "$PUBLIC_STAFF_BODY" ] && [ -f "$PUBLIC_STAFF_BODY" ]; then
-              cat "$PUBLIC_STAFF_BODY" >&2 || true
-            fi
-            echo "--- DNS: ${PUBLIC_STAFF_HOST} ---" >&2
-            getent ahostsv4 "$PUBLIC_STAFF_HOST" >&2 || true
-            echo "--- VPS status ---" >&2
-            ssh $SSH_OPTS "$VPS_USER@$VPS_HOST" "set -euo pipefail; cd /root/chair-rental; docker compose -f docker-compose.yml -f docker-compose.release.yml ps >&2 || true; docker compose -f docker-compose.yml -f docker-compose.release.yml logs --tail=50 nginx_proxy >&2 || true; ss -ltnp | grep -E ':(80|443)\\s' >&2 || true"
-            exit 1
-          fi
-          if [ -n "$PUBLIC_STAFF_HEADERS" ] && [ -f "$PUBLIC_STAFF_HEADERS" ]; then
-            rm -f "$PUBLIC_STAFF_HEADERS"
-          fi
-          if [ -n "$PUBLIC_STAFF_BODY" ] && [ -f "$PUBLIC_STAFF_BODY" ]; then
-            rm -f "$PUBLIC_STAFF_BODY"
-          fi
-          echo "=== DEPLOY COMPLETE: staff_app commit ${DEPLOY_SHA} is live at ${STAFF_PORTAL_BASE_URL} ==="
-
-  post_deploy_db_checks:
-    runs-on: ubuntu-latest
-    timeout-minutes: 30
-    needs: [deploy_containers]
-    if: github.event_name == 'push'
-
-    steps:
-      - name: Install SSH key
-        uses: webfactory/ssh-agent@v0.9.1
-        with:
-          ssh-private-key: ${{ secrets.VPS_SSH_KEY }}
-
-      - name: Verify loaded SSH key
-        run: ssh-add -l
-
-      - name: Run migration and seed checks
-        env:
-          VPS_HOST: ${{ secrets.VPS_HOST }}
-          VPS_USER: ${{ secrets.VPS_USER }}
-        run: |
-          set -euo pipefail
-          SSH_OPTS="-o BatchMode=yes -o StrictHostKeyChecking=no -o ConnectTimeout=90 -o ConnectionAttempts=5 -o ServerAliveInterval=15 -o ServerAliveCountMax=60 -o TCPKeepAlive=yes"
-
-          ssh $SSH_OPTS "$VPS_USER@$VPS_HOST" "bash -s" <<'REMOTE'
-          set -euo pipefail
-          cd /root/chair-rental
-
-          COMPOSE_FILES="-f docker-compose.yml -f docker-compose.release.yml"
-
-          echo "Running db:migrate..."
-          docker compose $COMPOSE_FILES exec -T api npm run db:migrate
-
-          echo "Re-checking migration state..."
-          PENDING_AFTER="$(docker compose $COMPOSE_FILES exec -T api npm run db:show | grep -E '^\[ \]' || true)"
-
-          if [ -n "$PENDING_AFTER" ]; then
-            echo "ERROR: Pending migrations still exist after db:migrate." >&2
-            echo "$PENDING_AFTER" >&2
-            exit 1
-          fi
-
-          UPLOAD_FOLDER_COUNT="$(find api/uploads -mindepth 1 -maxdepth 1 -type d | wc -l | tr -d ' ')"
-          if [ "$UPLOAD_FOLDER_COUNT" = "0" ]; then
-            echo "ERROR: api/uploads has no seed folders, so catalog seeding cannot create item types." >&2
-            exit 1
-          fi
-
-          echo "Running master seed..."
-          docker compose $COMPOSE_FILES exec -T api npm run seed:master
-
-          ITEM_TYPE_COUNT="$(docker compose $COMPOSE_FILES exec -T mysql sh -lc 'mysql -u"$MYSQL_USER" -p"$MYSQL_PASSWORD" -D"$MYSQL_DATABASE" -Nse "SELECT COUNT(*) FROM item_types;"')"
-          if [ -z "$ITEM_TYPE_COUNT" ] || [ "$ITEM_TYPE_COUNT" = "0" ]; then
-            echo "ERROR: item_types is still empty after seeding." >&2
-            exit 1
-          fi
-
-          echo "Item types available after seed: $ITEM_TYPE_COUNT"
-
-          echo "Migration and seed checks completed successfully."
           REMOTE
