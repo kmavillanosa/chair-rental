@@ -229,6 +229,9 @@ export class Vendor {
   @Column({ type: 'decimal', precision: 5, scale: 2, default: 10.00 })
   commissionRate: number;
 
+  @Column({ type: 'varchar', length: 100, nullable: true, unique: true })
+  paymongoMerchantId: string | null;
+
   @Column({ type: 'decimal', precision: 12, scale: 2, default: 0 })
   balance: number;
 

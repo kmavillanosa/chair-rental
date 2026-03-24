@@ -304,8 +304,8 @@ export class BookingsService {
         );
       }
 
-      const platformFee = subtotalItems * commissionRate;
       const totalAmount = subtotalItems + delivery + service;
+      const platformFee = totalAmount * commissionRate;
       const depositAmount = this.toMoney(totalAmount);
       const remainingBalanceAmount = 0;
 
@@ -1498,6 +1498,12 @@ export class BookingsService {
       throw new BadRequestException('Booking amount must be greater than zero');
     }
 
+    // Resolve current commission rate for embedding in split payload (bps).
+    // Uses the same rate-resolution logic as booking creation.
+    const commissionRateForSplit = await this.resolveCommissionRateForBooking(
+      booking.vendor.commissionRate,
+    );
+
     const baseApi = String(process.env.PAYMONGO_API_BASE_URL || 'https://api.paymongo.com/v1').replace(/\/$/, '');
     const successUrl = this.withBookingQuery(
       process.env.PAYMONGO_SUCCESS_URL || `${process.env.FRONTEND_URL || 'http://127.0.0.1:43171'}/my-bookings`,
@@ -1514,6 +1520,11 @@ export class BookingsService {
       .split(',')
       .map((method) => method.trim())
       .filter(Boolean);
+
+    // Build split_payment payload when split is enabled and both merchant IDs are present.
+    // Vendor is set as transfer_to (receives remainder after fees and platform commission).
+    // Platform commission is configured as a percentage_net recipient in basis points.
+    const splitPaymentBlock = this.buildSplitPaymentBlock(booking, commissionRateForSplit);
 
     const payload = {
       data: {
@@ -1540,6 +1551,7 @@ export class BookingsService {
           show_description: true,
           show_line_items: true,
           success_url: successUrl,
+          ...(splitPaymentBlock ? { split_payment: splitPaymentBlock } : {}),
         },
       },
     };
@@ -1569,6 +1581,17 @@ export class BookingsService {
       );
     }
 
+    const snapshotForStorage = splitPaymentBlock
+      ? JSON.stringify({
+          transferTo: splitPaymentBlock.transfer_to,
+          recipients: splitPaymentBlock.recipients,
+          commissionRateBps: this.commissionRateToBps(commissionRateForSplit),
+          commissionBasis: 'total_booking_amount',
+          grossBookingAmountMinor: payableMinor,
+          capturedAt: new Date().toISOString(),
+        })
+      : null;
+
     await this.bookingsRepo.update(booking.id, {
       paymentStatus: BookingPaymentStatus.CHECKOUT_PENDING,
       paymentProvider: 'paymongo',
@@ -1576,7 +1599,71 @@ export class BookingsService {
       paymentCheckoutSessionId: checkoutSessionId,
       paymentCheckoutUrl: checkoutUrl,
       paymentPaidAt: null,
+      ...(snapshotForStorage !== null ? { splitPaymentSnapshot: snapshotForStorage } : {}),
     });
+  }
+
+  /**
+   * Returns a PayMongo `split_payment` block when all prerequisites are met:
+   *   - PAYMONGO_SPLIT_ENABLED env var is truthy
+   *   - PAYMONGO_PLATFORM_MERCHANT_ID env var is set
+   *   - Vendor has a paymongoMerchantId configured
+   * Vendor is always set as `transfer_to` (receives the net remainder).
+   * Platform commission is a `percentage_net` recipient entry in basis points.
+   * Returns null when prerequisites are not met, allowing checkout to proceed without split.
+   */
+  private buildSplitPaymentBlock(
+    booking: { vendor: { paymongoMerchantId?: string | null }; totalAmount: number; platformFee: number },
+    commissionRate: number,
+  ): { transfer_to: string; recipients: { merchant_id: string; split_type: string; value: number }[] } | null {
+    const splitEnabled = ['1', 'true', 'yes', 'on'].includes(
+      String(process.env.PAYMONGO_SPLIT_ENABLED || '').trim().toLowerCase(),
+    );
+    if (!splitEnabled) return null;
+
+    const platformMerchantId = String(process.env.PAYMONGO_PLATFORM_MERCHANT_ID || '').trim();
+    if (!platformMerchantId) {
+      this.logger.warn('PAYMONGO_PLATFORM_MERCHANT_ID is not set; proceeding without split_payment');
+      return null;
+    }
+
+    const vendorMerchantId = String(booking.vendor.paymongoMerchantId || '').trim();
+    if (!vendorMerchantId) {
+      this.logger.warn('Vendor has no paymongoMerchantId; proceeding without split_payment');
+      return null;
+    }
+
+    const commissionBps = this.commissionRateToBps(commissionRate);
+
+    // Safety guard: zero commission means the platform gets nothing, return transfer-to only.
+    if (commissionBps <= 0) {
+      return { transfer_to: vendorMerchantId, recipients: [] };
+    }
+
+    // Guard: bps cannot be >= 10000 (would exhaust entire net or more).
+    if (commissionBps >= 10000) {
+      this.logger.warn(
+        `Commission bps ${commissionBps} is >= 10000; clamping to 9500 to preserve safe vendor remainder`,
+      );
+    }
+    const safeBps = Math.min(commissionBps, 9500);
+
+    return {
+      transfer_to: vendorMerchantId,
+      recipients: [
+        {
+          merchant_id: platformMerchantId,
+          split_type: 'percentage_net',
+          value: safeBps,
+        },
+      ],
+    };
+  }
+
+  /** Converts a decimal commission rate (e.g. 0.10 or 10) to PayMongo basis points (e.g. 1000). */
+  private commissionRateToBps(rate: number): number {
+    const normalised = rate <= 1 ? rate : rate / 100;
+    return Math.round(normalised * 10000);
   }
 
   private toMinorUnits(amount: number) {

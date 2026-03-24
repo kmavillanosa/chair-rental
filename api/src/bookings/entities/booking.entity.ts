@@ -182,6 +182,9 @@ export class Booking {
   @OneToMany(() => BookingDocument, (document) => document.booking)
   documents: BookingDocument[];
 
+  @Column({ type: 'text', nullable: true })
+  splitPaymentSnapshot: string | null;
+
   @Column({ type: 'varchar', length: 255, nullable: true })
   rocketchatRoomId: string | null;
 

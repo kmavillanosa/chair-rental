@@ -201,6 +201,7 @@ export class VendorsService {
       isVerified: vendorInput.isVerified ?? true,
       isActive: vendorInput.isActive ?? true,
       duplicateRiskScore: Number(vendorInput.duplicateRiskScore || 0),
+      paymongoMerchantId: this.normalizePaymongoMerchantId(vendorInput.paymongoMerchantId),
     };
 
     if (!vendorData.businessName && vendorData.ownerFullName) {
@@ -662,6 +663,23 @@ export class VendorsService {
       payload.bankAccountNumberMasked = nextBankAccountStorage?.masked || null;
       payload.bankAccountLast4 = nextBankAccountStorage?.last4 || null;
       payload.bankAccountHash = nextBankAccountStorage?.hash || null;
+    }
+
+    // Normalise paymongoMerchantId: trim whitespace, validate org_ prefix,
+    // allow explicit null to clear the value.
+    if (Object.prototype.hasOwnProperty.call(data, 'paymongoMerchantId')) {
+      const raw = (data as any).paymongoMerchantId;
+      if (raw === null || raw === undefined || String(raw).trim() === '') {
+        payload.paymongoMerchantId = null;
+      } else {
+        const trimmed = String(raw).trim();
+        if (!/^org_[A-Za-z0-9]{10,}$/.test(trimmed)) {
+          throw new BadRequestException(
+            'paymongoMerchantId must be a valid PayMongo organisation ID (e.g. org_xxxxxxxxxxxx)',
+          );
+        }
+        payload.paymongoMerchantId = trimmed;
+      }
     }
 
     await this.vendorsRepo.update(id, payload);
@@ -1898,6 +1916,19 @@ export class VendorsService {
   private normalizeText(input: unknown): string | null {
     const normalized = String(input || '').trim();
     return normalized || null;
+  }
+
+  /** Trims and validates a PayMongo organisation merchant ID (must start with org_ and be at least 14 chars). */
+  private normalizePaymongoMerchantId(input: unknown): string | null {
+    if (input === null || input === undefined) return null;
+    const trimmed = String(input).trim();
+    if (!trimmed) return null;
+    if (!/^org_[A-Za-z0-9]{10,}$/.test(trimmed)) {
+      throw new BadRequestException(
+        'paymongoMerchantId must be a valid PayMongo organisation ID (e.g. org_xxxxxxxxxxxx)',
+      );
+    }
+    return trimmed;
   }
 
   private normalizeIdentifier(input: unknown): string | null {
