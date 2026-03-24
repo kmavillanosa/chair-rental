@@ -153,23 +153,7 @@ jobs:
 
           SSH_OPTS="-o BatchMode=yes -o StrictHostKeyChecking=no -o ConnectTimeout=90 -o ConnectionAttempts=5"
 
-          scp $SSH_OPTS chair-rental-deploy-bundle.tgz "$VPS_USER@$VPS_HOST:/tmp/chair-rental-deploy-bundle.tgz"
-
-          ssh $SSH_OPTS "$VPS_USER@$VPS_HOST" "DEPLOY_SHA='$DEPLOY_SHA' FORCE_NO_CACHE='${FORCE_NO_CACHE:-false}' bash -s" <<REMOTE
-          set -euo pipefail
-
-          mkdir -p /root/chair-rental
-          cd /root/chair-rental
-
-          export DOCKER_BUILDKIT=1
-          export COMPOSE_DOCKER_CLI_BUILD=1
-
-          rm -rf api/dist app/dist staff-app/dist
-          tar -xzf /tmp/chair-rental-deploy-bundle.tgz -C /root/chair-rental
-          rm -f /tmp/chair-rental-deploy-bundle.tgz
-          mkdir -p api/uploads
-
-          cat > .env <<'ENVVARS'
+          cat > chair-rental.env <<ENVVARS
           MYSQL_ROOT_PASSWORD=${MYSQL_ROOT_PASSWORD}
           MYSQL_DATABASE=${MYSQL_DATABASE}
           MYSQL_USER=${MYSQL_USER}
@@ -211,6 +195,26 @@ jobs:
           HOSTINGER_DNS_PROPAGATION_SECONDS=${HOSTINGER_DNS_PROPAGATION_SECONDS}
           HOSTINGER_API_BASE_URL=${HOSTINGER_API_BASE_URL}
           ENVVARS
+
+          scp $SSH_OPTS chair-rental-deploy-bundle.tgz "$VPS_USER@$VPS_HOST:/tmp/chair-rental-deploy-bundle.tgz"
+          scp $SSH_OPTS chair-rental.env "$VPS_USER@$VPS_HOST:/tmp/chair-rental.env"
+
+          ssh $SSH_OPTS "$VPS_USER@$VPS_HOST" "DEPLOY_SHA='$DEPLOY_SHA' FORCE_NO_CACHE='${FORCE_NO_CACHE:-false}' bash -s" <<'REMOTE'
+          set -euo pipefail
+
+          mkdir -p /root/chair-rental
+          cd /root/chair-rental
+
+          export DOCKER_BUILDKIT=1
+          export COMPOSE_DOCKER_CLI_BUILD=1
+
+          rm -rf api/dist app/dist staff-app/dist
+          tar -xzf /tmp/chair-rental-deploy-bundle.tgz -C /root/chair-rental
+          rm -f /tmp/chair-rental-deploy-bundle.tgz
+          mkdir -p api/uploads
+
+          mv /tmp/chair-rental.env .env
+          rm -f /tmp/chair-rental.env
 
           chmod 600 .env
 
