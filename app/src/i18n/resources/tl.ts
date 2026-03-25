@@ -8,6 +8,7 @@ export const tl = {
   },
   common: {
     appName: 'RentalBasic',
+    info: 'Info',
     signIn: 'Login',
     signOut: 'Logout',
     loading: 'Naglo-load...',
@@ -566,6 +567,53 @@ export const tl = {
     backToSearch: 'Back To Search',
     noMatchesTitle: 'Wala pang matching vendors',
     noMatchesSubtitle: 'Subukan ang mas malaking radius o bawasan ang equipment filters.',
+  },
+  tour: {
+    customer: {
+      openGuideTitle: 'Paano gamitin ang app na ito',
+      openGuideAriaLabel: 'Buksan ang app guide',
+      step1: {
+        title: 'Customer App Guide',
+        body: 'Gamitin ang guide button na ito anumang oras para makita ang flow ng platform mula search, booking, payment, delivery confirmation, hanggang support actions.',
+      },
+      step2: {
+        title: 'Magsimula sa Home Search',
+        body: 'Sa home page, piliin ang event type, equipment needs, date range, location pin, radius, at helper count para makahanap ng qualified nearby vendors.',
+      },
+      step3: {
+        title: 'Use Cases: Hanap at Compare ng Vendors',
+        bullet1: 'I-check ang map-based results at distance-aware delivery estimates.',
+        bullet2: 'Buksan ang vendor storefronts para i-compare ang availability, rates, at photos.',
+        bullet3: 'Mag-book direkta mula sa vendor page kapag ready ka na.',
+      },
+      step4: {
+        title: 'Booking Flow',
+        bullet1: 'Piliin ang items at quantities.',
+        bullet2: 'I-set ang rental dates (kung hindi pre-filled mula search).',
+        bullet3: 'I-set ang delivery address at map pin para sa pricing.',
+        bullet4: 'I-review ang summary at i-confirm ang booking.',
+      },
+      step5: {
+        title: 'Manage My Bookings',
+        body: 'Buksan ang My Bookings para ma-track ang status, ipagpatuloy ang payment, i-confirm ang delivery, mag-cancel with refund preview, at buksan ang booking detail view.',
+      },
+      step6: {
+        title: 'After Booking: Customer Actions',
+        bullet1: 'Magbayad nang secure via PayMongo kapag available na ang checkout.',
+        bullet2: 'Makipag-chat sa vendor sa booking details.',
+        bullet3: 'I-confirm ang delivery para ma-release ang vendor payout.',
+        bullet4: 'I-download ang contract at receipt PDFs.',
+        bullet5: 'Mag-rate ng vendor at magbukas ng dispute kung kailangan.',
+      },
+      step7: {
+        title: 'Maging Vendor',
+        body: 'Kung customer ang account mo, gamitin ang Become Vendor page para magsumite ng KYC info, business details, payout info, at required documents para sa admin approval.',
+      },
+      step8: {
+        title: 'Kailangan ng Policies o Legal Info?',
+        body: 'Ang legal footer ay may quick access sa terms at policy documents na ginagamit sa booking, payments, cancellation, at dispute handling.',
+      },
+    },
   },
 } as const;
 

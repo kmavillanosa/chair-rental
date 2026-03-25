@@ -1,9 +1,18 @@
 import { useEffect, useState } from 'react';
+import { useTour } from '@reactour/tour';
 import Sidebar from './Sidebar';
 import LegalFooter from '../common/LegalFooter';
+import { getStaffTourText } from '../../tour/staffTourText';
 
 export default function VendorLayout({ children }: { children?: React.ReactNode }) {
   const [mobileSidebarOpen, setMobileSidebarOpen] = useState(false);
+  const { setIsOpen, setCurrentStep } = useTour();
+  const text = getStaffTourText();
+
+  const handleOpenGuide = () => {
+    setCurrentStep(0);
+    setIsOpen(true);
+  };
 
   useEffect(() => {
     if (!mobileSidebarOpen) return;
@@ -19,17 +28,29 @@ export default function VendorLayout({ children }: { children?: React.ReactNode 
 
   return (
     <div className="flex h-screen overflow-hidden bg-[#f3f5f8]">
-      <div className="fixed inset-x-0 top-0 z-30 flex h-14 items-center justify-between border-b border-[#2d3f63] bg-[#1f2944]/95 px-4 backdrop-blur lg:hidden">
-        <p className="text-sm font-semibold text-slate-100">Vendor Panel</p>
-        <button
-          type="button"
-          aria-label="Open menu"
-          aria-expanded={mobileSidebarOpen}
-          onClick={() => setMobileSidebarOpen((current) => !current)}
-          className="rounded-md border border-white/35 px-3 py-1.5 text-sm font-semibold text-slate-100 transition hover:bg-white/10"
-        >
-          Menu
-        </button>
+      <div data-tour="staff-topbar" className="fixed inset-x-0 top-0 z-30 flex h-14 items-center justify-between border-b border-[#2d3f63] bg-[#1f2944]/95 px-4 backdrop-blur lg:hidden">
+        <p className="text-sm font-semibold text-slate-100">{text.vendor.panelLabel}</p>
+        <div className="flex items-center gap-2">
+          <button
+            type="button"
+            data-tour="staff-guide-button"
+            onClick={handleOpenGuide}
+            className="rounded-md border border-white/35 px-3 py-1.5 text-sm font-semibold text-slate-100 transition hover:bg-white/10"
+            aria-label={text.common.openVendorGuideAriaLabel}
+            title={text.common.openVendorGuideTitle}
+          >
+            {text.common.infoButton}
+          </button>
+          <button
+            type="button"
+            aria-label="Open menu"
+            aria-expanded={mobileSidebarOpen}
+            onClick={() => setMobileSidebarOpen((current) => !current)}
+            className="rounded-md border border-white/35 px-3 py-1.5 text-sm font-semibold text-slate-100 transition hover:bg-white/10"
+          >
+            Menu
+          </button>
+        </div>
       </div>
 
       {mobileSidebarOpen && (
@@ -42,16 +63,30 @@ export default function VendorLayout({ children }: { children?: React.ReactNode 
       )}
 
       <Sidebar
+        dataTour="staff-sidebar"
         role="vendor"
         onNavigate={() => setMobileSidebarOpen(false)}
         className={`fixed inset-y-0 left-0 z-40 transform transition-transform duration-200 lg:static lg:z-auto lg:translate-x-0 ${mobileSidebarOpen ? 'translate-x-0' : '-translate-x-full lg:translate-x-0'
           }`}
       />
 
-      <main className="min-w-0 flex-1 overflow-y-auto p-4 pt-16 lg:p-8 lg:pt-8">
+      <button
+        type="button"
+        data-tour="staff-guide-button"
+        onClick={handleOpenGuide}
+        className="fixed right-6 top-6 z-20 hidden rounded-md border border-[#1f2944]/30 bg-white px-3 py-1.5 text-sm font-semibold text-[#1f2944] shadow-sm transition hover:bg-slate-50 lg:inline-flex"
+        aria-label={text.common.openVendorGuideAriaLabel}
+        title={text.common.openVendorGuideTitle}
+      >
+        {text.common.infoButton}
+      </button>
+
+      <main data-tour="staff-main-content" className="min-w-0 flex-1 overflow-y-auto p-4 pt-16 lg:p-8 lg:pt-8">
         <div className="flex min-h-full flex-col">
           <div className="flex-1">{children}</div>
-          <LegalFooter className="mt-6" />
+          <div data-tour="staff-legal-footer">
+            <LegalFooter className="mt-6" />
+          </div>
         </div>
       </main>
     </div>

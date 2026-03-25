@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react'
 import { BrowserRouter, Routes, Route, Navigate, useLocation } from 'react-router-dom'
+import { TourProvider } from '@reactour/tour'
 import { useAuthStore } from './store/authStore'
 import { getFeatureFlagsSettings } from './api/settings'
 import Login from './pages/Login'
@@ -27,6 +28,7 @@ import LoadingSpinner from './components/common/LoadingSpinner'
 import LegalFooter from './components/common/LegalFooter'
 import { savePostLoginRedirect } from './utils/postLoginRedirect'
 import { useTranslation } from 'react-i18next'
+import { getCustomerTourSteps } from './tour/customerTour'
 
 const VENDOR_DOMAIN = import.meta.env.VITE_VENDOR_DOMAIN || 'rentalbasic.com';
 const RESERVED_SUBDOMAINS = new Set(['www', 'app', 'vendors', 'api', 'mail', 'phpmyadmin']);
@@ -129,6 +131,7 @@ function AppRoutes({
 export default function App() {
   const [featureFlagsLoading, setFeatureFlagsLoading] = useState(true)
   const [maintenanceModeEnabled, setMaintenanceModeEnabled] = useState(false)
+  const { t } = useTranslation()
   const { user } = useAuthStore()
   const vendorSlug = getVendorSlugFromSubdomain();
 
@@ -165,12 +168,38 @@ export default function App() {
   }
 
   return (
-    <BrowserRouter>
-      <AppRoutes
-        maintenanceModeEnabled={maintenanceModeEnabled}
-        userRole={user?.role}
-        vendorSlug={vendorSlug}
-      />
-    </BrowserRouter>
+    <TourProvider
+      steps={getCustomerTourSteps(t)}
+      showNavigation
+      showBadge={false}
+      showDots
+      padding={{ mask: 8, popover: [12, 16] }}
+      styles={{
+        popover: (base) => ({
+          ...base,
+          borderRadius: 16,
+          backgroundColor: '#0f172a',
+          color: '#e2e8f0',
+          boxShadow: '0 18px 50px rgba(2, 6, 23, 0.45)',
+          maxWidth: 440,
+        }),
+        maskArea: (base) => ({
+          ...base,
+          rx: 10,
+        }),
+        close: (base) => ({
+          ...base,
+          color: '#e2e8f0',
+        }),
+      }}
+    >
+      <BrowserRouter>
+        <AppRoutes
+          maintenanceModeEnabled={maintenanceModeEnabled}
+          userRole={user?.role}
+          vendorSlug={vendorSlug}
+        />
+      </BrowserRouter>
+    </TourProvider>
   )
 }

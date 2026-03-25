@@ -8,6 +8,7 @@ export const en = {
   },
   common: {
     appName: 'RentalBasic',
+    info: 'Info',
     signIn: 'Sign In',
     signOut: 'Sign Out',
     loading: 'Loading...',
@@ -566,6 +567,53 @@ export const en = {
     backToSearch: 'Back To Search',
     noMatchesTitle: 'No matching vendors found yet',
     noMatchesSubtitle: 'Try a larger radius or fewer equipment filters.',
+  },
+  tour: {
+    customer: {
+      openGuideTitle: 'How to use this app',
+      openGuideAriaLabel: 'Open app guide',
+      step1: {
+        title: 'Customer App Guide',
+        body: 'Use this guide button any time to review how the platform works, from search to booking, payment, delivery confirmation, and support actions.',
+      },
+      step2: {
+        title: 'Start From Home Search',
+        body: 'On the home page, select event type, equipment needs, date range, location pin, radius, and helper count to find qualified nearby vendors.',
+      },
+      step3: {
+        title: 'Use Cases: Find and Compare Vendors',
+        bullet1: 'Check map-based results and distance-aware delivery estimates.',
+        bullet2: 'Open vendor storefronts to compare availability, rates, and photos.',
+        bullet3: 'Book directly from a vendor page when you are ready.',
+      },
+      step4: {
+        title: 'Booking Flow',
+        bullet1: 'Select items and quantities.',
+        bullet2: 'Set rental dates (if not pre-filled from search).',
+        bullet3: 'Set delivery address and map pin for pricing.',
+        bullet4: 'Review summary and confirm booking.',
+      },
+      step5: {
+        title: 'Manage My Bookings',
+        body: 'Open My Bookings to track status, continue payment, confirm delivery, cancel with previewed refund policy, and open the booking detail view.',
+      },
+      step6: {
+        title: 'After Booking: Customer Actions',
+        bullet1: 'Pay securely via PayMongo when checkout opens.',
+        bullet2: 'Chat with the vendor inside booking details.',
+        bullet3: 'Confirm delivery to release vendor payout.',
+        bullet4: 'Download contract and receipt PDFs.',
+        bullet5: 'Rate the vendor and open disputes when needed.',
+      },
+      step7: {
+        title: 'Become a Vendor',
+        body: 'If your account is a customer, use the Become Vendor page to submit KYC information, business details, payout info, and required documents for admin approval.',
+      },
+      step8: {
+        title: 'Need Policies or Legal Info?',
+        body: 'The legal footer gives quick access to terms and policy documents referenced in booking, payments, cancellation, and dispute handling.',
+      },
+    },
   },
 } as const;
 

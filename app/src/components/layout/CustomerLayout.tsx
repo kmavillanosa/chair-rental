@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
 import { Link, useLocation } from 'react-router-dom';
+import { useTour } from '@reactour/tour';
 import { useAuthStore } from '../../store/authStore';
 import { useTranslation } from 'react-i18next';
 import LanguageSwitcher from '../common/LanguageSwitcher';
@@ -14,6 +15,7 @@ interface CustomerLayoutProps {
 export default function CustomerLayout({ children, hideHeaderBackground = false }: CustomerLayoutProps) {
   const { t } = useTranslation();
   const { user, logout } = useAuthStore();
+  const { setIsOpen, setCurrentStep } = useTour();
   const location = useLocation();
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
 
@@ -38,6 +40,11 @@ export default function CustomerLayout({ children, hideHeaderBackground = false 
     clearPostLoginRedirect();
     logout();
     window.location.href = '/login';
+  };
+
+  const handleOpenGuide = () => {
+    setCurrentStep(0);
+    setIsOpen(true);
   };
 
   const navLinks = [
@@ -66,12 +73,23 @@ export default function CustomerLayout({ children, hideHeaderBackground = false 
       <header className={headerClassName}>
         <div className="mx-auto max-w-7xl px-3 py-2 sm:px-4 sm:py-3">
           <div className="flex items-center justify-between gap-2">
-            <Link to="/" className="inline-flex min-w-0 items-center gap-2 text-lg font-bold sm:text-2xl">
+            <Link to="/" data-tour="header-brand" className="inline-flex min-w-0 items-center gap-2 text-lg font-bold sm:text-2xl">
               <span aria-hidden="true">🪑</span>
               <span className="truncate">{t('common.appName')}</span>
             </Link>
 
             <div className="flex items-center gap-2">
+              <button
+                id="tour-info-button"
+                data-tour="guide-button"
+                type="button"
+                onClick={handleOpenGuide}
+                className="inline-flex h-9 items-center justify-center rounded-md border border-white/40 px-3 text-sm font-semibold text-white transition hover:bg-white/10"
+                title={t('tour.customer.openGuideTitle')}
+                aria-label={t('tour.customer.openGuideAriaLabel')}
+              >
+                {t('common.info')}
+              </button>
               <LanguageSwitcher compact />
               <button
                 type="button"
@@ -102,7 +120,7 @@ export default function CustomerLayout({ children, hideHeaderBackground = false 
             </div>
           </div>
 
-          <nav className="mt-2 hidden flex-wrap items-center gap-1 md:flex">
+          <nav data-tour="header-nav" className="mt-2 hidden flex-wrap items-center gap-1 md:flex">
             {navLinks.map((link) => (
               <Link key={link.to} to={link.to} className={navPillClass(link.active)}>
                 {link.label}
@@ -140,8 +158,8 @@ export default function CustomerLayout({ children, hideHeaderBackground = false 
           )}
         </div>
       </header>
-      <main className="flex-1">{children}</main>
-      <div className="mx-auto w-full max-w-7xl px-3 pb-6 pt-4 sm:px-4">
+      <main data-tour="main-content" className="flex-1">{children}</main>
+      <div data-tour="footer-legal" className="mx-auto w-full max-w-7xl px-3 pb-6 pt-4 sm:px-4">
         <LegalFooter />
       </div>
     </div>
