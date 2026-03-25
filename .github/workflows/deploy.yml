@@ -45,12 +45,14 @@ jobs:
           VITE_VENDOR_DOMAIN: ${{ secrets.VENDOR_DOMAIN }}
           VITE_API_URL: ${{ secrets.VITE_API_URL }}
           VITE_VENDOR_LOGIN_URL: ${{ secrets.VITE_VENDOR_LOGIN_URL }}
+          VITE_STAFF_APP_URL: ${{ secrets.VITE_STAFF_APP_URL }}
+          VITE_CUSTOMER_APP_URL: ${{ secrets.VITE_CUSTOMER_APP_URL }}
         run: |
           set -euo pipefail
 
           npm run build --prefix api
-          VITE_VENDOR_DOMAIN="${VITE_VENDOR_DOMAIN}" VITE_API_URL="${VITE_API_URL}" VITE_VENDOR_LOGIN_URL="${VITE_VENDOR_LOGIN_URL}" npm run build --prefix app
-          VITE_VENDOR_DOMAIN="${VITE_VENDOR_DOMAIN}" VITE_API_URL="${VITE_API_URL}" npm run build --prefix staff-app
+          VITE_VENDOR_DOMAIN="${VITE_VENDOR_DOMAIN}" VITE_API_URL="${VITE_API_URL}" VITE_VENDOR_LOGIN_URL="${VITE_VENDOR_LOGIN_URL}" VITE_STAFF_APP_URL="${VITE_STAFF_APP_URL}" npm run build --prefix app
+          VITE_VENDOR_DOMAIN="${VITE_VENDOR_DOMAIN}" VITE_API_URL="${VITE_API_URL}" VITE_CUSTOMER_APP_URL="${VITE_CUSTOMER_APP_URL}" npm run build --prefix staff-app
 
           BUILD_TIMESTAMP="$(date -u +"%Y-%m-%dT%H:%M:%SZ")"
           printf '{"service":"app","commit":"%s","builtAt":"%s"}\n' "${GITHUB_SHA}" "${BUILD_TIMESTAMP}" > app/dist/version.json
@@ -114,6 +116,8 @@ jobs:
           VENDOR_DOMAIN: ${{ secrets.VENDOR_DOMAIN }}
           VITE_API_URL: ${{ secrets.VITE_API_URL }}
           VITE_VENDOR_LOGIN_URL: ${{ secrets.VITE_VENDOR_LOGIN_URL }}
+          VITE_STAFF_APP_URL: ${{ secrets.VITE_STAFF_APP_URL }}
+          VITE_CUSTOMER_APP_URL: ${{ secrets.VITE_CUSTOMER_APP_URL }}
           GMAIL_APP_PASSWORD: ${{ secrets.GMAIL_APP_PASSWORD }}
           GMAIL_USER: ${{ secrets.GMAIL_USER }}
           GOOGLE_CALLBACK_URL: ${{ secrets.GOOGLE_CALLBACK_URL }}
@@ -167,6 +171,8 @@ jobs:
           STAFF_FRONTEND_URL=${STAFF_FRONTEND_URL}
           VITE_API_URL=${VITE_API_URL}
           VITE_VENDOR_LOGIN_URL=${VITE_VENDOR_LOGIN_URL}
+          VITE_STAFF_APP_URL=${VITE_STAFF_APP_URL}
+          VITE_CUSTOMER_APP_URL=${VITE_CUSTOMER_APP_URL}
           VENDOR_DOMAIN=${VENDOR_DOMAIN}
           API_PORT=${API_PORT}
           PROXY_PORT=${PROXY_PORT}
@@ -223,7 +229,7 @@ jobs:
           set +a
 
           if [ "${TLS_AUTO_PROVISION:-false}" = "true" ]; then
-            DOMAIN="${CERTBOT_DOMAIN:-${HOSTINGER_ZONE:-rentalbasic.com}}" \
+            DOMAIN="${CERTBOT_DOMAIN:-${HOSTINGER_ZONE:-}}" \
             EMAIL="${CERTBOT_EMAIL:-}" \
             DNS_PROVIDER=hostinger \
             FORCE_RENEWAL=false \
@@ -275,8 +281,16 @@ jobs:
               ;;
           esac
 
-          APP_PUBLIC_VERSION="$(curl -fsS "https://rentalbasic.com/version.json?sha=${DEPLOY_SHA}" || true)"
-          STAFF_PUBLIC_VERSION="$(curl -fsS "https://vendors.rentalbasic.com/version.json?sha=${DEPLOY_SHA}" || true)"
+          APP_PUBLIC_BASE="${FRONTEND_URL%/}"
+          STAFF_PUBLIC_BASE="${STAFF_FRONTEND_URL%/}"
+
+          if [ -z "${APP_PUBLIC_BASE}" ] || [ -z "${STAFF_PUBLIC_BASE}" ]; then
+            echo "FRONTEND_URL and STAFF_FRONTEND_URL must be set from secrets"
+            exit 1
+          fi
+
+          APP_PUBLIC_VERSION="$(curl -fsS "${APP_PUBLIC_BASE}/version.json?sha=${DEPLOY_SHA}" || true)"
+          STAFF_PUBLIC_VERSION="$(curl -fsS "${STAFF_PUBLIC_BASE}/version.json?sha=${DEPLOY_SHA}" || true)"
 
           echo "app public version: ${APP_PUBLIC_VERSION:-<empty>}"
           echo "staff_app public version: ${STAFF_PUBLIC_VERSION:-<empty>}"
