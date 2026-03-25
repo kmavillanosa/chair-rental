@@ -1,9 +1,10 @@
 import axios from 'axios';
 import { useAuthStore } from '../store/authStore';
 import { getCurrentAppPath, savePostLoginRedirect } from '../utils/postLoginRedirect';
+import { resolveSafeApiBaseUrl } from '../utils/envUrl';
 
 const api = axios.create({
-  baseURL: import.meta.env.VITE_API_URL || 'http://api.rentalbasic.com',
+  baseURL: resolveSafeApiBaseUrl(),
 });
 
 api.interceptors.request.use((config) => {

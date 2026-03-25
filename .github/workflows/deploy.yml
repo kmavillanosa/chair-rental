@@ -50,6 +50,14 @@ jobs:
         run: |
           set -euo pipefail
 
+          for key in VITE_API_URL VITE_VENDOR_LOGIN_URL VITE_STAFF_APP_URL VITE_CUSTOMER_APP_URL; do
+            value="${!key:-}"
+            if [[ -n "$value" && "$value" =~ (localhost|127\.0\.0\.1|0\.0\.0\.0) ]]; then
+              echo "Refusing to build production artifacts with local value: $key=$value"
+              exit 1
+            fi
+          done
+
           npm run build --prefix api
           VITE_VENDOR_DOMAIN="${VITE_VENDOR_DOMAIN}" VITE_API_URL="${VITE_API_URL}" VITE_VENDOR_LOGIN_URL="${VITE_VENDOR_LOGIN_URL}" VITE_STAFF_APP_URL="${VITE_STAFF_APP_URL}" npm run build --prefix app
           VITE_VENDOR_DOMAIN="${VITE_VENDOR_DOMAIN}" VITE_API_URL="${VITE_API_URL}" VITE_CUSTOMER_APP_URL="${VITE_CUSTOMER_APP_URL}" npm run build --prefix staff-app

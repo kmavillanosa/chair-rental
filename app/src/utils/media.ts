@@ -1,4 +1,6 @@
-const API_BASE_URL = import.meta.env.VITE_API_URL || window.location.origin;
+import { resolveSafeApiBaseUrl } from './envUrl';
+
+const API_BASE_URL = resolveSafeApiBaseUrl() || window.location.origin;
 
 export function resolveMediaUrl(value?: string | null): string {
   const input = String(value || '').trim();

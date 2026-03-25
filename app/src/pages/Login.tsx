@@ -4,15 +4,17 @@ import LanguageSwitcher from '../components/common/LanguageSwitcher';
 import LegalFooter from '../components/common/LegalFooter';
 import { Link, useSearchParams } from 'react-router-dom';
 import { HiArrowLeft, HiArrowRight } from 'react-icons/hi';
+import { resolveSafeUrl } from '../utils/envUrl';
 
 export default function Login() {
   const { t } = useTranslation();
   const [searchParams] = useSearchParams();
-  const vendorLoginUrl = (
+  const vendorLoginCandidate = (
     import.meta.env.VITE_VENDOR_LOGIN_URL ||
     import.meta.env.VITE_STAFF_APP_URL ||
     'https://vendor.rentalbasic.com/login'
   ).trim();
+  const vendorLoginUrl = resolveSafeUrl(vendorLoginCandidate, 'https://vendor.rentalbasic.com/login');
   const authError = searchParams.get('error')?.trim() || '';
 
   const handleVendorLoginRedirect = () => {
