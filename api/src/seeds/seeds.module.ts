@@ -9,6 +9,7 @@ import { VendorDistanceSeedService } from './vendor-distance-seed.service';
 import { User } from '../users/entities/user.entity';
 import { TestVendorsSeedService } from './test-vendors-seed.service';
 import { InventoryItem } from '../inventory/entities/inventory-item.entity';
+import { VendorItem } from '../vendors/entities/vendor-item.entity';
 
 @Module({
   imports: [
@@ -19,6 +20,7 @@ import { InventoryItem } from '../inventory/entities/inventory-item.entity';
       DeliveryRate,
       User,
       InventoryItem,
+      VendorItem,
     ]),
   ],
   providers: [

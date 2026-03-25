@@ -9,6 +9,10 @@ import {
   VendorType,
   VendorVerificationStatus,
 } from '../vendors/entities/vendor.entity';
+import {
+  VendorItem,
+  VendorItemVerificationStatus,
+} from '../vendors/entities/vendor-item.entity';
 import { ItemType } from '../item-types/entities/item-type.entity';
 import { InventoryItem } from '../inventory/entities/inventory-item.entity';
 
@@ -17,6 +21,7 @@ export interface TestVendorsSeedResult {
   vendorsCreated: number;
   vendorsUpdated: number;
   inventoryItemsCreated: number;
+  vendorItemsCreated: number;
   totalTestVendors: number;
 }
 
@@ -54,6 +59,8 @@ export class TestVendorsSeedService {
     private readonly itemTypeRepo: Repository<ItemType>,
     @InjectRepository(InventoryItem)
     private readonly inventoryItemRepo: Repository<InventoryItem>,
+    @InjectRepository(VendorItem)
+    private readonly vendorItemRepo: Repository<VendorItem>,
   ) {}
 
   async seed(): Promise<TestVendorsSeedResult> {
@@ -61,6 +68,7 @@ export class TestVendorsSeedService {
     let vendorsCreated = 0;
     let vendorsUpdated = 0;
     let inventoryItemsCreated = 0;
+    let vendorItemsCreated = 0;
 
     const allItemTypes = await this.itemTypeRepo.find({
       where: { isActive: true },
@@ -163,12 +171,12 @@ export class TestVendorsSeedService {
 
       // Seed inventory items for this vendor
       for (const { itemType, quantity, ratePerDay } of itemTypesToSeed) {
-        const existingInventory = await this.inventoryItemRepo.findOne({
+        let inventoryItem = await this.inventoryItemRepo.findOne({
           where: { vendorId, itemTypeId: itemType.id },
         });
 
-        if (!existingInventory) {
-          await this.inventoryItemRepo.save(
+        if (!inventoryItem) {
+          inventoryItem = await this.inventoryItemRepo.save(
             this.inventoryItemRepo.create({
               vendorId,
               itemTypeId: itemType.id,
@@ -180,6 +188,25 @@ export class TestVendorsSeedService {
             }),
           );
           inventoryItemsCreated += 1;
+        }
+
+        const existingVendorItem = await this.vendorItemRepo.findOne({
+          where: { vendorId, inventoryItemId: inventoryItem.id },
+        });
+
+        if (!existingVendorItem) {
+          await this.vendorItemRepo.save(
+            this.vendorItemRepo.create({
+              vendorId,
+              inventoryItemId: inventoryItem.id,
+              title: `${itemType.name} - Test Inventory`,
+              description: `Seeded test item for ${businessName}`,
+              verificationStatus: VendorItemVerificationStatus.VERIFIED,
+              rejectionReason: null,
+              isSuspicious: false,
+            }),
+          );
+          vendorItemsCreated += 1;
         }
       }
     }
@@ -193,6 +220,7 @@ export class TestVendorsSeedService {
       vendorsCreated,
       vendorsUpdated,
       inventoryItemsCreated,
+      vendorItemsCreated,
       totalTestVendors,
     };
   }
