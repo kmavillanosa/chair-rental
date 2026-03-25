@@ -156,6 +156,8 @@ export default function KycSettingsPage() {
             const updated = await updateFeatureFlagsSettings({
                 allowOrdersWithoutPayment: featureFlags.allowOrdersWithoutPayment,
                 maintenanceModeEnabled: featureFlags.maintenanceModeEnabled,
+                showTestVendorsOnCustomerMap:
+                    featureFlags.showTestVendorsOnCustomerMap,
                 defaultPlatformCommissionRatePercent: Number(
                     parsedCommissionPercent.toFixed(2),
                 ),
@@ -213,6 +215,12 @@ export default function KycSettingsPage() {
                         <h2 className="text-2xl font-semibold text-slate-900">Launch Controls</h2>
                         <p className="text-sm text-slate-600">
                             Configure platform fee behavior during launch windows.
+                        </p>
+                    </div>
+
+                    <div className="rounded-xl border border-slate-200 bg-slate-50 px-4 py-3">
+                        <p className="text-xs font-semibold uppercase tracking-wide text-slate-600">
+                            Marketplace Visibility & Access
                         </p>
                     </div>
 
@@ -274,6 +282,32 @@ export default function KycSettingsPage() {
                                 }
                             />
                         </div>
+                    </div>
+
+                    <div className="rounded-xl border border-slate-200 p-4">
+                        <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+                            <div>
+                                <p className="text-lg font-semibold text-slate-900">Show Test Vendors on Customer Map</p>
+                                <p className="text-sm text-slate-600">
+                                    When enabled, test vendor accounts can appear in customer map search results.
+                                </p>
+                            </div>
+                            <FeatureFlagSwitch
+                                checked={featureFlags.showTestVendorsOnCustomerMap}
+                                onChange={(checked) =>
+                                    setFeatureFlags((current) => ({
+                                        ...current,
+                                        showTestVendorsOnCustomerMap: checked,
+                                    }))
+                                }
+                            />
+                        </div>
+                    </div>
+
+                    <div className="rounded-xl border border-slate-200 bg-slate-50 px-4 py-3">
+                        <p className="text-xs font-semibold uppercase tracking-wide text-slate-600">
+                            Pricing Defaults
+                        </p>
                     </div>
 
                     <div className="grid gap-4 md:grid-cols-2">
@@ -338,6 +372,11 @@ export default function KycSettingsPage() {
                     </div>
 
                     <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
+                        <div className="md:col-span-2 xl:col-span-4 rounded-xl border border-slate-200 bg-slate-50 px-4 py-3">
+                            <p className="text-xs font-semibold uppercase tracking-wide text-slate-600">
+                                Vendor Risk Guardrails
+                            </p>
+                        </div>
                         <div>
                             <label className="mb-2 block text-sm font-semibold text-slate-800">
                                 New Vendor Completion Threshold
