@@ -750,11 +750,11 @@ export default function CustomerResults() {
                                             </Button>
                                         )}
                                         <Button
-                                            size="xs"
-                                            color="light"
+                                            size="sm"
+                                            color="blue"
                                             onClick={() => setComparisonOpen(true)}
                                             disabled={comparisonRows.length === 0}
-                                            className="w-full sm:w-auto"
+                                            className="w-full font-semibold sm:w-auto"
                                         >
                                             {t('customerResults.compareVendorPrices')}
                                         </Button>
