@@ -775,7 +775,7 @@ export default function BookingFlow() {
         endDate,
         deliveryAddress,
         deliveryCharge,
-        distanceKm: deliveryDistanceKm,
+        distanceKm: deliveryDistanceKm !== null ? Math.round(deliveryDistanceKm * 100) / 100 : undefined,
         helperCount: parsedHelpersNeeded,
         waitingHours: 0,
         isNightDelivery: false,
