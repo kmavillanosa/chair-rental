@@ -12,6 +12,7 @@ async function bootstrap() {
     console.log(`Users created: ${result.usersCreated}`);
     console.log(`Vendors created: ${result.vendorsCreated}`);
     console.log(`Vendors updated: ${result.vendorsUpdated}`);
+    console.log(`Inventory items created: ${result.inventoryItemsCreated}`);
     console.log(`Total test vendors: ${result.totalTestVendors}`);
   } catch (error) {
     console.error('Test vendors seed failed.');

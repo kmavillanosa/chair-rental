@@ -9,11 +9,14 @@ import {
   VendorType,
   VendorVerificationStatus,
 } from '../vendors/entities/vendor.entity';
+import { ItemType } from '../item-types/entities/item-type.entity';
+import { InventoryItem } from '../inventory/entities/inventory-item.entity';
 
 export interface TestVendorsSeedResult {
   usersCreated: number;
   vendorsCreated: number;
   vendorsUpdated: number;
+  inventoryItemsCreated: number;
   totalTestVendors: number;
 }
 
@@ -47,12 +50,28 @@ export class TestVendorsSeedService {
     private readonly usersRepo: Repository<User>,
     @InjectRepository(Vendor)
     private readonly vendorsRepo: Repository<Vendor>,
+    @InjectRepository(ItemType)
+    private readonly itemTypeRepo: Repository<ItemType>,
+    @InjectRepository(InventoryItem)
+    private readonly inventoryItemRepo: Repository<InventoryItem>,
   ) {}
 
   async seed(): Promise<TestVendorsSeedResult> {
     let usersCreated = 0;
     let vendorsCreated = 0;
     let vendorsUpdated = 0;
+    let inventoryItemsCreated = 0;
+
+    // Find or get item types
+    const monoblock = await this.itemTypeRepo.findOne({ where: { name: 'Monoblock' } });
+    const foldingTable = await this.itemTypeRepo.findOne({ where: { name: 'Folding Table' } });
+    const tent = await this.itemTypeRepo.findOne({ where: { name: 'Tent' } });
+
+    const itemTypesToSeed = [
+      { itemType: monoblock, quantity: 50, ratePerDay: monoblock?.defaultRatePerDay || 80 },
+      { itemType: foldingTable, quantity: 30, ratePerDay: foldingTable?.defaultRatePerDay || 220 },
+      { itemType: tent, quantity: 5, ratePerDay: tent?.defaultRatePerDay || 3500 },
+    ].filter(item => item.itemType);
 
     for (let index = 0; index < TEST_VENDOR_COORDINATES.length; index += 1) {
       const ordinal = index + 1;
@@ -112,14 +131,38 @@ export class TestVendorsSeedService {
         warningCount: 0,
       };
 
+      let vendorId: string;
       if (!existingVendor) {
-        await this.vendorsRepo.save(this.vendorsRepo.create(patch));
+        const saved = await this.vendorsRepo.save(this.vendorsRepo.create(patch));
+        vendorId = saved.id;
         vendorsCreated += 1;
-        continue;
+      } else {
+        vendorId = existingVendor.id;
+        await this.vendorsRepo.update(vendorId, patch);
+        vendorsUpdated += 1;
       }
 
-      await this.vendorsRepo.update(existingVendor.id, patch);
-      vendorsUpdated += 1;
+      // Seed inventory items for this vendor
+      for (const { itemType, quantity, ratePerDay } of itemTypesToSeed) {
+        const existingInventory = await this.inventoryItemRepo.findOne({
+          where: { vendorId, itemTypeId: itemType.id },
+        });
+
+        if (!existingInventory) {
+          await this.inventoryItemRepo.save(
+            this.inventoryItemRepo.create({
+              vendorId,
+              itemTypeId: itemType.id,
+              quantity,
+              availableQuantity: quantity,
+              ratePerDay,
+              condition: 'New',
+              color: 'Standard',
+            }),
+          );
+          inventoryItemsCreated += 1;
+        }
+      }
     }
 
     const totalTestVendors = await this.vendorsRepo.count({
@@ -130,6 +173,7 @@ export class TestVendorsSeedService {
       usersCreated,
       vendorsCreated,
       vendorsUpdated,
+      inventoryItemsCreated,
       totalTestVendors,
     };
   }
