@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { Button, TextInput } from 'flowbite-react';
 import toast from 'react-hot-toast';
+import { NavLink, useLocation } from 'react-router-dom';
 import AdminLayout from '../../components/layout/AdminLayout';
 import LoadingSpinner from '../../components/common/LoadingSpinner';
 import {
@@ -72,7 +73,17 @@ const toDateInputValue = (value: string | null) => {
     return parsed.toISOString().split('T')[0];
 };
 
+type SettingsSection = 'feature-flags' | 'cancellation' | 'kyc';
+
+const resolveSettingsSection = (pathname: string): SettingsSection => {
+    if (pathname.includes('/admin/settings/cancellation')) return 'cancellation';
+    if (pathname.includes('/admin/settings/kyc')) return 'kyc';
+    return 'feature-flags';
+};
+
 export default function KycSettingsPage() {
+    const location = useLocation();
+    const activeSection = resolveSettingsSection(location.pathname);
     const [loading, setLoading] = useState(true);
     const [savingKyc, setSavingKyc] = useState(false);
     const [savingFeatureFlags, setSavingFeatureFlags] = useState(false);
@@ -209,7 +220,47 @@ export default function KycSettingsPage() {
         <AdminLayout>
             <h1 className="mb-8 text-4xl font-bold text-slate-900">Platform Feature Flags</h1>
 
+            <div className="mb-6 flex flex-wrap gap-2 rounded-xl border border-slate-200 bg-white p-2">
+                <NavLink
+                    to="/admin/settings/feature-flags"
+                    className={({ isActive }) =>
+                        `rounded-lg px-4 py-2 text-sm font-semibold transition ${
+                            isActive
+                                ? 'bg-slate-900 text-white'
+                                : 'text-slate-600 hover:bg-slate-100 hover:text-slate-900'
+                        }`
+                    }
+                >
+                    Feature Flags
+                </NavLink>
+                <NavLink
+                    to="/admin/settings/cancellation"
+                    className={({ isActive }) =>
+                        `rounded-lg px-4 py-2 text-sm font-semibold transition ${
+                            isActive
+                                ? 'bg-slate-900 text-white'
+                                : 'text-slate-600 hover:bg-slate-100 hover:text-slate-900'
+                        }`
+                    }
+                >
+                    Cancellation Policy
+                </NavLink>
+                <NavLink
+                    to="/admin/settings/kyc"
+                    className={({ isActive }) =>
+                        `rounded-lg px-4 py-2 text-sm font-semibold transition ${
+                            isActive
+                                ? 'bg-slate-900 text-white'
+                                : 'text-slate-600 hover:bg-slate-100 hover:text-slate-900'
+                        }`
+                    }
+                >
+                    KYC Controls
+                </NavLink>
+            </div>
+
             <div className="space-y-6">
+                {activeSection === 'feature-flags' && (
                 <div className="space-y-6 rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
                     <div>
                         <h2 className="text-2xl font-semibold text-slate-900">Launch Controls</h2>
@@ -470,7 +521,9 @@ export default function KycSettingsPage() {
                         </Button>
                     </div>
                 </div>
+                )}
 
+                {activeSection === 'cancellation' && (
                 <div className="space-y-6 rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
                     <div>
                         <h2 className="text-2xl font-semibold text-slate-900">Cancellation Policy</h2>
@@ -553,7 +606,9 @@ export default function KycSettingsPage() {
                         </Button>
                     </div>
                 </div>
+                )}
 
+                {activeSection === 'kyc' && (
                 <div className="space-y-6 rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
                     <div>
                         <h2 className="text-2xl font-semibold text-slate-900">KYC Controls</h2>
@@ -624,6 +679,7 @@ export default function KycSettingsPage() {
                         </Button>
                     </div>
                 </div>
+                )}
             </div>
         </AdminLayout>
     );

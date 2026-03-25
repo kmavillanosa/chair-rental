@@ -123,7 +123,9 @@ export default function App() {
           <Route path="/admin/payments/*" element={<ProtectedRoute role="admin"><AdminPayments /></ProtectedRoute>} />
           <Route path="/admin/fraud-alerts" element={<ProtectedRoute role="admin"><FraudAlertsPage /></ProtectedRoute>} />
           <Route path="/admin/disputes" element={<ProtectedRoute role="admin"><DisputesPage /></ProtectedRoute>} />
+          <Route path="/admin/settings" element={<Navigate to="/admin/settings/feature-flags" replace />} />
           <Route path="/admin/settings/feature-flags" element={<ProtectedRoute role="admin"><KycSettingsPage /></ProtectedRoute>} />
+          <Route path="/admin/settings/cancellation" element={<ProtectedRoute role="admin"><KycSettingsPage /></ProtectedRoute>} />
           <Route path="/admin/settings/kyc" element={<ProtectedRoute role="admin"><KycSettingsPage /></ProtectedRoute>} />
           <Route path="/vendor" element={<ProtectedRoute role="vendor"><VendorDashboard /></ProtectedRoute>} />
           <Route path="/vendor/inventory" element={<ProtectedRoute role="vendor"><Inventory /></ProtectedRoute>} />

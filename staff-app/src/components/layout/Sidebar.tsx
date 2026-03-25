@@ -13,6 +13,8 @@ const adminLinks = [
   { to: '/admin/fraud-alerts', label: 'Fraud Alerts' },
   { to: '/admin/disputes', label: 'Disputes' },
   { to: '/admin/settings/feature-flags', label: 'Feature Flags' },
+  { to: '/admin/settings/cancellation', label: 'Cancellation Policy' },
+  { to: '/admin/settings/kyc', label: 'KYC Controls' },
 ];
 
 interface MenuLink {
