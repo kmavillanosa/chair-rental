@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Button } from 'flowbite-react';
+import { Bar, BarChart, CartesianGrid, Legend, ResponsiveContainer, Scatter, ScatterChart, Tooltip, XAxis, YAxis } from 'recharts';
 import { Circle, CircleMarker, MapContainer, Marker, Polyline, Popup, TileLayer, ZoomControl, useMap } from 'react-leaflet';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import toast from 'react-hot-toast';
@@ -27,6 +28,20 @@ type RouteArrowPoint = {
     position: [number, number];
     bearing: number;
 };
+
+type VendorComparisonRow = {
+    id: string;
+    vendorName: string;
+    vendorSlug: string;
+    shortName: string;
+    estimatedDeliveryCharge: number | null;
+    distanceKm: number | null;
+    matchedItemTypeCount: number;
+    stockCoveragePercent: number;
+    bestValueScore: number;
+};
+
+type ComparisonSortMode = 'best_value' | 'cheapest' | 'nearest' | 'stock';
 
 function toRadians(value: number) {
     return (value * Math.PI) / 180;
@@ -131,10 +146,12 @@ function ResultsMapViewport({
     center,
     radiusKm,
     vendors,
+    reserveRightPanelSpace,
 }: {
     center: [number, number];
     radiusKm: number;
     vendors: Vendor[];
+    reserveRightPanelSpace: boolean;
 }) {
     const map = useMap();
 
@@ -153,6 +170,7 @@ function ResultsMapViewport({
             bounds.extend(L.latLng(center[0], center[1]));
 
             const hasTopRightResultsPanel =
+                reserveRightPanelSpace &&
                 typeof window !== 'undefined' &&
                 window.matchMedia('(min-width: 768px)').matches;
 
@@ -166,7 +184,7 @@ function ResultsMapViewport({
         }
 
         map.setView(center, getZoomFromRadius(radiusKm), { animate: true });
-    }, [center, map, radiusKm, vendors]);
+    }, [center, map, radiusKm, reserveRightPanelSpace, vendors]);
 
     return null;
 }
@@ -225,11 +243,14 @@ export default function CustomerResults() {
     const [loading, setLoading] = useState(true);
     const [requestError, setRequestError] = useState<string | null>(null);
     const [mobilePanelOpen, setMobilePanelOpen] = useState(false);
+    const [desktopMatchesOpen, setDesktopMatchesOpen] = useState(false);
     const [activeRouteVendorId, setActiveRouteVendorId] = useState<string | null>(null);
     const [activeRouteVendorName, setActiveRouteVendorName] = useState('');
     const [activeRoutePoints, setActiveRoutePoints] = useState<[number, number][]>([]);
     const [activeRouteOnRoads, setActiveRouteOnRoads] = useState(false);
     const [loadingRoute, setLoadingRoute] = useState(false);
+    const [comparisonOpen, setComparisonOpen] = useState(false);
+    const [comparisonSortMode, setComparisonSortMode] = useState<ComparisonSortMode>('best_value');
 
     const routeRequestRef = useRef<AbortController | null>(null);
     const routeCacheRef = useRef(
@@ -467,6 +488,156 @@ export default function CustomerResults() {
             .sort((a, b) => compareVendorsByBestCriteria(a, b, itemTypeIds.length));
     }, [itemTypeIds.length, vendorsWithPins]);
 
+    const comparisonRows = useMemo<VendorComparisonRow[]>(() => {
+        const requiredStockCount = itemTypeIds.length;
+        const rawRows = [...topVendors].map((vendor) => {
+            const normalizedCharge =
+                vendor.estimatedDeliveryCharge == null || !Number.isFinite(Number(vendor.estimatedDeliveryCharge))
+                    ? null
+                    : Number(vendor.estimatedDeliveryCharge);
+            const normalizedDistance =
+                vendor.distanceKm == null || !Number.isFinite(Number(vendor.distanceKm))
+                    ? null
+                    : Number(vendor.distanceKm);
+            const matchedStock = Number(vendor.matchedItemTypeCount ?? 0);
+            const stockCoveragePercent =
+                requiredStockCount > 0
+                    ? Math.min(100, Math.max(0, (matchedStock / requiredStockCount) * 100))
+                    : 100;
+
+            return {
+                id: vendor.id,
+                vendorName: vendor.businessName,
+                vendorSlug: vendor.slug,
+                shortName: vendor.businessName.slice(0, 14),
+                estimatedDeliveryCharge: normalizedCharge,
+                distanceKm: normalizedDistance,
+                matchedItemTypeCount: matchedStock,
+                stockCoveragePercent,
+            };
+        });
+
+        const deliveryValues = rawRows
+            .map((row) => row.estimatedDeliveryCharge)
+            .filter((value): value is number => value != null);
+        const distanceValues = rawRows
+            .map((row) => row.distanceKm)
+            .filter((value): value is number => value != null);
+        const stockValues = rawRows.map((row) => row.stockCoveragePercent);
+
+        const minDelivery = deliveryValues.length ? Math.min(...deliveryValues) : 0;
+        const maxDelivery = deliveryValues.length ? Math.max(...deliveryValues) : 0;
+        const minDistance = distanceValues.length ? Math.min(...distanceValues) : 0;
+        const maxDistance = distanceValues.length ? Math.max(...distanceValues) : 0;
+        const minStock = stockValues.length ? Math.min(...stockValues) : 0;
+        const maxStock = stockValues.length ? Math.max(...stockValues) : 0;
+
+        const normalize = (value: number | null, min: number, max: number, fallback = 1) => {
+            if (value == null) return fallback;
+            if (max <= min) return 0;
+            return (value - min) / (max - min);
+        };
+
+        return rawRows.map((row) => {
+            const deliveryNorm = normalize(row.estimatedDeliveryCharge, minDelivery, maxDelivery);
+            const distanceNorm = normalize(row.distanceKm, minDistance, maxDistance);
+            const stockNorm = normalize(row.stockCoveragePercent, minStock, maxStock, 0);
+
+            const bestValueScore =
+                deliveryNorm * 0.45 +
+                distanceNorm * 0.35 +
+                (1 - stockNorm) * 0.2;
+
+            return {
+                ...row,
+                bestValueScore,
+            };
+        });
+    }, [itemTypeIds.length, topVendors]);
+
+    const sortedComparisonRows = useMemo(() => {
+        return [...comparisonRows].sort((left, right) => {
+            if (comparisonSortMode === 'cheapest') {
+                const chargeCompare = compareNullableNumberAscending(left.estimatedDeliveryCharge, right.estimatedDeliveryCharge);
+                if (chargeCompare !== 0) return chargeCompare;
+                return compareNullableNumberAscending(left.distanceKm, right.distanceKm);
+            }
+
+            if (comparisonSortMode === 'nearest') {
+                const distanceCompare = compareNullableNumberAscending(left.distanceKm, right.distanceKm);
+                if (distanceCompare !== 0) return distanceCompare;
+                return compareNullableNumberAscending(left.estimatedDeliveryCharge, right.estimatedDeliveryCharge);
+            }
+
+            if (comparisonSortMode === 'stock') {
+                if (left.matchedItemTypeCount !== right.matchedItemTypeCount) {
+                    return right.matchedItemTypeCount - left.matchedItemTypeCount;
+                }
+                const chargeCompare = compareNullableNumberAscending(left.estimatedDeliveryCharge, right.estimatedDeliveryCharge);
+                if (chargeCompare !== 0) return chargeCompare;
+                return left.vendorName.localeCompare(right.vendorName);
+            }
+
+            if (left.bestValueScore !== right.bestValueScore) {
+                return left.bestValueScore - right.bestValueScore;
+            }
+
+            return left.vendorName.localeCompare(right.vendorName);
+        });
+    }, [comparisonRows, comparisonSortMode]);
+
+    const bestPriceRow = useMemo(() => {
+        return sortedComparisonRows.find((row) => row.estimatedDeliveryCharge != null) || null;
+    }, [sortedComparisonRows]);
+
+    const bestStockRow = useMemo(() => {
+        if (!sortedComparisonRows.length) return null;
+        return [...sortedComparisonRows].sort((left, right) => {
+            if (left.matchedItemTypeCount !== right.matchedItemTypeCount) {
+                return right.matchedItemTypeCount - left.matchedItemTypeCount;
+            }
+
+            if (left.estimatedDeliveryCharge == null && right.estimatedDeliveryCharge != null) return 1;
+            if (left.estimatedDeliveryCharge != null && right.estimatedDeliveryCharge == null) return -1;
+            if (left.estimatedDeliveryCharge != null && right.estimatedDeliveryCharge != null) {
+                return left.estimatedDeliveryCharge - right.estimatedDeliveryCharge;
+            }
+
+            return left.vendorName.localeCompare(right.vendorName);
+        })[0];
+    }, [sortedComparisonRows]);
+
+    const bestValueRow = useMemo(() => {
+        return sortedComparisonRows[0] || null;
+    }, [sortedComparisonRows]);
+
+    const nearestRow = useMemo(() => {
+        return [...comparisonRows]
+            .sort((left, right) => compareNullableNumberAscending(left.distanceKm, right.distanceKm))[0] || null;
+    }, [comparisonRows]);
+
+    const activeModeLabel = useMemo(() => {
+        if (comparisonSortMode === 'cheapest') return t('customerResults.compareModeCheapest');
+        if (comparisonSortMode === 'nearest') return t('customerResults.compareModeNearest');
+        if (comparisonSortMode === 'stock') return t('customerResults.compareModeStock');
+        return t('customerResults.compareModeBestValue');
+    }, [comparisonSortMode, t]);
+
+    const comparisonChartRows = useMemo(() => {
+        return sortedComparisonRows
+            .filter((row) => row.estimatedDeliveryCharge != null)
+            .map((row) => ({
+                ...row,
+                estimatedDeliveryCharge: Number(row.estimatedDeliveryCharge),
+            }));
+    }, [sortedComparisonRows]);
+
+    const comparisonScatterRows = useMemo(() => {
+        return sortedComparisonRows.filter(
+            (row) => row.estimatedDeliveryCharge != null && row.distanceKm != null,
+        );
+    }, [sortedComparisonRows]);
+
     const radiusOptions = useMemo(() => {
         const nextSet = new Set<number>(RADIUS_OPTIONS_KM);
         if (Number.isFinite(radiusKm) && radiusKm > 0) nextSet.add(radiusKm);
@@ -578,6 +749,15 @@ export default function CustomerResults() {
                                                 {t('customerResults.openNearestShop')}
                                             </Button>
                                         )}
+                                        <Button
+                                            size="xs"
+                                            color="light"
+                                            onClick={() => setComparisonOpen(true)}
+                                            disabled={comparisonRows.length === 0}
+                                            className="w-full sm:w-auto"
+                                        >
+                                            {t('customerResults.compareVendorPrices')}
+                                        </Button>
                                     </div>
                                 </div>
                             </div>
@@ -625,7 +805,12 @@ export default function CustomerResults() {
 
                         <div className="relative h-[calc(100dvh-170px)] min-h-[440px] flex-1 overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm sm:min-h-[560px]">
                             <MapContainer center={searchCenter} zoom={12} zoomControl={false} className="h-full w-full">
-                                <ResultsMapViewport center={searchCenter} radiusKm={radiusKm} vendors={vendorsWithPins} />
+                                <ResultsMapViewport
+                                    center={searchCenter}
+                                    radiusKm={radiusKm}
+                                    vendors={vendorsWithPins}
+                                    reserveRightPanelSpace={desktopMatchesOpen && topVendors.length > 0}
+                                />
                                 <TileLayer
                                     url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
                                     attribution="&copy; OpenStreetMap contributors"
@@ -738,43 +923,76 @@ export default function CustomerResults() {
                             <div className="pointer-events-none absolute inset-x-0 top-0 z-[900] h-24 bg-gradient-to-b from-slate-950/30 to-transparent" />
 
                             {!loading && !requestError && topVendors.length > 0 && (
-                                <div className="pointer-events-none absolute right-4 top-4 z-[1000] hidden w-[min(92vw,370px)] md:block">
-                                    <div className="pointer-events-auto rounded-2xl border border-slate-200/90 bg-white/95 p-4 shadow-2xl backdrop-blur">
-                                        <p className="text-xs font-semibold uppercase tracking-[0.14em] text-slate-500">{t('customerResults.closestMatches')}</p>
-                                        <div className="mt-2 max-h-[55dvh] space-y-2 overflow-y-auto pr-1">
-                                            {topVendors.map((vendor) => (
-                                                <div
-                                                    key={vendor.id}
-                                                    className="flex items-center justify-between rounded-xl border border-slate-200 bg-slate-50 px-3 py-2"
-                                                >
-                                                    <div className="min-w-0 pr-2">
-                                                        <p className="truncate text-sm font-semibold text-slate-900">{vendor.businessName}</p>
-                                                        {vendor.verificationBadge && (
-                                                            <p className="mt-0.5 text-[10px] font-semibold uppercase tracking-wide text-emerald-700">
-                                                                {vendor.verificationBadge}
-                                                            </p>
-                                                        )}
-                                                        {vendor.isTestAccount && (
-                                                            <p className="mt-0.5 text-[10px] font-semibold uppercase tracking-wide text-amber-700">
-                                                                {t('customerResults.testAccountBadge')}
-                                                            </p>
-                                                        )}
-                                                        <p className="text-xs text-slate-600">
-                                                            {vendor.distanceKm != null
-                                                                ? t('customerResults.cardDistanceAway', { distance: vendor.distanceKm.toFixed(1) })
-                                                                : t('customerResults.cardDistanceUnavailable')}
-                                                        </p>
+                                <div className="pointer-events-none absolute right-0 top-1/2 z-[1000] hidden -translate-y-1/2 md:block">
+                                    <div className="relative flex items-center">
+                                        <div
+                                            className={`pointer-events-auto overflow-hidden rounded-l-2xl border border-r-0 border-slate-200/90 bg-white/95 shadow-2xl backdrop-blur transition-all duration-300 ${desktopMatchesOpen ? 'mr-0 max-w-[320px] opacity-100' : 'mr-[-1px] max-w-0 border-transparent opacity-0'}`}
+                                        >
+                                            <div className="w-[320px] p-4">
+                                                <div className="flex items-start justify-between gap-3">
+                                                    <div>
+                                                        <p className="text-xs font-semibold uppercase tracking-[0.14em] text-slate-500">{t('customerResults.closestMatches')}</p>
+                                                        <p className="mt-1 text-xs text-slate-600">{topVendors.length} vendors</p>
                                                     </div>
                                                     <button
                                                         type="button"
-                                                        className="rounded-lg bg-blue-600 px-2.5 py-1 text-xs font-semibold text-white hover:bg-blue-700"
-                                                        onClick={() => navigate(getVendorShopUrl(vendor.slug))}
+                                                        onClick={() => setDesktopMatchesOpen(false)}
+                                                        className="rounded-lg border border-slate-200 px-2 py-1 text-xs font-semibold text-slate-600 hover:bg-slate-100"
+                                                        aria-label={t('common.close')}
                                                     >
-                                                        {t('customerResults.cardView')}
+                                                        ×
                                                     </button>
                                                 </div>
-                                            ))}
+                                                <div className="mt-3 max-h-[55dvh] space-y-2 overflow-y-auto pr-1">
+                                                    {topVendors.map((vendor) => (
+                                                        <div
+                                                            key={vendor.id}
+                                                            className="flex items-center justify-between rounded-xl border border-slate-200 bg-slate-50 px-3 py-2"
+                                                        >
+                                                            <div className="min-w-0 pr-2">
+                                                                <p className="truncate text-sm font-semibold text-slate-900">{vendor.businessName}</p>
+                                                                {vendor.verificationBadge && (
+                                                                    <p className="mt-0.5 text-[10px] font-semibold uppercase tracking-wide text-emerald-700">
+                                                                        {vendor.verificationBadge}
+                                                                    </p>
+                                                                )}
+                                                                {vendor.isTestAccount && (
+                                                                    <p className="mt-0.5 text-[10px] font-semibold uppercase tracking-wide text-amber-700">
+                                                                        {t('customerResults.testAccountBadge')}
+                                                                    </p>
+                                                                )}
+                                                                <p className="text-xs text-slate-600">
+                                                                    {vendor.distanceKm != null
+                                                                        ? t('customerResults.cardDistanceAway', { distance: vendor.distanceKm.toFixed(1) })
+                                                                        : t('customerResults.cardDistanceUnavailable')}
+                                                                </p>
+                                                            </div>
+                                                            <button
+                                                                type="button"
+                                                                className="rounded-lg bg-blue-600 px-2.5 py-1 text-xs font-semibold text-white hover:bg-blue-700"
+                                                                onClick={() => navigate(getVendorShopUrl(vendor.slug))}
+                                                            >
+                                                                {t('customerResults.cardView')}
+                                                            </button>
+                                                        </div>
+                                                    ))}
+                                                </div>
+                                            </div>
                                         </div>
+
+                                        <button
+                                            type="button"
+                                            onClick={() => setDesktopMatchesOpen((current) => !current)}
+                                            className="pointer-events-auto flex h-40 w-12 items-center justify-center rounded-l-2xl border border-r-0 border-slate-200 bg-white/95 px-2 text-center shadow-xl backdrop-blur hover:bg-slate-50"
+                                            aria-label={t('customerResults.closestMatches')}
+                                        >
+                                            <span
+                                                className="text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-700"
+                                                style={{ writingMode: 'vertical-rl', textOrientation: 'mixed' }}
+                                            >
+                                                {t('customerResults.closestMatches')}
+                                            </span>
+                                        </button>
                                     </div>
                                 </div>
                             )}
@@ -811,6 +1029,282 @@ export default function CustomerResults() {
                     </div>
                 </div>
             </section>
+
+            {comparisonOpen && (
+                <div className="fixed inset-0 z-[1500] flex items-center justify-center bg-slate-950/60 px-3 py-5 backdrop-blur-sm sm:px-6">
+                    <div className="relative max-h-[92dvh] w-full max-w-5xl overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-2xl">
+                        <div className="flex items-start justify-between border-b border-slate-200 bg-slate-50 px-4 py-3 sm:px-6">
+                            <div>
+                                <p className="text-xs font-semibold uppercase tracking-[0.16em] text-blue-700">{t('customerResults.comparePanelLabel')}</p>
+                                <h2 className="mt-1 text-lg font-bold text-slate-900 sm:text-xl">{t('customerResults.compareVendorPrices')}</h2>
+                                <p className="mt-1 text-xs text-slate-600 sm:text-sm">
+                                    {t('customerResults.comparePanelSubtitle', { count: comparisonRows.length })}
+                                </p>
+                            </div>
+                            <button
+                                type="button"
+                                onClick={() => setComparisonOpen(false)}
+                                className="rounded-lg border border-slate-300 bg-white px-2.5 py-1 text-sm font-semibold text-slate-700 hover:bg-slate-100"
+                            >
+                                {t('common.close')}
+                            </button>
+                        </div>
+
+                        <div className="max-h-[calc(92dvh-88px)] space-y-4 overflow-y-auto bg-white px-4 py-4 sm:px-6 sm:py-5">
+                            <div className="rounded-xl border border-blue-200 bg-blue-50 px-4 py-3">
+                                <p className="text-xs font-semibold uppercase tracking-[0.14em] text-blue-800">{t('customerResults.compareHowToTitle')}</p>
+                                <p className="mt-1 text-sm text-blue-900">{t('customerResults.compareHowToSteps')}</p>
+                            </div>
+
+                            <div className="flex flex-wrap gap-2 rounded-xl border border-slate-200 bg-slate-50 p-3">
+                                <span className="mr-1 text-xs font-semibold uppercase tracking-[0.14em] text-slate-500">
+                                    {t('customerResults.compareSortBy')}
+                                </span>
+                                <button
+                                    type="button"
+                                    onClick={() => setComparisonSortMode('best_value')}
+                                    className={`rounded-lg px-3 py-1.5 text-xs font-semibold ${comparisonSortMode === 'best_value' ? 'bg-slate-900 text-white' : 'bg-white text-slate-700 hover:bg-slate-100'}`}
+                                >
+                                    {t('customerResults.compareModeBestValue')}
+                                </button>
+                                <button
+                                    type="button"
+                                    onClick={() => setComparisonSortMode('cheapest')}
+                                    className={`rounded-lg px-3 py-1.5 text-xs font-semibold ${comparisonSortMode === 'cheapest' ? 'bg-slate-900 text-white' : 'bg-white text-slate-700 hover:bg-slate-100'}`}
+                                >
+                                    {t('customerResults.compareModeCheapest')}
+                                </button>
+                                <button
+                                    type="button"
+                                    onClick={() => setComparisonSortMode('nearest')}
+                                    className={`rounded-lg px-3 py-1.5 text-xs font-semibold ${comparisonSortMode === 'nearest' ? 'bg-slate-900 text-white' : 'bg-white text-slate-700 hover:bg-slate-100'}`}
+                                >
+                                    {t('customerResults.compareModeNearest')}
+                                </button>
+                                <button
+                                    type="button"
+                                    onClick={() => setComparisonSortMode('stock')}
+                                    className={`rounded-lg px-3 py-1.5 text-xs font-semibold ${comparisonSortMode === 'stock' ? 'bg-slate-900 text-white' : 'bg-white text-slate-700 hover:bg-slate-100'}`}
+                                >
+                                    {t('customerResults.compareModeStock')}
+                                </button>
+                            </div>
+
+                            <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+                                <div className="rounded-xl border border-emerald-200 bg-emerald-50 px-4 py-3">
+                                    <p className="text-[11px] font-semibold uppercase tracking-[0.14em] text-emerald-700">{t('customerResults.compareBestPrice')}</p>
+                                    <p className="mt-1 truncate text-sm font-bold text-slate-900">{bestPriceRow?.vendorName || t('common.na')}</p>
+                                    <p className="mt-0.5 text-sm font-semibold text-emerald-700">
+                                        {bestPriceRow?.estimatedDeliveryCharge != null
+                                            ? formatCurrency(bestPriceRow.estimatedDeliveryCharge)
+                                            : t('customerResults.compareNoDeliveryData')}
+                                    </p>
+                                </div>
+
+                                <div className="rounded-xl border border-blue-200 bg-blue-50 px-4 py-3">
+                                    <p className="text-[11px] font-semibold uppercase tracking-[0.14em] text-blue-700">{t('customerResults.compareTopStock')}</p>
+                                    <p className="mt-1 truncate text-sm font-bold text-slate-900">{bestStockRow?.vendorName || t('common.na')}</p>
+                                    <p className="mt-0.5 text-sm font-semibold text-blue-700">
+                                        {t('customerResults.popupStockMatch', {
+                                            matched: bestStockRow?.matchedItemTypeCount ?? 0,
+                                            required: itemTypeIds.length,
+                                        })}
+                                    </p>
+                                </div>
+
+                                <div className="rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 sm:col-span-2 lg:col-span-1">
+                                    <p className="text-[11px] font-semibold uppercase tracking-[0.14em] text-amber-700">{t('customerResults.compareTipLabel')}</p>
+                                    <p className="mt-1 text-sm text-slate-700">{t('customerResults.compareTip')}</p>
+                                </div>
+
+                                <div className="rounded-xl border border-violet-200 bg-violet-50 px-4 py-3">
+                                    <p className="text-[11px] font-semibold uppercase tracking-[0.14em] text-violet-700">{t('customerResults.compareBestValue')}</p>
+                                    <p className="mt-1 truncate text-sm font-bold text-slate-900">{bestValueRow?.vendorName || t('common.na')}</p>
+                                    <p className="mt-0.5 text-sm font-semibold text-violet-700">
+                                        {bestValueRow ? `${(bestValueRow.bestValueScore * 100).toFixed(0)} ${t('customerResults.compareScorePoints')}` : t('common.na')}
+                                    </p>
+                                </div>
+                            </div>
+
+                            <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+                                {bestValueRow && (
+                                    <div className="rounded-xl border border-slate-200 bg-white px-4 py-3 shadow-sm">
+                                        <p className="text-[11px] font-semibold uppercase tracking-[0.14em] text-slate-600">{t('customerResults.compareRecommendedNow', { mode: activeModeLabel })}</p>
+                                        <p className="mt-1 truncate text-base font-bold text-slate-900">{bestValueRow.vendorName}</p>
+                                        <Button size="xs" className="mt-2" onClick={() => navigate(getVendorShopUrl(bestValueRow.vendorSlug))}>
+                                            {t('customerResults.compareOpenRecommended')}
+                                        </Button>
+                                    </div>
+                                )}
+
+                                {bestPriceRow && (
+                                    <div className="rounded-xl border border-slate-200 bg-white px-4 py-3 shadow-sm">
+                                        <p className="text-[11px] font-semibold uppercase tracking-[0.14em] text-slate-600">{t('customerResults.compareModeCheapest')}</p>
+                                        <p className="mt-1 truncate text-sm font-bold text-slate-900">{bestPriceRow.vendorName}</p>
+                                        <Button size="xs" className="mt-2" color="light" onClick={() => navigate(getVendorShopUrl(bestPriceRow.vendorSlug))}>
+                                            {t('customerResults.popupViewShop')}
+                                        </Button>
+                                    </div>
+                                )}
+
+                                {nearestRow && (
+                                    <div className="rounded-xl border border-slate-200 bg-white px-4 py-3 shadow-sm">
+                                        <p className="text-[11px] font-semibold uppercase tracking-[0.14em] text-slate-600">{t('customerResults.compareModeNearest')}</p>
+                                        <p className="mt-1 truncate text-sm font-bold text-slate-900">{nearestRow.vendorName}</p>
+                                        <Button size="xs" className="mt-2" color="light" onClick={() => navigate(getVendorShopUrl(nearestRow.vendorSlug))}>
+                                            {t('customerResults.popupViewShop')}
+                                        </Button>
+                                    </div>
+                                )}
+                            </div>
+
+                            <div className="rounded-xl border border-slate-200 bg-slate-50 p-3 sm:p-4">
+                                <p className="text-sm font-semibold text-slate-900">{t('customerResults.compareChartTitle')}</p>
+                                {comparisonChartRows.length > 0 ? (
+                                    <div className="mt-3 h-[280px] w-full">
+                                        <ResponsiveContainer width="100%" height="100%">
+                                            <BarChart data={comparisonChartRows} margin={{ top: 8, right: 8, bottom: 8, left: 8 }}>
+                                                <CartesianGrid strokeDasharray="3 3" />
+                                                <XAxis dataKey="shortName" tick={{ fontSize: 11 }} />
+                                                <YAxis
+                                                    yAxisId="left"
+                                                    tick={{ fontSize: 11 }}
+                                                    tickFormatter={(value) => formatCurrency(Number(value))}
+                                                />
+                                                <YAxis yAxisId="right" orientation="right" domain={[0, 100]} tickFormatter={(value) => `${Number(value)}%`} tick={{ fontSize: 11 }} />
+                                                <Tooltip
+                                                    formatter={(value: any, name: string) => {
+                                                        if (name === t('customerResults.compareEstimatedDelivery')) {
+                                                            return formatCurrency(Number(value));
+                                                        }
+                                                        if (name === t('customerResults.compareStockCoverage')) {
+                                                            return `${Number(value).toFixed(0)}%`;
+                                                        }
+                                                        return value;
+                                                    }}
+                                                />
+                                                <Legend />
+                                                <Bar
+                                                    yAxisId="left"
+                                                    dataKey="estimatedDeliveryCharge"
+                                                    name={t('customerResults.compareEstimatedDelivery')}
+                                                    fill="#2563eb"
+                                                    radius={[6, 6, 0, 0]}
+                                                />
+                                                <Bar
+                                                    yAxisId="right"
+                                                    dataKey="stockCoveragePercent"
+                                                    name={t('customerResults.compareStockCoverage')}
+                                                    fill="#14b8a6"
+                                                    radius={[6, 6, 0, 0]}
+                                                />
+                                            </BarChart>
+                                        </ResponsiveContainer>
+                                    </div>
+                                ) : (
+                                    <p className="mt-2 text-sm text-slate-600">{t('customerResults.compareNoDeliveryData')}</p>
+                                )}
+                            </div>
+
+                            <div className="rounded-xl border border-slate-200 bg-slate-50 p-3 sm:p-4">
+                                <p className="text-sm font-semibold text-slate-900">{t('customerResults.compareScatterTitle')}</p>
+                                {comparisonScatterRows.length > 0 ? (
+                                    <div className="mt-3 h-[260px] w-full">
+                                        <ResponsiveContainer width="100%" height="100%">
+                                            <ScatterChart margin={{ top: 8, right: 8, bottom: 8, left: 8 }}>
+                                                <CartesianGrid strokeDasharray="3 3" />
+                                                <XAxis
+                                                    dataKey="distanceKm"
+                                                    name={t('customerResults.compareDistanceLabel')}
+                                                    tick={{ fontSize: 11 }}
+                                                    tickFormatter={(value) => `${Number(value).toFixed(1)} km`}
+                                                />
+                                                <YAxis
+                                                    dataKey="estimatedDeliveryCharge"
+                                                    name={t('customerResults.compareEstimatedDelivery')}
+                                                    tick={{ fontSize: 11 }}
+                                                    tickFormatter={(value) => formatCurrency(Number(value))}
+                                                />
+                                                <Tooltip
+                                                    cursor={{ strokeDasharray: '3 3' }}
+                                                    formatter={(value: any, name: string) => {
+                                                        if (name === t('customerResults.compareEstimatedDelivery')) {
+                                                            return formatCurrency(Number(value));
+                                                        }
+                                                        if (name === t('customerResults.compareDistanceLabel')) {
+                                                            return `${Number(value).toFixed(1)} km`;
+                                                        }
+                                                        return value;
+                                                    }}
+                                                    labelFormatter={(_, payload) => {
+                                                        const row = payload?.[0]?.payload as VendorComparisonRow | undefined;
+                                                        return row?.vendorName || '';
+                                                    }}
+                                                />
+                                                <Scatter
+                                                    name={t('customerResults.comparePriceDistance')}
+                                                    data={comparisonScatterRows}
+                                                    fill="#0f766e"
+                                                />
+                                            </ScatterChart>
+                                        </ResponsiveContainer>
+                                    </div>
+                                ) : (
+                                    <p className="mt-2 text-sm text-slate-600">{t('customerResults.compareNoDistanceData')}</p>
+                                )}
+                            </div>
+
+                            <div className="overflow-x-auto rounded-xl border border-slate-200">
+                                <table className="min-w-full divide-y divide-slate-200">
+                                    <thead className="bg-slate-50">
+                                        <tr>
+                                            <th className="px-3 py-2 text-left text-xs font-semibold uppercase tracking-wide text-slate-600">{t('common.vendor')}</th>
+                                            <th className="px-3 py-2 text-left text-xs font-semibold uppercase tracking-wide text-slate-600">{t('customerResults.compareEstimatedDelivery')}</th>
+                                            <th className="px-3 py-2 text-left text-xs font-semibold uppercase tracking-wide text-slate-600">{t('customerResults.compareStockMatchLabel')}</th>
+                                            <th className="px-3 py-2 text-left text-xs font-semibold uppercase tracking-wide text-slate-600">{t('customerResults.compareDistanceLabel')}</th>
+                                            <th className="px-3 py-2 text-left text-xs font-semibold uppercase tracking-wide text-slate-600">{t('customerResults.compareBestValue')}</th>
+                                            <th className="px-3 py-2 text-right text-xs font-semibold uppercase tracking-wide text-slate-600">{t('common.actions')}</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody className="divide-y divide-slate-100 bg-white">
+                                        {sortedComparisonRows.map((row, index) => (
+                                            <tr key={row.id} className={index === 0 ? 'bg-emerald-50/60' : ''}>
+                                                <td className="px-3 py-2 text-sm font-semibold text-slate-900">{row.vendorName}</td>
+                                                <td className="px-3 py-2 text-sm text-slate-700">
+                                                    {row.estimatedDeliveryCharge != null
+                                                        ? formatCurrency(row.estimatedDeliveryCharge)
+                                                        : t('common.na')}
+                                                </td>
+                                                <td className="px-3 py-2 text-sm text-slate-700">
+                                                    {t('customerResults.popupStockMatch', {
+                                                        matched: row.matchedItemTypeCount,
+                                                        required: itemTypeIds.length,
+                                                    })}
+                                                </td>
+                                                <td className="px-3 py-2 text-sm text-slate-700">
+                                                    {row.distanceKm != null
+                                                        ? t('customerResults.cardDistanceAway', {
+                                                            distance: row.distanceKm.toFixed(1),
+                                                        })
+                                                        : t('customerResults.cardDistanceUnavailable')}
+                                                </td>
+                                                <td className="px-3 py-2 text-sm text-slate-700">
+                                                    {(row.bestValueScore * 100).toFixed(0)} {t('customerResults.compareScorePoints')}
+                                                </td>
+                                                <td className="px-3 py-2 text-right">
+                                                    <Button size="xs" onClick={() => navigate(getVendorShopUrl(row.vendorSlug))}>
+                                                        {index === 0 ? t('customerResults.compareTopPickCta') : t('customerResults.popupViewShop')}
+                                                    </Button>
+                                                </td>
+                                            </tr>
+                                        ))}
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            )}
         </CustomerLayout>
     );
 }

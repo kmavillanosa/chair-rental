@@ -238,7 +238,7 @@ export default function VendorsList() {
     } catch (error: any) {
       toast.error(
         error?.response?.data?.message ||
-          'Failed to update customer map test-vendors flag.',
+        'Failed to update customer map test-vendors flag.',
       );
     } finally {
       setSettingsLoading(false);
