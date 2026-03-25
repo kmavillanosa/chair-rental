@@ -72,6 +72,7 @@ jobs:
           tar -czf chair-rental-deploy-bundle.tgz \
             docker-compose.yml \
             docker-compose.release.yml \
+            vps-refresh-ui.sh \
             nginx \
             api/package.json \
             api/package-lock.json \
@@ -226,6 +227,7 @@ jobs:
           tar -xzf /tmp/chair-rental-deploy-bundle.tgz -C /root/chair-rental
           rm -f /tmp/chair-rental-deploy-bundle.tgz
           mkdir -p api/uploads
+          chmod +x /root/chair-rental/vps-refresh-ui.sh
 
           mv /tmp/chair-rental.env .env
           rm -f /tmp/chair-rental.env
@@ -251,11 +253,13 @@ jobs:
               ;;
           esac
 
-          docker compose -f docker-compose.yml -f docker-compose.release.yml build "${BUILD_FLAGS[@]}" api app staff_app
+          docker compose -f docker-compose.yml -f docker-compose.release.yml build "${BUILD_FLAGS[@]}" api
 
           docker compose -f docker-compose.yml -f docker-compose.release.yml up -d --force-recreate mysql
           docker compose -f docker-compose.yml -f docker-compose.release.yml run --rm api npm run db:migrate
-          docker compose -f docker-compose.yml -f docker-compose.release.yml up -d --force-recreate api app staff_app phpmyadmin nginx_proxy
+          docker compose -f docker-compose.yml -f docker-compose.release.yml up -d --force-recreate api phpmyadmin
+
+          /root/chair-rental/vps-refresh-ui.sh --project-dir /root/chair-rental
 
           APP_LOCAL_VERSION="$(docker compose -f docker-compose.yml -f docker-compose.release.yml exec -T app sh -lc 'cat /usr/share/nginx/html/version.json 2>/dev/null || true')"
           STAFF_LOCAL_VERSION="$(docker compose -f docker-compose.yml -f docker-compose.release.yml exec -T staff_app sh -lc 'cat /usr/share/nginx/html/version.json 2>/dev/null || true')"

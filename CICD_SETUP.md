@@ -14,8 +14,9 @@ GitHub Actions
       ├── Run unit tests (app, staff-app, api) ── if FAIL → stop
       └── Deploy (only if all tests pass)
             └── SSH into VPS
-                  ├── git pull origin main
-                  └── docker compose up -d --build
+                  ├── update release bundle and env
+                  ├── run DB migrations
+                  └── run vps-refresh-ui.sh to rebuild/recreate frontend containers
 ```
 
 The `.env` file lives **only on the VPS** and is never committed to git.
@@ -192,8 +193,7 @@ Check the **Actions** tab logs. Fix the failing test locally, then push again.
 ```bash
 # On VPS, manually force a rebuild:
 cd /root/chair-rental
-docker compose build --pull --no-cache api app staff_app
-docker compose up -d --force-recreate api app staff_app nginx_proxy
+./vps-refresh-ui.sh --project-dir /root/chair-rental --with-api
 ```
 
 ### Check live container logs
