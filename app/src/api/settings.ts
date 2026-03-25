@@ -8,6 +8,7 @@ export type KycSettings = {
 export type FeatureFlagsSettings = {
   allowOrdersWithoutPayment: boolean;
   maintenanceModeEnabled: boolean;
+  showTestVendorsOnCustomerMap: boolean;
   defaultPlatformCommissionRatePercent: number;
   defaultDepositPercent: number;
   newVendorCompletedOrdersThreshold: number;
@@ -27,4 +28,9 @@ export const getKycSettings = () =>
 export const getFeatureFlagsSettings = () =>
   api
     .get<FeatureFlagsSettings>('/settings/feature-flags')
+    .then((response) => response.data);
+
+export const updateFeatureFlagsSettings = (payload: Partial<FeatureFlagsSettings>) =>
+  api
+    .patch<FeatureFlagsSettings>('/settings/feature-flags', payload)
     .then((response) => response.data);

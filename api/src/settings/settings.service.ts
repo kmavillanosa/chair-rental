@@ -13,6 +13,7 @@ export type KycSettingsResponse = {
 export type FeatureFlagsSettingsResponse = {
   allowOrdersWithoutPayment: boolean;
   maintenanceModeEnabled: boolean;
+  showTestVendorsOnCustomerMap: boolean;
   defaultPlatformCommissionRatePercent: number;
   defaultDepositPercent: number;
   newVendorCompletedOrdersThreshold: number;
@@ -44,6 +45,8 @@ const FLAGS_ALLOW_ORDERS_WITHOUT_PAYMENT_KEY =
   'flags.allowOrdersWithoutPayment';
 const FLAGS_MAINTENANCE_MODE_ENABLED_KEY =
   'flags.maintenanceModeEnabled';
+const FLAGS_SHOW_TEST_VENDORS_ON_CUSTOMER_MAP_KEY =
+  'flags.showTestVendorsOnCustomerMap';
 const FLAGS_LAUNCH_NO_COMMISSION_ENABLED_KEY =
   'flags.launchNoCommissionEnabled';
 const FLAGS_LAUNCH_NO_COMMISSION_UNTIL_KEY = 'flags.launchNoCommissionUntil';
@@ -108,6 +111,7 @@ export class SettingsService {
     const settingsMap = await this.findManyAsMap([
       FLAGS_ALLOW_ORDERS_WITHOUT_PAYMENT_KEY,
       FLAGS_MAINTENANCE_MODE_ENABLED_KEY,
+      FLAGS_SHOW_TEST_VENDORS_ON_CUSTOMER_MAP_KEY,
       FLAGS_DEFAULT_PLATFORM_COMMISSION_RATE_PERCENT_KEY,
       FLAGS_DEFAULT_DEPOSIT_PERCENT_KEY,
       FLAGS_NEW_VENDOR_COMPLETED_ORDERS_THRESHOLD_KEY,
@@ -134,6 +138,10 @@ export class SettingsService {
       ),
       maintenanceModeEnabled: this.parseBooleanSetting(
         settingsMap.get(FLAGS_MAINTENANCE_MODE_ENABLED_KEY),
+        false,
+      ),
+      showTestVendorsOnCustomerMap: this.parseBooleanSetting(
+        settingsMap.get(FLAGS_SHOW_TEST_VENDORS_ON_CUSTOMER_MAP_KEY),
         false,
       ),
       defaultPlatformCommissionRatePercent:
@@ -215,6 +223,9 @@ export class SettingsService {
         payload.allowOrdersWithoutPayment ?? current.allowOrdersWithoutPayment,
       maintenanceModeEnabled:
         payload.maintenanceModeEnabled ?? current.maintenanceModeEnabled,
+      showTestVendorsOnCustomerMap:
+        payload.showTestVendorsOnCustomerMap ??
+        current.showTestVendorsOnCustomerMap,
       defaultPlatformCommissionRatePercent: this.clampCommissionPercent(
         payload.defaultPlatformCommissionRatePercent ??
           current.defaultPlatformCommissionRatePercent,
@@ -276,6 +287,10 @@ export class SettingsService {
     await this.upsertSetting(
       FLAGS_MAINTENANCE_MODE_ENABLED_KEY,
       String(next.maintenanceModeEnabled),
+    );
+    await this.upsertSetting(
+      FLAGS_SHOW_TEST_VENDORS_ON_CUSTOMER_MAP_KEY,
+      String(next.showTestVendorsOnCustomerMap),
     );
     await this.upsertSetting(
       FLAGS_DEFAULT_PLATFORM_COMMISSION_RATE_PERCENT_KEY,

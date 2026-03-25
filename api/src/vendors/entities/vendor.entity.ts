@@ -56,6 +56,7 @@ export enum VendorVerificationStatus {
 @Index('IDX_vendors_device_fingerprint', ['deviceFingerprintHash'])
 @Index('IDX_vendors_bank_account_hash', ['bankAccountHash'])
 @Index('IDX_vendors_low_rating_flag', ['lowRatingFlag'])
+@Index('IDX_vendors_is_test_account', ['isTestAccount'])
 export class Vendor {
   @PrimaryColumn({ type: 'varchar', length: 36 })
   id: string;
@@ -213,6 +214,9 @@ export class Vendor {
 
   @Column({ default: false })
   isVerified: boolean;
+
+  @Column({ default: false })
+  isTestAccount: boolean;
 
   @Column({ type: 'decimal', precision: 3, scale: 2, default: 0 })
   averageRating: number;

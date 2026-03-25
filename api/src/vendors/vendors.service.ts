@@ -1087,20 +1087,32 @@ export class VendorsService {
         : 0;
     const requiredItemTypeIds = [...new Set(itemTypeIds.filter(Boolean))];
     const dateRange = this.parseDateRange(startDate, endDate);
+    let includeTestVendors = false;
+
+    try {
+      const flags = await this.settingsService.getFeatureFlagsSettings();
+      includeTestVendors = Boolean(flags.showTestVendorsOnCustomerMap);
+    } catch {
+      includeTestVendors = false;
+    }
+
+    const nearbyBaseVisibilityFilter = {
+      isActive: true,
+      isVerified: true,
+      ...(includeTestVendors ? {} : { isTestAccount: false }),
+    };
 
     const vendors = await this.vendorsRepo.find({
       where: [
         {
-          isActive: true,
-          isVerified: true,
+          ...nearbyBaseVisibilityFilter,
           verificationStatus: In([
             VendorVerificationStatus.VERIFIED_BUSINESS,
             VendorVerificationStatus.VERIFIED_OWNER,
           ]),
         },
         {
-          isActive: true,
-          isVerified: true,
+          ...nearbyBaseVisibilityFilter,
           registrationStatus: VendorRegistrationStatus.APPROVED,
         },
       ],
@@ -1851,6 +1863,32 @@ export class VendorsService {
       reason:
         normalizedReason ||
         (flagged ? 'Vendor flagged as suspicious' : 'Suspicious flag removed'),
+      reviewedByUserId,
+    });
+
+    return this.findById(id, true);
+  }
+
+  async setTestAccount(
+    id: string,
+    isTestAccount: boolean,
+    reviewedByUserId?: string,
+  ) {
+    const vendor = await this.findByIdRaw(id, false);
+    if (!vendor) throw new NotFoundException('Vendor not found');
+
+    await this.vendorsRepo.update(id, {
+      isTestAccount: Boolean(isTestAccount),
+    });
+
+    await this.logVerificationStatus(id, {
+      status:
+        this.normalizeVerificationStatus(vendor.verificationStatus) ||
+        VendorVerificationStatus.PENDING_VERIFICATION,
+      actionType: VendorVerificationAction.FLAGGED,
+      reason: isTestAccount
+        ? 'Vendor flagged as test account by admin'
+        : 'Vendor removed from test account list by admin',
       reviewedByUserId,
     });
 

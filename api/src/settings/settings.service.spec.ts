@@ -53,6 +53,7 @@ describe('SettingsService', () => {
     expect(result).toEqual({
       allowOrdersWithoutPayment: true,
       maintenanceModeEnabled: true,
+      showTestVendorsOnCustomerMap: false,
       defaultPlatformCommissionRatePercent: 100,
       defaultDepositPercent: 30,
       newVendorCompletedOrdersThreshold: 5,
@@ -92,11 +93,12 @@ describe('SettingsService', () => {
     expect(result.newVendorMaxActiveListings).toBe(40);
     expect(result.flaggedVendorMaxActiveListings).toBe(15);
     expect(result.payoutDelayDaysForNewVendors).toBe(3);
+    expect(result.showTestVendorsOnCustomerMap).toBe(false);
     expect(result.cancellationFullRefundMinDays).toBe(0);
     expect(result.cancellationHalfRefundMinDays).toBe(365);
     expect(result.cancellationHalfRefundPercent).toBe(0);
     expect(result.launchNoCommissionUntil).toBeNull();
-    expect(mocks.settingsRepo.save).toHaveBeenCalledTimes(13);
+    expect(mocks.settingsRepo.save).toHaveBeenCalledTimes(14);
   });
 
   it('getKycSettings returns defaults when no settings are stored', async () => {

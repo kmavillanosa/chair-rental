@@ -417,6 +417,18 @@ export class VendorsController {
   @UseGuards(JwtAuthGuard, RolesGuard)
   @Roles(UserRole.ADMIN)
   @ApiBearerAuth()
+  @Patch(':id/test-account')
+  setTestAccount(
+    @Request() req,
+    @Param('id') id: string,
+    @Body('isTestAccount') isTestAccount: boolean,
+  ) {
+    return this.vendorsService.setTestAccount(id, Boolean(isTestAccount), req.user.id);
+  }
+
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles(UserRole.ADMIN)
+  @ApiBearerAuth()
   @Patch(':id/suspend')
   suspend(
     @Request() req,

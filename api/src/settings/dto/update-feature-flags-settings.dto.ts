@@ -20,6 +20,10 @@ export class UpdateFeatureFlagsSettingsDto {
   maintenanceModeEnabled?: boolean;
 
   @IsOptional()
+  @IsBoolean()
+  showTestVendorsOnCustomerMap?: boolean;
+
+  @IsOptional()
   @Type(() => Number)
   @IsNumber({ maxDecimalPlaces: 2 })
   @Min(0)

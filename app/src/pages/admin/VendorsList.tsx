@@ -2,7 +2,18 @@ import { useEffect, useState } from 'react';
 import { Badge, Button, Modal, Select, Table, TextInput } from 'flowbite-react';
 import toast from 'react-hot-toast';
 import AdminLayout from '../../components/layout/AdminLayout';
-import { getAllVendors, verifyVendor, warnVendor, setVendorActive, createVendor } from '../../api/vendors';
+import {
+  getAllVendors,
+  verifyVendor,
+  warnVendor,
+  setVendorActive,
+  createVendor,
+  setVendorTestAccount,
+} from '../../api/vendors';
+import {
+  getFeatureFlagsSettings,
+  updateFeatureFlagsSettings,
+} from '../../api/settings';
 import type { Vendor } from '../../types';
 import LoadingSpinner from '../../components/common/LoadingSpinner';
 import { useTranslation } from 'react-i18next';
@@ -11,6 +22,9 @@ export default function VendorsList() {
   const { t } = useTranslation();
   const [vendors, setVendors] = useState<Vendor[]>([]);
   const [loading, setLoading] = useState(true);
+  const [settingsLoading, setSettingsLoading] = useState(false);
+  const [showTestVendorsOnCustomerMap, setShowTestVendorsOnCustomerMap] =
+    useState(false);
   const [showCreateModal, setShowCreateModal] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [form, setForm] = useState({
@@ -24,6 +38,22 @@ export default function VendorsList() {
 
   const load = () => getAllVendors().then(setVendors).finally(() => setLoading(false));
   useEffect(() => { load(); }, []);
+
+  useEffect(() => {
+    setSettingsLoading(true);
+    getFeatureFlagsSettings()
+      .then((settings) => {
+        setShowTestVendorsOnCustomerMap(
+          Boolean(settings.showTestVendorsOnCustomerMap),
+        );
+      })
+      .catch(() => {
+        setShowTestVendorsOnCustomerMap(false);
+      })
+      .finally(() => {
+        setSettingsLoading(false);
+      });
+  }, []);
 
   const handleVerify = async (v: Vendor) => {
     await verifyVendor(v.id, !v.isVerified);
@@ -41,6 +71,42 @@ export default function VendorsList() {
     await setVendorActive(v.id, !v.isActive);
     toast.success(v.isActive ? t('vendorsList.toastSuspended') : t('vendorsList.toastActivated'));
     load();
+  };
+
+  const handleToggleTestAccount = async (v: Vendor) => {
+    await setVendorTestAccount(v.id, !Boolean(v.isTestAccount));
+    toast.success(
+      !Boolean(v.isTestAccount)
+        ? t('vendorsList.toastTestAccountEnabled', { name: v.businessName })
+        : t('vendorsList.toastTestAccountDisabled', { name: v.businessName }),
+    );
+    load();
+  };
+
+  const handleToggleShowTestVendorsOnMap = async () => {
+    if (settingsLoading) return;
+
+    const nextValue = !showTestVendorsOnCustomerMap;
+    setSettingsLoading(true);
+    try {
+      const updated = await updateFeatureFlagsSettings({
+        showTestVendorsOnCustomerMap: nextValue,
+      });
+      setShowTestVendorsOnCustomerMap(
+        Boolean(updated.showTestVendorsOnCustomerMap),
+      );
+      toast.success(
+        nextValue
+          ? t('vendorsList.toastMapTestAccountsShown')
+          : t('vendorsList.toastMapTestAccountsHidden'),
+      );
+    } catch (error: any) {
+      toast.error(
+        error?.response?.data?.message || t('vendorsList.toastFeatureFlagUpdateFailed'),
+      );
+    } finally {
+      setSettingsLoading(false);
+    }
   };
 
   const handleCreate = async () => {
@@ -89,6 +155,25 @@ export default function VendorsList() {
         <h1 className="text-4xl font-bold text-gray-900">🏪 {t('vendorsList.title')}</h1>
         <Button size="xl" onClick={() => setShowCreateModal(true)}>+ {t('vendorsList.addVendor')}</Button>
       </div>
+      <div className="mb-4 rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
+        <div className="flex flex-wrap items-center justify-between gap-3">
+          <div>
+            <p className="text-sm font-semibold text-slate-900">{t('vendorsList.featureFlagTitle')}</p>
+            <p className="text-xs text-slate-600">{t('vendorsList.featureFlagDescription')}</p>
+          </div>
+          <Button
+            size="sm"
+            color={showTestVendorsOnCustomerMap ? 'success' : 'gray'}
+            onClick={handleToggleShowTestVendorsOnMap}
+            disabled={settingsLoading}
+            isProcessing={settingsLoading}
+          >
+            {showTestVendorsOnCustomerMap
+              ? t('vendorsList.featureFlagOn')
+              : t('vendorsList.featureFlagOff')}
+          </Button>
+        </div>
+      </div>
       <div className="overflow-x-auto rounded-xl shadow">
         <Table striped>
           <Table.Head>
@@ -109,6 +194,7 @@ export default function VendorsList() {
                 <Table.Cell className="flex gap-2">
                   <Badge color={v.isActive ? 'success' : 'failure'}>{v.isActive ? t('status.toggle.active') : t('status.toggle.inactive')}</Badge>
                   {v.isVerified && <Badge color="indigo">{t('status.toggle.verified')}</Badge>}
+                  {v.isTestAccount && <Badge color="warning">{t('vendorsList.testAccountBadge')}</Badge>}
                 </Table.Cell>
                 <Table.Cell className="text-center">{v.warningCount}/3</Table.Cell>
                 <Table.Cell>
@@ -119,6 +205,15 @@ export default function VendorsList() {
                     <Button size="sm" color="warning" onClick={() => handleWarn(v)}>⚠️ {t('vendorsList.warn')}</Button>
                     <Button size="sm" color={v.isActive ? 'failure' : 'success'} onClick={() => handleToggleActive(v)}>
                       {v.isActive ? t('vendorsList.suspend') : t('vendorsList.activate')}
+                    </Button>
+                    <Button
+                      size="sm"
+                      color={v.isTestAccount ? 'failure' : 'purple'}
+                      onClick={() => handleToggleTestAccount(v)}
+                    >
+                      {v.isTestAccount
+                        ? t('vendorsList.removeTestAccount')
+                        : t('vendorsList.markAsTestAccount')}
                     </Button>
                   </div>
                 </Table.Cell>

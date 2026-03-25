@@ -64,6 +64,30 @@ function createRouteArrowIcon(bearing: number) {
     });
 }
 
+const testVendorPinIcon = L.divIcon({
+    className: 'test-vendor-pin-icon',
+    html: `
+            <div style="position:relative;width:28px;height:40px;">
+                <img
+                    src="https://unpkg.com/leaflet@1.9.4/dist/images/marker-icon.png"
+                    style="width:100%;height:100%;display:block;"
+                    alt="map pin"
+                />
+                <span
+                    style="position:absolute;top:-7px;right:-9px;background:#b91c1c;color:#fff;border:1px solid #fff;border-radius:999px;padding:0 5px;font-size:8px;line-height:14px;font-weight:700;letter-spacing:0.05em;"
+                >
+                    TEST
+                </span>
+            </div>
+        `,
+    iconSize: [28, 40],
+    iconAnchor: [14, 40],
+    popupAnchor: [1, -34],
+    shadowUrl: 'https://unpkg.com/leaflet@1.9.4/dist/images/marker-shadow.png',
+    shadowSize: [41, 41],
+    shadowAnchor: [12, 41],
+});
+
 function buildRouteArrowPoints(path: [number, number][]) {
     if (path.length < 3) return [] as RouteArrowPoint[];
 
@@ -574,6 +598,11 @@ export default function CustomerResults() {
                                                             {vendor.verificationBadge}
                                                         </p>
                                                     )}
+                                                    {vendor.isTestAccount && (
+                                                        <p className="mt-0.5 text-[10px] font-semibold uppercase tracking-wide text-amber-700">
+                                                            {t('customerResults.testAccountBadge')}
+                                                        </p>
+                                                    )}
                                                     <p className="text-xs text-slate-600">
                                                         {vendor.distanceKm != null
                                                             ? t('customerResults.cardDistanceAway', { distance: vendor.distanceKm.toFixed(1) })
@@ -653,6 +682,7 @@ export default function CustomerResults() {
                                     <Marker
                                         key={vendor.id}
                                         position={[Number(vendor.latitude), Number(vendor.longitude)]}
+                                        icon={vendor.isTestAccount ? testVendorPinIcon : undefined}
                                         eventHandlers={{
                                             click: () => {
                                                 void traceRouteToVendor(vendor);
@@ -665,6 +695,11 @@ export default function CustomerResults() {
                                                 {vendor.verificationBadge && (
                                                     <p className="m-0 inline-flex rounded-full bg-emerald-100 px-2 py-0.5 text-[11px] font-semibold text-emerald-700">
                                                         {vendor.verificationBadge}
+                                                    </p>
+                                                )}
+                                                {vendor.isTestAccount && (
+                                                    <p className="m-0 inline-flex rounded-full bg-amber-100 px-2 py-0.5 text-[11px] font-semibold text-amber-700">
+                                                        {t('customerResults.testAccountBadge')}
                                                     </p>
                                                 )}
                                                 <p className="m-0 truncate text-xs text-slate-600">{vendor.address}</p>
@@ -717,6 +752,11 @@ export default function CustomerResults() {
                                                         {vendor.verificationBadge && (
                                                             <p className="mt-0.5 text-[10px] font-semibold uppercase tracking-wide text-emerald-700">
                                                                 {vendor.verificationBadge}
+                                                            </p>
+                                                        )}
+                                                        {vendor.isTestAccount && (
+                                                            <p className="mt-0.5 text-[10px] font-semibold uppercase tracking-wide text-amber-700">
+                                                                {t('customerResults.testAccountBadge')}
                                                             </p>
                                                         )}
                                                         <p className="text-xs text-slate-600">

@@ -102,6 +102,7 @@ export interface Vendor {
   verificationItems?: VendorItemVerification[];
   isActive: boolean;
   isVerified: boolean;
+  isTestAccount?: boolean;
   commissionRate: number;
   balance: number;
   warningCount: number;

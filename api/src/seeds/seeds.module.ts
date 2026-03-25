@@ -6,12 +6,28 @@ import { CatalogSeedService } from './catalog-seed.service';
 import { Vendor } from '../vendors/entities/vendor.entity';
 import { DeliveryRate } from '../payments/entities/delivery-rate.entity';
 import { VendorDistanceSeedService } from './vendor-distance-seed.service';
+import { User } from '../users/entities/user.entity';
+import { TestVendorsSeedService } from './test-vendors-seed.service';
 
 @Module({
   imports: [
-    TypeOrmModule.forFeature([ItemType, ProductBrand, Vendor, DeliveryRate]),
+    TypeOrmModule.forFeature([
+      ItemType,
+      ProductBrand,
+      Vendor,
+      DeliveryRate,
+      User,
+    ]),
   ],
-  providers: [CatalogSeedService, VendorDistanceSeedService],
-  exports: [CatalogSeedService, VendorDistanceSeedService],
+  providers: [
+    CatalogSeedService,
+    VendorDistanceSeedService,
+    TestVendorsSeedService,
+  ],
+  exports: [
+    CatalogSeedService,
+    VendorDistanceSeedService,
+    TestVendorsSeedService,
+  ],
 })
 export class SeedsModule {}

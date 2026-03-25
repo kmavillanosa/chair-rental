@@ -63,6 +63,9 @@ export const warnVendor = (id: string) =>
 export const setVendorActive = (id: string, isActive: boolean) =>
   api.patch(`/vendors/${id}/active`, { isActive }).then(r => r.data);
 
+export const setVendorTestAccount = (id: string, isTestAccount: boolean) =>
+  api.patch(`/vendors/${id}/test-account`, { isTestAccount }).then(r => r.data);
+
 export const createVendor = (data: CreateVendorPayload) =>
   api.post<Vendor>('/vendors', data).then(r => r.data);
 
