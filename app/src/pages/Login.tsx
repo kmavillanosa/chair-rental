@@ -11,7 +11,6 @@ export default function Login() {
   const [searchParams] = useSearchParams();
   const vendorLoginCandidate = (
     import.meta.env.VITE_VENDOR_LOGIN_URL ||
-    import.meta.env.VITE_STAFF_APP_URL ||
     'https://vendor.rentalbasic.com/login'
   ).trim();
   const vendorLoginUrl = resolveSafeUrl(vendorLoginCandidate, 'https://vendor.rentalbasic.com/login');
