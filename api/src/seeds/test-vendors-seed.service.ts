@@ -62,16 +62,35 @@ export class TestVendorsSeedService {
     let vendorsUpdated = 0;
     let inventoryItemsCreated = 0;
 
-    // Find or get item types
-    const monoblock = await this.itemTypeRepo.findOne({ where: { name: 'Monoblock' } });
-    const foldingTable = await this.itemTypeRepo.findOne({ where: { name: 'Folding Table' } });
-    const tent = await this.itemTypeRepo.findOne({ where: { name: 'Tent' } });
+    const allItemTypes = await this.itemTypeRepo.find({
+      where: { isActive: true },
+      select: ['id', 'name', 'defaultRatePerDay'],
+    });
 
-    const itemTypesToSeed = [
-      { itemType: monoblock, quantity: 50, ratePerDay: monoblock?.defaultRatePerDay || 80 },
-      { itemType: foldingTable, quantity: 30, ratePerDay: foldingTable?.defaultRatePerDay || 220 },
-      { itemType: tent, quantity: 5, ratePerDay: tent?.defaultRatePerDay || 3500 },
-    ].filter(item => item.itemType);
+    const monoblock = this.resolveItemTypeByKeywords(allItemTypes, ['monoblock', 'monobloc']);
+    const foldingTable = this.resolveItemTypeByKeywords(allItemTypes, ['folding table', 'table folding']);
+    const tent = this.resolveItemTypeByKeywords(allItemTypes, ['tent']);
+
+    if (!monoblock || !foldingTable || !tent) {
+      const missing: string[] = [];
+      if (!monoblock) missing.push('Monoblock');
+      if (!foldingTable) missing.push('Folding Table');
+      if (!tent) missing.push('Tent');
+
+      throw new Error(
+        `Missing required item types: ${missing.join(', ')}. Run seed:catalog first.`,
+      );
+    }
+
+    const itemTypesToSeed: Array<{
+      itemType: ItemType;
+      quantity: number;
+      ratePerDay: number;
+    }> = [
+      { itemType: monoblock, quantity: 50, ratePerDay: Number(monoblock.defaultRatePerDay || 80) },
+      { itemType: foldingTable, quantity: 30, ratePerDay: Number(foldingTable.defaultRatePerDay || 220) },
+      { itemType: tent, quantity: 5, ratePerDay: Number(tent.defaultRatePerDay || 3500) },
+    ];
 
     for (let index = 0; index < TEST_VENDOR_COORDINATES.length; index += 1) {
       const ordinal = index + 1;
@@ -176,6 +195,17 @@ export class TestVendorsSeedService {
       inventoryItemsCreated,
       totalTestVendors,
     };
+  }
+
+  private resolveItemTypeByKeywords(itemTypes: ItemType[], keywords: string[]): ItemType | null {
+    for (const itemType of itemTypes) {
+      const name = (itemType.name || '').toLowerCase();
+      if (keywords.some((keyword) => name.includes(keyword))) {
+        return itemType;
+      }
+    }
+
+    return null;
   }
 
   private async resolveUniqueSlug(baseSlug: string, existingVendorId?: string) {
