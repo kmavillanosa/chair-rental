@@ -51,6 +51,7 @@ const DEFAULT_SETTINGS: KycSettings = {
 const DEFAULT_FEATURE_FLAGS: FeatureFlagsSettings = {
     allowOrdersWithoutPayment: false,
     maintenanceModeEnabled: false,
+    showTestVendorsOnCustomerMap: false,
     defaultPlatformCommissionRatePercent: 10,
     defaultDepositPercent: 30,
     newVendorCompletedOrdersThreshold: 5,

@@ -106,6 +106,7 @@ export interface Vendor {
   faceMatchScore?: number;
   documents?: VendorDocument[];
   verificationItems?: VendorItemVerification[];
+  isTestAccount?: boolean;
   isActive: boolean;
   isVerified: boolean;
   commissionRate: number;

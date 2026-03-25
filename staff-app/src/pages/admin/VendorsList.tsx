@@ -13,10 +13,15 @@ import {
   getVendorRequests,
   hardDeleteVendor,
   setVendorActive,
+  setVendorTestAccount,
   suspendVendor,
   verifyVendor,
   warnVendor,
 } from '../../api/vendors';
+import {
+  getFeatureFlagsSettings,
+  updateFeatureFlagsSettings,
+} from '../../api/settings';
 import type { Vendor } from '../../types';
 import LoadingSpinner from '../../components/common/LoadingSpinner';
 
@@ -25,6 +30,9 @@ export default function VendorsList() {
   const [pendingApplicantsCount, setPendingApplicantsCount] = useState(0);
   const navigate = useNavigate();
   const [loading, setLoading] = useState(true);
+  const [settingsLoading, setSettingsLoading] = useState(false);
+  const [showTestVendorsOnCustomerMap, setShowTestVendorsOnCustomerMap] =
+    useState(false);
   const [searchTerm, setSearchTerm] = useState('');
   const [activityFilter, setActivityFilter] = useState('all');
   const [verificationFilter, setVerificationFilter] = useState('all');
@@ -60,6 +68,22 @@ export default function VendorsList() {
 
   useEffect(() => {
     load();
+  }, []);
+
+  useEffect(() => {
+    setSettingsLoading(true);
+    getFeatureFlagsSettings()
+      .then((settings) => {
+        setShowTestVendorsOnCustomerMap(
+          Boolean(settings.showTestVendorsOnCustomerMap),
+        );
+      })
+      .catch(() => {
+        setShowTestVendorsOnCustomerMap(false);
+      })
+      .finally(() => {
+        setSettingsLoading(false);
+      });
   }, []);
 
   const managedVendors = useMemo(
@@ -182,6 +206,43 @@ export default function VendorsList() {
     await setVendorActive(vendor.id, !vendor.isActive);
     toast.success(`Vendor ${vendor.isActive ? 'suspended' : 'activated'}!`);
     load();
+  };
+
+  const handleToggleTestAccount = async (vendor: Vendor) => {
+    await setVendorTestAccount(vendor.id, !Boolean(vendor.isTestAccount));
+    toast.success(
+      !Boolean(vendor.isTestAccount)
+        ? `${vendor.businessName} marked as test account.`
+        : `${vendor.businessName} removed from test accounts.`,
+    );
+    load();
+  };
+
+  const handleToggleShowTestVendorsOnMap = async () => {
+    if (settingsLoading) return;
+
+    const nextValue = !showTestVendorsOnCustomerMap;
+    setSettingsLoading(true);
+    try {
+      const updated = await updateFeatureFlagsSettings({
+        showTestVendorsOnCustomerMap: nextValue,
+      });
+      setShowTestVendorsOnCustomerMap(
+        Boolean(updated.showTestVendorsOnCustomerMap),
+      );
+      toast.success(
+        nextValue
+          ? 'Test vendors are now visible on customer map search.'
+          : 'Test vendors are now hidden from customer map search.',
+      );
+    } catch (error: any) {
+      toast.error(
+        error?.response?.data?.message ||
+          'Failed to update customer map test-vendors flag.',
+      );
+    } finally {
+      setSettingsLoading(false);
+    }
   };
 
   const handleHardDelete = async (vendor: Vendor) => {
@@ -401,6 +462,26 @@ export default function VendorsList() {
         </div>
 
         <div className="mb-5 rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
+          <div className="mb-4 flex flex-wrap items-center justify-between gap-3 rounded-lg border border-slate-200 bg-slate-50 px-3 py-3">
+            <div>
+              <p className="text-sm font-semibold text-slate-900">
+                Customer Map Test Vendors
+              </p>
+              <p className="text-xs text-slate-600">
+                Toggle whether test vendors appear in customer search results.
+              </p>
+            </div>
+            <Button
+              size="sm"
+              color={showTestVendorsOnCustomerMap ? 'success' : 'gray'}
+              onClick={handleToggleShowTestVendorsOnMap}
+              disabled={settingsLoading}
+              isProcessing={settingsLoading}
+            >
+              {showTestVendorsOnCustomerMap ? 'Visible On Map' : 'Hidden From Map'}
+            </Button>
+          </div>
+
           <div className="flex flex-wrap items-center gap-2">
             <Badge color="gray">{filteredVendors.length} shown</Badge>
             <Badge color="gray">{managedVendors.length} total vendors</Badge>
@@ -483,6 +564,7 @@ export default function VendorsList() {
                       </Badge>
                       {vendor.isVerified && <Badge color="success">Verified</Badge>}
                       {vendor.isSuspicious && <Badge color="failure">Suspicious</Badge>}
+                      {vendor.isTestAccount && <Badge color="warning">Test Account</Badge>}
                     </Table.Cell>
                     <Table.Cell>
                       <div className="flex gap-2 flex-wrap">
@@ -532,6 +614,16 @@ export default function VendorsList() {
                           onClick={() => handleFlagSuspicious(vendor)}
                         >
                           {vendor.isSuspicious ? 'Unflag' : 'Flag'}
+                        </Button>
+                        <Button
+                          size="xs"
+                          color="light"
+                          className={
+                            vendor.isTestAccount ? dangerActionClass : neutralActionClass
+                          }
+                          onClick={() => handleToggleTestAccount(vendor)}
+                        >
+                          {vendor.isTestAccount ? 'Unmark Test' : 'Mark Test'}
                         </Button>
                         <Button
                           size="xs"

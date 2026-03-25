@@ -8,6 +8,7 @@ export type KycSettings = {
 export type FeatureFlagsSettings = {
   allowOrdersWithoutPayment: boolean;
   maintenanceModeEnabled: boolean;
+  showTestVendorsOnCustomerMap: boolean;
   defaultPlatformCommissionRatePercent: number;
   defaultDepositPercent: number;
   newVendorCompletedOrdersThreshold: number;
