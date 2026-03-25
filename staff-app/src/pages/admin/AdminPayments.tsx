@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import { Button, Modal, Select, Table, TextInput } from 'flowbite-react';
 import toast from 'react-hot-toast';
+import { Link, useLocation, useNavigate } from 'react-router-dom';
 import AdminLayout from '../../components/layout/AdminLayout';
 import {
   createPayment,
@@ -16,7 +17,35 @@ import { PaymentStatusBadge } from '../../components/common/StatusBadge';
 import { formatCurrency, formatDate } from '../../utils/format';
 import LoadingSpinner from '../../components/common/LoadingSpinner';
 
+const PAYMENT_TABS = [
+  {
+    key: 'overview',
+    label: 'Overview',
+    description: 'KPIs and high-level payment health',
+  },
+  {
+    key: 'earnings',
+    label: 'Vendor Earnings',
+    description: 'Gross, fee, and release balances per vendor',
+  },
+  {
+    key: 'billing',
+    label: 'Billing Records',
+    description: 'Manual billing entries and payment states',
+  },
+  {
+    key: 'payouts',
+    label: 'Payout Queue',
+    description: 'Upcoming and ready-to-release vendor payouts',
+  },
+] as const;
+
+type PaymentTabKey = (typeof PAYMENT_TABS)[number]['key'];
+const paymentTabKeys = new Set<PaymentTabKey>(PAYMENT_TABS.map((tab) => tab.key));
+
 export default function AdminPayments() {
+  const location = useLocation();
+  const navigate = useNavigate();
   const [payments, setPayments] = useState<VendorPayment[]>([]);
   const [payouts, setPayouts] = useState<VendorPayout[]>([]);
   const [vendors, setVendors] = useState<Vendor[]>([]);
@@ -30,6 +59,12 @@ export default function AdminPayments() {
     dueDate: '',
     period: '',
   });
+
+  const activeTab = useMemo<PaymentTabKey>(() => {
+    const pathParts = location.pathname.split('/').filter(Boolean);
+    const candidate = pathParts[2] as PaymentTabKey | undefined;
+    return candidate && paymentTabKeys.has(candidate) ? candidate : 'overview';
+  }, [location.pathname]);
 
   const toAmount = (value: unknown) => {
     const parsed = Number(value);
@@ -60,7 +95,17 @@ export default function AdminPayments() {
     getAllPayouts().then(setPayouts),
     getAllVendors().then(setVendors),
   ]).finally(() => setLoading(false));
+
   useEffect(() => { load(); }, []);
+
+  useEffect(() => {
+    const pathParts = location.pathname.split('/').filter(Boolean);
+    const candidate = pathParts[2] as PaymentTabKey | undefined;
+
+    if (!candidate || !paymentTabKeys.has(candidate)) {
+      navigate('/admin/payments/overview', { replace: true });
+    }
+  }, [location.pathname, navigate]);
 
   const handleCreate = async () => {
     const amount = Number(form.amount);
@@ -214,162 +259,220 @@ export default function AdminPayments() {
 
   return (
     <AdminLayout>
-      <div className="mb-6 flex items-center justify-between gap-3">
-        <h1 className="text-xl font-semibold text-slate-800">Payments and Payouts</h1>
-        <Button size="sm" className="!bg-slate-800 hover:!bg-slate-900" onClick={() => setShowCreateModal(true)}>
-          + Add Payment
-        </Button>
-      </div>
+      <div className="mb-6 rounded-2xl border border-slate-200 bg-white p-4 shadow-sm sm:p-6">
+        <div className="flex flex-wrap items-start justify-between gap-3">
+          <div>
+            <h1 className="text-xl font-semibold text-slate-800">Payments and Payouts</h1>
+            <p className="mt-1 text-sm text-slate-500">Organized by financial workflow to help you act faster.</p>
+          </div>
+          {activeTab === 'billing' && (
+            <Button size="sm" className="!bg-slate-800 hover:!bg-slate-900" onClick={() => setShowCreateModal(true)}>
+              + Add Payment
+            </Button>
+          )}
+        </div>
 
-      <div className="mb-6 grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
-        <div className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
-          <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">Platform Earnings (Accrued)</p>
-          <p className="mt-2 text-2xl font-semibold text-slate-900">{formatCurrency(payoutSummary.platformAccrued)}</p>
-          <p className="mt-1 text-xs text-slate-500">From held, ready, and released bookings</p>
-        </div>
-        <div className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
-          <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">Gross Collected</p>
-          <p className="mt-2 text-2xl font-semibold text-slate-900">{formatCurrency(payoutSummary.grossCollected)}</p>
-          <p className="mt-1 text-xs text-slate-500">Full payments collected by platform</p>
-        </div>
-        <div className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
-          <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">Vendor Pending Balance</p>
-          <p className="mt-2 text-2xl font-semibold text-slate-900">{formatCurrency(payoutSummary.vendorPending)}</p>
-          <p className="mt-1 text-xs text-slate-500">Held until completion/payout release window</p>
-        </div>
-        <div className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
-          <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">Vendor Ready To Release</p>
-          <p className="mt-2 text-2xl font-semibold text-slate-900">{formatCurrency(payoutSummary.vendorReady)}</p>
-          <p className="mt-1 text-xs text-slate-500">{payoutSummary.readyCount} payout(s) ready</p>
-        </div>
-        <div className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
-          <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">Vendor Released Total</p>
-          <p className="mt-2 text-2xl font-semibold text-slate-900">{formatCurrency(payoutSummary.vendorReleased)}</p>
-          <p className="mt-1 text-xs text-slate-500">{payoutSummary.releasedCount} payout(s) released</p>
-        </div>
-        <div className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
-          <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">Refunded/Cancelled Reversals</p>
-          <p className="mt-2 text-2xl font-semibold text-slate-900">{formatCurrency(payoutSummary.reversed)}</p>
-          <p className="mt-1 text-xs text-slate-500">Net vendor payouts reversed</p>
+        <div className="mt-4 grid gap-2 sm:grid-cols-2 xl:grid-cols-4">
+          {PAYMENT_TABS.map((tab) => {
+            const selected = activeTab === tab.key;
+            return (
+              <Link
+                key={tab.key}
+                to={`/admin/payments/${tab.key}`}
+                className={`rounded-xl border px-3 py-3 transition ${selected
+                  ? 'border-slate-800 bg-slate-800 text-white shadow-sm'
+                  : 'border-slate-200 bg-white text-slate-700 hover:border-slate-300 hover:bg-slate-50'
+                  }`}
+              >
+                <p className={`text-sm font-semibold ${selected ? 'text-white' : 'text-slate-800'}`}>
+                  {tab.label}
+                </p>
+                <p className={`mt-1 text-xs ${selected ? 'text-slate-200' : 'text-slate-500'}`}>
+                  {tab.description}
+                </p>
+              </Link>
+            );
+          })}
         </div>
       </div>
 
-      <h2 className="mb-3 text-base font-semibold text-slate-800">Vendor Earnings Breakdown</h2>
-      <div className="overflow-x-auto rounded-xl shadow">
-        <Table striped>
-          <Table.Head>
-            <Table.HeadCell>Vendor</Table.HeadCell>
-            <Table.HeadCell>Gross Collected</Table.HeadCell>
-            <Table.HeadCell>Platform Earnings</Table.HeadCell>
-            <Table.HeadCell>Pending</Table.HeadCell>
-            <Table.HeadCell>Ready</Table.HeadCell>
-            <Table.HeadCell>Released</Table.HeadCell>
-            <Table.HeadCell>Transactions</Table.HeadCell>
-          </Table.Head>
-          <Table.Body>
-            {vendorEarnings.map((row) => (
-              <Table.Row key={row.vendorId} className="text-sm">
-                <Table.Cell>{row.vendorName}</Table.Cell>
-                <Table.Cell className="font-semibold">{formatCurrency(row.grossCollected)}</Table.Cell>
-                <Table.Cell>{formatCurrency(row.platformAccrued)}</Table.Cell>
-                <Table.Cell>{formatCurrency(row.pendingBalance)}</Table.Cell>
-                <Table.Cell>{formatCurrency(row.readyBalance)}</Table.Cell>
-                <Table.Cell>{formatCurrency(row.releasedTotal)}</Table.Cell>
-                <Table.Cell>{row.records}</Table.Cell>
-              </Table.Row>
-            ))}
-          </Table.Body>
-        </Table>
-      </div>
+      {activeTab === 'overview' && (
+        <div className="mb-6 grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
+          <div className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
+            <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">Platform Earnings (Accrued)</p>
+            <p className="mt-2 text-2xl font-semibold text-slate-900">{formatCurrency(payoutSummary.platformAccrued)}</p>
+            <p className="mt-1 text-xs text-slate-500">From held, ready, and released bookings</p>
+          </div>
+          <div className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
+            <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">Gross Collected</p>
+            <p className="mt-2 text-2xl font-semibold text-slate-900">{formatCurrency(payoutSummary.grossCollected)}</p>
+            <p className="mt-1 text-xs text-slate-500">Full payments collected by platform</p>
+          </div>
+          <div className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
+            <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">Vendor Pending Balance</p>
+            <p className="mt-2 text-2xl font-semibold text-slate-900">{formatCurrency(payoutSummary.vendorPending)}</p>
+            <p className="mt-1 text-xs text-slate-500">Held until completion/payout release window</p>
+          </div>
+          <div className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
+            <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">Vendor Ready To Release</p>
+            <p className="mt-2 text-2xl font-semibold text-slate-900">{formatCurrency(payoutSummary.vendorReady)}</p>
+            <p className="mt-1 text-xs text-slate-500">{payoutSummary.readyCount} payout(s) ready</p>
+          </div>
+          <div className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
+            <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">Vendor Released Total</p>
+            <p className="mt-2 text-2xl font-semibold text-slate-900">{formatCurrency(payoutSummary.vendorReleased)}</p>
+            <p className="mt-1 text-xs text-slate-500">{payoutSummary.releasedCount} payout(s) released</p>
+          </div>
+          <div className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
+            <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">Refunded/Cancelled Reversals</p>
+            <p className="mt-2 text-2xl font-semibold text-slate-900">{formatCurrency(payoutSummary.reversed)}</p>
+            <p className="mt-1 text-xs text-slate-500">Net vendor payouts reversed</p>
+          </div>
+        </div>
+      )}
 
-      <h2 className="mb-3 text-base font-semibold text-slate-800">Billing Records</h2>
-      <div className="overflow-x-auto rounded-xl shadow">
-        <Table striped>
-          <Table.Head>
-            <Table.HeadCell>Vendor</Table.HeadCell>
-            <Table.HeadCell>Amount</Table.HeadCell>
-            <Table.HeadCell>Due Date</Table.HeadCell>
-            <Table.HeadCell>Status</Table.HeadCell>
-            <Table.HeadCell>Actions</Table.HeadCell>
-          </Table.Head>
-          <Table.Body>
-            {payments.map(p => (
-              <Table.Row key={p.id} className="text-sm">
-                <Table.Cell>{p.vendor?.businessName}</Table.Cell>
-                <Table.Cell className="font-semibold">{formatCurrency(p.amount)}</Table.Cell>
-                <Table.Cell>{formatDate(p.dueDate)}</Table.Cell>
-                <Table.Cell><PaymentStatusBadge status={p.status} /></Table.Cell>
-                <Table.Cell>
-                  <div className="flex gap-2">
-                    {p.status !== 'paid' && (
-                      <Button size="sm" color="light" className="!border-emerald-200 !bg-emerald-50 !text-emerald-800 hover:!bg-emerald-100" onClick={() => markPaid(p.id).then(() => { toast.success('Marked paid!'); load(); })}>Mark Paid</Button>
-                    )}
-                    {p.status === 'pending' && (
-                      <Button size="sm" color="light" className="!border-rose-200 !bg-rose-50 !text-rose-700 hover:!bg-rose-100" onClick={() => markOverdue(p.id).then(() => { toast.success('Marked overdue!'); load(); })}>Mark Overdue</Button>
-                    )}
-                  </div>
-                </Table.Cell>
-              </Table.Row>
-            ))}
-          </Table.Body>
-        </Table>
-      </div>
+      {activeTab === 'earnings' && (
+        <div>
+          <h2 className="mb-3 text-base font-semibold text-slate-800">Vendor Earnings Breakdown</h2>
+          <div className="overflow-x-auto rounded-xl shadow">
+            <Table striped>
+              <Table.Head>
+                <Table.HeadCell>Vendor</Table.HeadCell>
+                <Table.HeadCell>Gross Collected</Table.HeadCell>
+                <Table.HeadCell>Platform Earnings</Table.HeadCell>
+                <Table.HeadCell>Pending</Table.HeadCell>
+                <Table.HeadCell>Ready</Table.HeadCell>
+                <Table.HeadCell>Released</Table.HeadCell>
+                <Table.HeadCell>Transactions</Table.HeadCell>
+              </Table.Head>
+              <Table.Body>
+                {vendorEarnings.map((row) => (
+                  <Table.Row key={row.vendorId} className="text-sm">
+                    <Table.Cell>{row.vendorName}</Table.Cell>
+                    <Table.Cell className="font-semibold">{formatCurrency(row.grossCollected)}</Table.Cell>
+                    <Table.Cell>{formatCurrency(row.platformAccrued)}</Table.Cell>
+                    <Table.Cell>{formatCurrency(row.pendingBalance)}</Table.Cell>
+                    <Table.Cell>{formatCurrency(row.readyBalance)}</Table.Cell>
+                    <Table.Cell>{formatCurrency(row.releasedTotal)}</Table.Cell>
+                    <Table.Cell>{row.records}</Table.Cell>
+                  </Table.Row>
+                ))}
+              </Table.Body>
+            </Table>
+          </div>
+        </div>
+      )}
 
-      <h2 className="mb-3 mt-6 text-base font-semibold text-slate-800">Vendor Payout Queue</h2>
-      <div className="overflow-x-auto rounded-xl shadow">
-        <Table striped>
-          <Table.Head>
-            <Table.HeadCell>Vendor</Table.HeadCell>
-            <Table.HeadCell>Booking</Table.HeadCell>
-            <Table.HeadCell>Gross</Table.HeadCell>
-            <Table.HeadCell>Platform Fee</Table.HeadCell>
-            <Table.HeadCell>Net Amount</Table.HeadCell>
-            <Table.HeadCell>Outstanding</Table.HeadCell>
-            <Table.HeadCell>Release On</Table.HeadCell>
-            <Table.HeadCell>Payout Destination</Table.HeadCell>
-            <Table.HeadCell>Status</Table.HeadCell>
-            <Table.HeadCell>Actions</Table.HeadCell>
-          </Table.Head>
-          <Table.Body>
-            {payouts.map((payout) => {
-              const payoutVendor =
-                payout.vendor || vendors.find((vendor) => vendor.id === payout.vendorId);
-              const payoutDestination = formatPayoutDestination(payoutVendor);
+      {activeTab === 'billing' && (
+        <div>
+          <h2 className="mb-3 text-base font-semibold text-slate-800">Billing Records</h2>
+          <div className="overflow-x-auto rounded-xl shadow">
+            <Table striped>
+              <Table.Head>
+                <Table.HeadCell>Vendor</Table.HeadCell>
+                <Table.HeadCell>Amount</Table.HeadCell>
+                <Table.HeadCell>Due Date</Table.HeadCell>
+                <Table.HeadCell>Status</Table.HeadCell>
+                <Table.HeadCell>Actions</Table.HeadCell>
+              </Table.Head>
+              <Table.Body>
+                {payments.map((payment) => (
+                  <Table.Row key={payment.id} className="text-sm">
+                    <Table.Cell>{payment.vendor?.businessName}</Table.Cell>
+                    <Table.Cell className="font-semibold">{formatCurrency(payment.amount)}</Table.Cell>
+                    <Table.Cell>{formatDate(payment.dueDate)}</Table.Cell>
+                    <Table.Cell><PaymentStatusBadge status={payment.status} /></Table.Cell>
+                    <Table.Cell>
+                      <div className="flex gap-2">
+                        {payment.status !== 'paid' && (
+                          <Button
+                            size="sm"
+                            color="light"
+                            className="!border-emerald-200 !bg-emerald-50 !text-emerald-800 hover:!bg-emerald-100"
+                            onClick={() => markPaid(payment.id).then(() => { toast.success('Marked paid!'); load(); })}
+                          >
+                            Mark Paid
+                          </Button>
+                        )}
+                        {payment.status === 'pending' && (
+                          <Button
+                            size="sm"
+                            color="light"
+                            className="!border-rose-200 !bg-rose-50 !text-rose-700 hover:!bg-rose-100"
+                            onClick={() => markOverdue(payment.id).then(() => { toast.success('Marked overdue!'); load(); })}
+                          >
+                            Mark Overdue
+                          </Button>
+                        )}
+                      </div>
+                    </Table.Cell>
+                  </Table.Row>
+                ))}
+              </Table.Body>
+            </Table>
+          </div>
+        </div>
+      )}
 
-              return (
-                <Table.Row key={payout.id} className="text-sm">
-                  <Table.Cell>{payoutVendor?.businessName || payout.vendorId}</Table.Cell>
-                  <Table.Cell>{payout.bookingId.slice(0, 8)}...</Table.Cell>
-                  <Table.Cell>{formatCurrency(toAmount(payout.grossAmount))}</Table.Cell>
-                  <Table.Cell>{formatCurrency(toAmount(payout.platformFeeAmount))}</Table.Cell>
-                  <Table.Cell className="font-semibold">{formatCurrency(payout.netAmount)}</Table.Cell>
-                  <Table.Cell>{formatCurrency(payout.outstandingBalanceAmount)}</Table.Cell>
-                  <Table.Cell>{payout.releaseOn ? formatDate(payout.releaseOn) : 'Immediate'}</Table.Cell>
-                  <Table.Cell className="max-w-[260px] truncate" title={payoutDestination}>
-                    {payoutDestination}
-                  </Table.Cell>
-                  <Table.Cell className="capitalize">{payout.status.replace('_', ' ')}</Table.Cell>
-                  <Table.Cell>
-                    {payout.status === 'ready' ? (
-                      <Button
-                        size="sm"
-                        color="success"
-                        onClick={() => handleReleasePayout(payout)}
-                        isProcessing={releasingPayoutId === payout.id}
-                        disabled={releasingPayoutId === payout.id}
-                      >
-                        Release
-                      </Button>
-                    ) : (
-                      <span className="text-sm text-slate-500">No action</span>
-                    )}
-                  </Table.Cell>
-                </Table.Row>
-              );
-            })}
-          </Table.Body>
-        </Table>
-      </div>
+      {activeTab === 'payouts' && (
+        <div>
+          <h2 className="mb-3 text-base font-semibold text-slate-800">Vendor Payout Queue</h2>
+          <div className="overflow-x-auto rounded-xl shadow">
+            <Table striped>
+              <Table.Head>
+                <Table.HeadCell>Vendor</Table.HeadCell>
+                <Table.HeadCell>Booking</Table.HeadCell>
+                <Table.HeadCell>Gross</Table.HeadCell>
+                <Table.HeadCell>Platform Fee</Table.HeadCell>
+                <Table.HeadCell>Net Amount</Table.HeadCell>
+                <Table.HeadCell>Outstanding</Table.HeadCell>
+                <Table.HeadCell>Release On</Table.HeadCell>
+                <Table.HeadCell>Payout Destination</Table.HeadCell>
+                <Table.HeadCell>Status</Table.HeadCell>
+                <Table.HeadCell>Actions</Table.HeadCell>
+              </Table.Head>
+              <Table.Body>
+                {payouts.map((payout) => {
+                  const payoutVendor =
+                    payout.vendor || vendors.find((vendor) => vendor.id === payout.vendorId);
+                  const payoutDestination = formatPayoutDestination(payoutVendor);
+
+                  return (
+                    <Table.Row key={payout.id} className="text-sm">
+                      <Table.Cell>{payoutVendor?.businessName || payout.vendorId}</Table.Cell>
+                      <Table.Cell>{payout.bookingId.slice(0, 8)}...</Table.Cell>
+                      <Table.Cell>{formatCurrency(toAmount(payout.grossAmount))}</Table.Cell>
+                      <Table.Cell>{formatCurrency(toAmount(payout.platformFeeAmount))}</Table.Cell>
+                      <Table.Cell className="font-semibold">{formatCurrency(payout.netAmount)}</Table.Cell>
+                      <Table.Cell>{formatCurrency(payout.outstandingBalanceAmount)}</Table.Cell>
+                      <Table.Cell>{payout.releaseOn ? formatDate(payout.releaseOn) : 'Immediate'}</Table.Cell>
+                      <Table.Cell className="max-w-[260px] truncate" title={payoutDestination}>
+                        {payoutDestination}
+                      </Table.Cell>
+                      <Table.Cell className="capitalize">{payout.status.replace('_', ' ')}</Table.Cell>
+                      <Table.Cell>
+                        {payout.status === 'ready' ? (
+                          <Button
+                            size="sm"
+                            color="success"
+                            onClick={() => handleReleasePayout(payout)}
+                            isProcessing={releasingPayoutId === payout.id}
+                            disabled={releasingPayoutId === payout.id}
+                          >
+                            Release
+                          </Button>
+                        ) : (
+                          <span className="text-sm text-slate-500">No action</span>
+                        )}
+                      </Table.Cell>
+                    </Table.Row>
+                  );
+                })}
+              </Table.Body>
+            </Table>
+          </div>
+        </div>
+      )}
 
       <Modal show={showCreateModal} onClose={() => !submitting && setShowCreateModal(false)}>
         <Modal.Header>Add Payment</Modal.Header>
