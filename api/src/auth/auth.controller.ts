@@ -44,8 +44,10 @@ export class AuthController {
   @Get('google/callback')
   @UseGuards(AuthGuard('google'))
   async googleCallback(@Req() req, @Res() res) {
-    const customerFrontendUrl = process.env.FRONTEND_URL || 'http://localhost:5173';
-    const staffFrontendUrl = process.env.STAFF_FRONTEND_URL || 'http://localhost:5174';
+    const customerFrontendUrl =
+      process.env.FRONTEND_URL || 'https://rentalbasic.com';
+    const staffFrontendUrl =
+      process.env.STAFF_FRONTEND_URL || 'https://vendor.rentalbasic.com';
 
     try {
       const forwardedFor = String(req.headers['x-forwarded-for'] || '').trim();

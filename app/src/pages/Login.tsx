@@ -11,7 +11,7 @@ export default function Login() {
   const vendorLoginUrl = (
     import.meta.env.VITE_VENDOR_LOGIN_URL ||
     import.meta.env.VITE_STAFF_APP_URL ||
-    'http://127.0.0.1:43172/login'
+    'https://vendor.rentalbasic.com/login'
   ).trim();
   const authError = searchParams.get('error')?.trim() || '';
 
