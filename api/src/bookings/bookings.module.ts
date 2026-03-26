@@ -18,6 +18,7 @@ import { FraudModule } from '../fraud/fraud.module';
 import { User } from '../users/entities/user.entity';
 import { ChatModule } from '../chat/chat.module';
 import { PaymentsModule } from '../payments/payments.module';
+import { NotificationsModule } from '../notifications/notifications.module';
 
 @Module({
   imports: [
@@ -39,6 +40,7 @@ import { PaymentsModule } from '../payments/payments.module';
     SettingsModule,
     FraudModule,
     ChatModule,
+    NotificationsModule,
   ],
   providers: [BookingsService],
   controllers: [BookingsController],

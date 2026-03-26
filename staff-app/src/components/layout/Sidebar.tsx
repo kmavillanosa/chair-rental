@@ -195,7 +195,7 @@ export default function Sidebar({ role, className = '', onNavigate, dataTour }: 
         <img
           src="/logo_dark.svg"
           alt={role === 'admin' ? 'RentalBasic Admin Panel' : 'RentalBasic Vendor Panel'}
-          className="h-10 w-auto"
+          className="h-20 w-auto"
         />
       </div>
       <nav className="flex-1 min-h-0 overflow-y-auto p-4 space-y-1">

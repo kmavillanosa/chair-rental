@@ -10,6 +10,9 @@ import { User } from '../users/entities/user.entity';
 import { TestVendorsSeedService } from './test-vendors-seed.service';
 import { InventoryItem } from '../inventory/entities/inventory-item.entity';
 import { VendorItem } from '../vendors/entities/vendor-item.entity';
+import { VendorPricingConfig } from '../payments/entities/vendor-pricing-config.entity';
+import { VendorDeliveryPricingTier } from '../payments/entities/vendor-delivery-pricing-tier.entity';
+import { VendorHelperPricingTier } from '../payments/entities/vendor-helper-pricing-tier.entity';
 
 @Module({
   imports: [
@@ -21,6 +24,9 @@ import { VendorItem } from '../vendors/entities/vendor-item.entity';
       User,
       InventoryItem,
       VendorItem,
+      VendorPricingConfig,
+      VendorDeliveryPricingTier,
+      VendorHelperPricingTier,
     ]),
   ],
   providers: [

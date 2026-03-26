@@ -36,6 +36,7 @@ import { RocketChatService } from '../chat/rocketchat.service';
 import { createHash, createHmac } from 'crypto';
 import { promises as fs } from 'fs';
 import { dirname, isAbsolute, join } from 'path';
+import { NotificationsService } from '../notifications/notifications.service';
 
 type CreateBookingPayload = {
   vendorId: string;
@@ -119,6 +120,7 @@ export class BookingsService {
     private readonly rocketchatService: RocketChatService,
     private readonly pricingBootstrapService: PricingConfigBootstrapService,
     private readonly pricingCalculationService: PricingCalculationService,
+    private readonly notificationsService: NotificationsService,
   ) {}
 
   findByVendor(vendorId: string) {
@@ -391,6 +393,25 @@ export class BookingsService {
     const createdBookingWithRelations = await this.findById(createdBooking.id);
     if (createdBookingWithRelations) {
       await this.tryEnsureBookingDocuments(createdBookingWithRelations.id);
+      await this.notificationsService.sendNotification(
+        createdBookingWithRelations.customerId,
+        {
+          title: 'Booking Placed',
+          body: 'Your booking was placed successfully!',
+          url: `/my-bookings/${createdBookingWithRelations.id}`,
+        },
+      );
+
+      if (createdBookingWithRelations.vendor?.userId) {
+        await this.notificationsService.sendNotification(
+          createdBookingWithRelations.vendor.userId,
+          {
+            title: 'New Booking',
+            body: 'You have a new booking request.',
+            url: `/vendor/bookings/${createdBookingWithRelations.id}`,
+          },
+        );
+      }
     }
 
     // Provision Rocket.Chat room — fire-and-forget so RC downtime never
@@ -689,6 +710,25 @@ export class BookingsService {
     const updatedBooking = await this.findById(id);
     if (updatedBooking) {
       await this.tryEnsureBookingDocuments(updatedBooking.id);
+      await this.notificationsService.sendNotification(
+        updatedBooking.customerId,
+        {
+          title: 'Booking Status Updated',
+          body: `Your booking status is now ${status}.`,
+          url: `/my-bookings/${updatedBooking.id}`,
+        },
+      );
+
+      if (updatedBooking.vendor?.userId) {
+        await this.notificationsService.sendNotification(
+          updatedBooking.vendor.userId,
+          {
+            title: 'Booking Status Updated',
+            body: `A booking status is now ${status}.`,
+            url: `/vendor/bookings/${updatedBooking.id}`,
+          },
+        );
+      }
     }
 
     return updatedBooking;

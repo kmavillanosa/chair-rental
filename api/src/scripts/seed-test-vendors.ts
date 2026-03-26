@@ -14,6 +14,13 @@ async function bootstrap() {
     console.log(`Vendors updated: ${result.vendorsUpdated}`);
     console.log(`Inventory items created: ${result.inventoryItemsCreated}`);
     console.log(`Vendor items created: ${result.vendorItemsCreated}`);
+    console.log(`Delivery rates created: ${result.deliveryRatesCreated}`);
+    console.log(`Delivery rates updated: ${result.deliveryRatesUpdated}`);
+    console.log(`Delivery rates deleted: ${result.deliveryRatesDeleted}`);
+    console.log(`Pricing configs created: ${result.pricingConfigsCreated}`);
+    console.log(`Pricing configs updated: ${result.pricingConfigsUpdated}`);
+    console.log(`Delivery pricing tiers written: ${result.deliveryPricingTiersWritten}`);
+    console.log(`Helper pricing tiers written: ${result.helperPricingTiersWritten}`);
     console.log(`Total test vendors: ${result.totalTestVendors}`);
   } catch (error) {
     console.error('Test vendors seed failed.');

@@ -69,7 +69,7 @@ export default function MyBookings() {
             verifyBookingPayment(bookingId)
                 .then(() => {
                     toast.success(t('myBookingsPage.toastPaymentVerified'));
-                    load();
+                    navigate(`/my-bookings/${bookingId}`);
                 })
                 .catch((error: any) => {
                     toast.error(error?.response?.data?.message || t('myBookingsPage.toastPaymentVerifyFailed'));

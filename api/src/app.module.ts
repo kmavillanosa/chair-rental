@@ -41,6 +41,8 @@ import { DisputesModule } from './disputes/disputes.module';
 import { BookingDispute } from './disputes/entities/booking-dispute.entity';
 import { BookingDisputeEvidence } from './disputes/entities/booking-dispute-evidence.entity';
 import { ChatModule } from './chat/chat.module';
+import { NotificationsModule } from './notifications/notifications.module';
+import { PushSubscription } from './notifications/entities/push-subscription.entity';
 
 const uploadRootPath = process.env.UPLOAD_DIR || join(process.cwd(), 'uploads');
 
@@ -80,6 +82,7 @@ const uploadRootPath = process.env.UPLOAD_DIR || join(process.cwd(), 'uploads');
         FraudAlert,
         BookingDispute,
         BookingDisputeEvidence,
+        PushSubscription,
       ],
       synchronize:
         typeof process.env.DB_SYNC === 'string'
@@ -104,6 +107,7 @@ const uploadRootPath = process.env.UPLOAD_DIR || join(process.cwd(), 'uploads');
     DisputesModule,
     SeedsModule,
     ChatModule,
+    NotificationsModule,
   ],
 })
 export class AppModule {}

@@ -24,6 +24,7 @@ import { DeliveryRate } from '../payments/entities/delivery-rate.entity';
 import { FraudAlert } from '../fraud/entities/fraud-alert.entity';
 import { BookingDispute } from '../disputes/entities/booking-dispute.entity';
 import { BookingDisputeEvidence } from '../disputes/entities/booking-dispute-evidence.entity';
+import { PushSubscription } from '../notifications/entities/push-subscription.entity';
 
 export default new DataSource({
   type: 'mysql',
@@ -56,6 +57,7 @@ export default new DataSource({
     FraudAlert,
     BookingDispute,
     BookingDisputeEvidence,
+    PushSubscription,
   ],
   migrations: [join(__dirname, 'migrations', '*{.js,.ts}')],
   synchronize: false,

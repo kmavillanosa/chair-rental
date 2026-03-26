@@ -177,6 +177,18 @@ function createService() {
     })),
     createAlert: vi.fn(),
   };
+  const rocketchatService = {
+    ensureBookingRoom: vi.fn(),
+  };
+  const pricingBootstrapService = {
+    ensureVendorPricingConfig: vi.fn(),
+  };
+  const pricingCalculationService = {
+    calculateBookingPricing: vi.fn(),
+  };
+  const notificationsService = {
+    sendNotification: vi.fn(),
+  };
 
   const service = new BookingsService(
     bookingsRepo as any,
@@ -193,6 +205,10 @@ function createService() {
     dataSource as any,
     settingsService as any,
     fraudService as any,
+    rocketchatService as any,
+    pricingBootstrapService as any,
+    pricingCalculationService as any,
+    notificationsService as any,
   );
 
   return {
@@ -210,6 +226,10 @@ function createService() {
       dataSource,
       settingsService,
       fraudService,
+      rocketchatService,
+      pricingBootstrapService,
+      pricingCalculationService,
+      notificationsService,
     },
   };
 }

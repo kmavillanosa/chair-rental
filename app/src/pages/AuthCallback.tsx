@@ -5,6 +5,7 @@ import api from '../api/axios';
 import LoadingSpinner from '../components/common/LoadingSpinner';
 import { useTranslation } from 'react-i18next';
 import { consumePostLoginRedirect, clearPostLoginRedirect } from '../utils/postLoginRedirect';
+import { registerPushNotifications } from '../utils/pushNotifications';
 
 export default function AuthCallback() {
   const { t } = useTranslation();
@@ -14,26 +15,33 @@ export default function AuthCallback() {
 
   useEffect(() => {
     const token = params.get('token');
-    if (!token) { navigate('/login'); return; }
+    if (!token) {
+      navigate('/login');
+      return;
+    }
 
-    // Fetch user info
-    api.get('/users/me', { headers: { Authorization: `Bearer ${token}` } })
-      .then(({ data }) => {
+    void (async () => {
+      try {
+        const { data } = await api.get('/users/me', {
+          headers: { Authorization: `Bearer ${token}` },
+        });
+
         login(token, data);
         if (data.role === 'admin' || data.role === 'vendor') {
           clearPostLoginRedirect();
-          // Redirect to staff-app with token in URL
           const staffUrl = window.location.origin.replace(/\/app$/, '/staff-app');
           window.location.href = `${staffUrl}/auth-callback?token=${encodeURIComponent(token)}`;
-        } else {
-          const nextPath = consumePostLoginRedirect();
-          navigate(nextPath || '/', { replace: true });
+          return;
         }
-      })
-      .catch(() => {
+
+        await registerPushNotifications(token);
+        const nextPath = consumePostLoginRedirect();
+        navigate(nextPath || '/', { replace: true });
+      } catch {
         clearPostLoginRedirect();
         navigate('/login');
-      });
+      }
+    })();
   }, []);
 
   return (
