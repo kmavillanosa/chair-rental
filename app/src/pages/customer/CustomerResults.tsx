@@ -867,7 +867,7 @@ export default function CustomerResults() {
                                     <Marker
                                         key={vendor.id}
                                         position={[Number(vendor.latitude), Number(vendor.longitude)]}
-                                        icon={vendor.isTestAccount ? testVendorPinIcon : undefined}
+                                        {...(vendor.isTestAccount ? { icon: testVendorPinIcon } : {})}
                                         eventHandlers={{
                                             click: () => {
                                                 void traceRouteToVendor(vendor);
