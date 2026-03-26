@@ -946,13 +946,14 @@ export default function BookingFlow() {
                     </div>
                   </div>
                   {availQty > 0 ? (
-                    <div className="flex items-center gap-3">
+                    <div className="flex items-center gap-2">
                       <button
                         onClick={() => setItemQuantity(item.id, currentQty - 1, availQty)}
-                        className="w-10 h-10 rounded-full bg-gray-200 text-xl font-bold"
+                        className="flex-shrink-0 w-12 h-12 rounded-full bg-gray-200 text-2xl font-bold leading-none disabled:opacity-40 active:bg-gray-300 touch-manipulation"
                         disabled={currentQty <= 0}
+                        aria-label="Decrease quantity"
                       >
-                        -
+                        −
                       </button>
                       <input
                         type="number"
@@ -965,12 +966,13 @@ export default function BookingFlow() {
                           const parsed = raw === '' ? 0 : Number(raw);
                           setItemQuantity(item.id, parsed, availQty);
                         }}
-                        className="w-24 rounded-lg border border-gray-300 px-2 py-2 text-center text-lg font-bold"
+                        className="w-16 min-w-0 rounded-lg border border-gray-300 px-1 py-2 text-center text-lg font-bold"
                       />
                       <button
                         onClick={() => setItemQuantity(item.id, currentQty + 1, availQty)}
-                        className="w-10 h-10 rounded-full bg-blue-600 text-white text-xl font-bold"
+                        className="flex-shrink-0 w-12 h-12 rounded-full bg-blue-600 text-white text-2xl font-bold leading-none disabled:opacity-40 active:bg-blue-700 touch-manipulation"
                         disabled={currentQty >= availQty}
+                        aria-label="Increase quantity"
                       >
                         +
                       </button>
