@@ -139,6 +139,7 @@ jobs:
           PAYMONGO_SUCCESS_URL: ${{ secrets.PAYMONGO_SUCCESS_URL }}
           PLATFORM_COMMISSION_RATE: ${{ secrets.PLATFORM_COMMISSION_RATE }}
           PROXY_PORT: ${{ secrets.PROXY_PORT }}
+          PMA_HTTP_PORT: ${{ secrets.PMA_HTTP_PORT }}
           ROCKETCHAT_ADMIN_EMAIL: ${{ secrets.ROCKETCHAT_ADMIN_EMAIL }}
           ROCKETCHAT_ADMIN_PASSWORD: ${{ secrets.ROCKETCHAT_ADMIN_PASSWORD }}
           ROCKETCHAT_PUBLIC_URL: ${{ secrets.ROCKETCHAT_PUBLIC_URL }}
@@ -178,6 +179,7 @@ jobs:
           VENDOR_DOMAIN=${VENDOR_DOMAIN}
           API_PORT=${API_PORT}
           PROXY_PORT=${PROXY_PORT}
+          PMA_HTTP_PORT=${PMA_HTTP_PORT}
           DB_SYNC=${DB_SYNC}
           PLATFORM_COMMISSION_RATE=${PLATFORM_COMMISSION_RATE}
           PAYMONGO_ENABLED=${PAYMONGO_ENABLED}
@@ -243,6 +245,13 @@ jobs:
 
           docker compose -f docker-compose.yml -f docker-compose.release.yml build "${BUILD_FLAGS[@]}" api app staff_app
           docker compose -f docker-compose.yml -f docker-compose.release.yml up -d --force-recreate mysql api app staff_app nginx_proxy phpmyadmin
+
+          if ! docker compose -f docker-compose.yml -f docker-compose.release.yml ps --status running phpmyadmin | grep -q phpmyadmin; then
+            echo "phpmyadmin failed to start"
+            docker compose -f docker-compose.yml -f docker-compose.release.yml ps
+            docker compose -f docker-compose.yml -f docker-compose.release.yml logs --tail=120 phpmyadmin mysql || true
+            exit 1
+          fi
 
           docker compose -f docker-compose.yml -f docker-compose.release.yml run --rm api npm run db:migrate
           docker compose -f docker-compose.yml -f docker-compose.release.yml exec -T api npm run seed:all

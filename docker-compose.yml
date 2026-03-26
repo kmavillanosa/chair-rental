@@ -86,7 +86,7 @@ services:
       PMA_PORT: 3306
       MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD}
     ports:
-      - "8080:80"
+      - "${PMA_HTTP_PORT:-8080}:80"
     networks:
       - rental_network
     depends_on:
