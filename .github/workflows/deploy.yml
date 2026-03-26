@@ -108,8 +108,6 @@ jobs:
           VPS_USER: ${{ secrets.VPS_USER }}
           DEPLOY_SHA: ${{ github.sha }}
           FORCE_NO_CACHE: ${{ secrets.FORCE_NO_CACHE }}
-          UI_REFRESH_WITH_API: ${{ secrets.UI_REFRESH_WITH_API }}
-          UI_REFRESH_PRUNE_IMAGES: ${{ secrets.UI_REFRESH_PRUNE_IMAGES }}
 
           API_PORT: ${{ secrets.API_PORT }}
           DB_SYNC: ${{ secrets.DB_SYNC }}
@@ -209,7 +207,7 @@ jobs:
           scp $SSH_OPTS chair-rental-deploy-bundle.tgz "$VPS_USER@$VPS_HOST:/tmp/chair-rental-deploy-bundle.tgz"
           scp $SSH_OPTS chair-rental.env "$VPS_USER@$VPS_HOST:/tmp/chair-rental.env"
 
-          ssh $SSH_OPTS "$VPS_USER@$VPS_HOST" "DEPLOY_SHA='$DEPLOY_SHA' FORCE_NO_CACHE='${FORCE_NO_CACHE:-false}' UI_REFRESH_WITH_API='${UI_REFRESH_WITH_API:-false}' UI_REFRESH_PRUNE_IMAGES='${UI_REFRESH_PRUNE_IMAGES:-false}' bash -s" <<'REMOTE'
+          ssh $SSH_OPTS "$VPS_USER@$VPS_HOST" "DEPLOY_SHA='$DEPLOY_SHA' FORCE_NO_CACHE='${FORCE_NO_CACHE:-false}' bash -s" <<'REMOTE'
           set -euo pipefail
 
           mkdir -p /root/chair-rental
