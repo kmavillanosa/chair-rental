@@ -189,7 +189,7 @@ export default function CustomerLayout({ children, hideHeaderBackground = false 
           <path strokeLinecap="round" strokeLinejoin="round" d="M13 16h-1v-4h-1m1-4h.01M12 2a10 10 0 100 20A10 10 0 0012 2z" />
         </svg>
       </button>
-      <div data-tour="footer-legal" className="mx-auto w-full max-w-7xl px-3 pb-6 pt-4 sm:px-4">
+      <div data-tour="footer-legal" className="mx-auto hidden w-full max-w-7xl px-3 pb-6 pt-4 sm:px-4 lg:block">
         <LegalFooter />
       </div>
     </div>
