@@ -276,17 +276,23 @@ jobs:
 
           /root/chair-rental/vps-refresh-ui.sh "${REFRESH_UI_ARGS[@]}"
 
+          echo "resolved compose services:"
+          docker compose -f docker-compose.yml -f docker-compose.release.yml config --services
+
           # Force-create phpMyAdmin and fail hard if it is not running.
           docker compose -f docker-compose.yml -f docker-compose.release.yml up -d --force-recreate --no-deps phpmyadmin
-          if ! docker compose -f docker-compose.yml -f docker-compose.release.yml ps --status running phpmyadmin | grep -q phpmyadmin; then
+          if ! docker compose -f docker-compose.yml -f docker-compose.release.yml ps --status running phpmyadmin | grep -q phpmyadmin || ! docker ps --format '{{.Names}}' | grep -q '^chair_rental_pma$'; then
             echo "phpmyadmin was not running after first start attempt; forcing remove + recreate"
             docker compose -f docker-compose.yml -f docker-compose.release.yml rm -sf phpmyadmin || true
-            docker compose -f docker-compose.yml -f docker-compose.release.yml up -d --force-recreate --no-deps phpmyadmin
+            docker rm -f chair_rental_pma || true
+            docker compose -f docker-compose.yml -f docker-compose.release.yml create phpmyadmin
+            docker compose -f docker-compose.yml -f docker-compose.release.yml start phpmyadmin
           fi
 
-          if ! docker compose -f docker-compose.yml -f docker-compose.release.yml ps --status running phpmyadmin | grep -q phpmyadmin; then
+          if ! docker compose -f docker-compose.yml -f docker-compose.release.yml ps --status running phpmyadmin | grep -q phpmyadmin || ! docker ps --format '{{.Names}}' | grep -q '^chair_rental_pma$'; then
             echo "phpmyadmin is still not running after forced recreate"
             docker compose -f docker-compose.yml -f docker-compose.release.yml ps
+            docker ps -a --format 'table {{.Names}}\t{{.Status}}\t{{.Ports}}' | grep -E 'NAMES|chair_rental_pma|chair_rental_db' || true
             docker compose -f docker-compose.yml -f docker-compose.release.yml logs --tail=120 mysql phpmyadmin || true
             exit 1
           fi
@@ -301,6 +307,13 @@ jobs:
               exit 1
             fi
           done
+
+          if ! docker ps --format '{{.Names}}' | grep -q '^chair_rental_pma$'; then
+            echo "chair_rental_pma container is not present in docker ps"
+            docker ps -a --format 'table {{.Names}}\t{{.Status}}\t{{.Ports}}' | grep -E 'NAMES|chair_rental_pma|chair_rental_db' || true
+            docker compose -f docker-compose.yml -f docker-compose.release.yml logs --tail=120 phpmyadmin mysql || true
+            exit 1
+          fi
 
           echo "Seeding all data after containers are running"
           docker compose -f docker-compose.yml -f docker-compose.release.yml exec -T api npm run seed:all
