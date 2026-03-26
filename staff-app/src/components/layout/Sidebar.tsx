@@ -192,7 +192,7 @@ export default function Sidebar({ role, className = '', onNavigate, dataTour }: 
       className={`flex h-full min-h-0 w-64 shrink-0 flex-col border-r border-[#2d3f63] bg-[#1f2944] text-slate-100 shadow-lg ${className}`.trim()}
     >
       <div className="border-b border-[#2d3f63] p-6">
-        <h1 className="text-base font-bold">RentalBasic</h1>
+        <img src="/logo_dark.svg" alt="RentalBasic" className="h-10 w-auto" />
         <p className="mt-1 text-sm text-slate-300">{role === 'admin' ? 'Admin Panel' : 'Vendor Panel'}</p>
       </div>
       <nav className="flex-1 min-h-0 overflow-y-auto p-4 space-y-1">
