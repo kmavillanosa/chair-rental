@@ -215,6 +215,17 @@ jobs:
           mkdir -p /root/chair-rental
           cd /root/chair-rental
 
+          if [ -d .git ]; then
+            echo "Syncing VPS repo before artifact extraction"
+            export GIT_TERMINAL_PROMPT=0
+            git fetch --all --prune || true
+            if git rev-parse --verify --quiet "${DEPLOY_SHA}" >/dev/null; then
+              git reset --hard "${DEPLOY_SHA}" || true
+            else
+              git pull --ff-only origin main || git pull --ff-only origin master || true
+            fi
+          fi
+
           rm -rf api/dist app/dist staff-app/dist
           tar -xzf /tmp/chair-rental-deploy-bundle.tgz -C /root/chair-rental
           rm -f /tmp/chair-rental-deploy-bundle.tgz
