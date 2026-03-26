@@ -65,6 +65,7 @@ jobs:
             docker-compose.yml \
             docker-compose.release.yml \
             nginx \
+            vps-refresh-ui.sh \
             api/package.json \
             api/package-lock.json \
             api/Dockerfile.release \
@@ -156,7 +157,7 @@ jobs:
         run: |
           set -euo pipefail
 
-          SSH_OPTS="-o BatchMode=yes -o StrictHostKeyChecking=no -o ConnectTimeout=90 -o ConnectionAttempts=5"
+          SSH_OPTS="-o BatchMode=yes -o StrictHostKeyChecking=no -o ConnectTimeout=90 -o ConnectionAttempts=5 -o ServerAliveInterval=60 -o ServerAliveCountMax=10"
 
           cat > chair-rental.env <<ENVVARS
           MYSQL_ROOT_PASSWORD=${MYSQL_ROOT_PASSWORD}
