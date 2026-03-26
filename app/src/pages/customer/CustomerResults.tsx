@@ -657,30 +657,15 @@ export default function CustomerResults() {
     return (
         <CustomerLayout>
             <section className="bg-slate-100">
-                <div className="mx-auto max-w-[1600px] px-3 pb-5 pt-3 sm:px-4 sm:pb-6 sm:pt-4">
-                    <div className="flex flex-col gap-3 lg:flex-row">
-                        <aside className="lg:w-[360px] lg:shrink-0">
-                            <div className="rounded-2xl border border-slate-200/80 bg-white p-3 shadow-sm sm:p-4 lg:sticky lg:top-20">
-                                <div className="flex items-start justify-between gap-3">
-                                    <div className="min-w-0">
-                                        <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-blue-700">{t('customerResults.panelLabel')}</p>
-                                        <h1 className="mt-1 text-lg font-bold leading-tight text-slate-900 sm:text-2xl">{t('customerResults.panelTitle')}</h1>
-                                        {!mobilePanelOpen && (
-                                            <p className="mt-1 text-xs text-slate-600 sm:hidden">
-                                                {vendorsWithPins.length} {t('customerResults.panelPins').toLowerCase()} • {radiusKm} km
-                                            </p>
-                                        )}
-                                    </div>
-                                    <button
-                                        type="button"
-                                        onClick={() => setMobilePanelOpen((current) => !current)}
-                                        className="rounded-lg border border-slate-300 bg-white px-2.5 py-1 text-xs font-semibold text-slate-700 sm:hidden"
-                                    >
-                                        {mobilePanelOpen ? 'Hide' : 'Filters'}
-                                    </button>
-                                </div>
+                <div className="lg:mx-auto lg:max-w-[1600px] lg:px-4 lg:pb-6 lg:pt-4">
+                    <div className="flex flex-col lg:flex-row lg:gap-3">
+                        {/* Desktop sidebar – hidden on mobile; use bottom sheet instead */}
+                        <aside className="hidden lg:block lg:w-[360px] lg:shrink-0">
+                            <div className="sticky top-20 rounded-2xl border border-slate-200/80 bg-white p-4 shadow-sm">
+                                <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-blue-700">{t('customerResults.panelLabel')}</p>
+                                <h1 className="mt-1 text-2xl font-bold leading-tight text-slate-900">{t('customerResults.panelTitle')}</h1>
 
-                                <div className={`${mobilePanelOpen ? 'mt-3 block' : 'mt-3 hidden'} sm:block`}>
+                                <div className="mt-3">
                                     <p className="text-sm text-slate-600">
                                         {addressLabel
                                             ? t('customerResults.panelAroundAddress', { address: addressLabel })
@@ -709,14 +694,14 @@ export default function CustomerResults() {
                                         </div>
                                     )}
 
-                                    <div className="mt-3 grid grid-cols-2 gap-2 text-xs">
-                                        <div className="rounded-xl bg-slate-100 px-3 py-2">
+                                    <div className="mt-4 grid grid-cols-2 gap-2">
+                                        <div className="rounded-xl border border-slate-200 bg-slate-50 px-3 py-2.5">
                                             <p className="text-[10px] font-semibold uppercase tracking-wide text-slate-500">{t('customerResults.panelRadius')}</p>
                                             <select
                                                 value={String(radiusKm)}
                                                 onChange={(event) => updateRadius(Number(event.target.value))}
                                                 title={`${radiusKm} km`}
-                                                className="mt-0.5 w-full rounded-md border border-slate-300 bg-white px-2 py-1 text-sm font-semibold text-slate-800 focus:border-blue-500 focus:outline-none"
+                                                className="mt-1 w-full rounded-md border border-slate-300 bg-white px-2 py-1 text-sm font-semibold text-slate-800 focus:border-blue-500 focus:outline-none"
                                             >
                                                 {radiusOptions.map((value) => (
                                                     <option key={value} value={String(value)}>
@@ -725,88 +710,88 @@ export default function CustomerResults() {
                                                 ))}
                                             </select>
                                         </div>
-                                        <div className="rounded-xl bg-slate-100 px-3 py-2">
+                                        <div className="rounded-xl border border-slate-200 bg-slate-50 px-3 py-2.5">
                                             <p className="text-[10px] font-semibold uppercase tracking-wide text-slate-500">{t('customerResults.panelHelpers')}</p>
-                                            <p className="mt-0.5 text-sm font-semibold text-slate-800">{helpersNeeded}</p>
+                                            <p className="mt-1 text-sm font-bold text-slate-800">{helpersNeeded}</p>
                                         </div>
-                                        <div className="rounded-xl bg-slate-100 px-3 py-2">
+                                        <div className="rounded-xl border border-slate-200 bg-slate-50 px-3 py-2.5">
                                             <p className="text-[10px] font-semibold uppercase tracking-wide text-slate-500">{t('customerResults.panelEquipment')}</p>
-                                            <p className="mt-0.5 text-sm font-semibold text-slate-800">{itemTypeIds.length || t('common.any')}</p>
+                                            <p className="mt-1 text-sm font-bold text-slate-800">{itemTypeIds.length || t('common.any')}</p>
                                         </div>
-                                        <div className="col-span-2 rounded-xl bg-slate-100 px-3 py-2">
-                                            <p className="text-[10px] font-semibold uppercase tracking-wide text-slate-500">{t('common.dates')}</p>
-                                            <p className="mt-0.5 text-sm font-semibold text-slate-800">{dateRangeLabel}</p>
-                                        </div>
-                                        <div className="rounded-xl bg-slate-100 px-3 py-2">
+                                        <div className="rounded-xl border border-slate-200 bg-slate-50 px-3 py-2.5">
                                             <p className="text-[10px] font-semibold uppercase tracking-wide text-slate-500">{t('customerResults.panelPins')}</p>
-                                            <p className="mt-0.5 text-sm font-semibold text-slate-800">{vendorsWithPins.length}</p>
+                                            <p className="mt-1 text-sm font-bold text-slate-800">{vendorsWithPins.length}</p>
+                                        </div>
+                                        <div className="col-span-2 rounded-xl border border-slate-200 bg-slate-50 px-3 py-2.5">
+                                            <p className="text-[10px] font-semibold uppercase tracking-wide text-slate-500">{t('common.dates')}</p>
+                                            <p className="mt-1 text-sm font-bold text-slate-800">{dateRangeLabel}</p>
                                         </div>
                                     </div>
 
-                                    <div className="mt-3 flex flex-wrap gap-2">
-                                        <Button size="xs" color="light" onClick={goToModifySearch} className="w-full sm:w-auto">
-                                            {t('customerResults.modifySearch')}
-                                        </Button>
-                                        {topVendors[0] && (
-                                            <Button size="xs" onClick={() => navigate(getVendorShopUrl(topVendors[0].slug))} className="w-full sm:w-auto">
-                                                {t('customerResults.openNearestShop')}
-                                            </Button>
-                                        )}
-                                        <Button
-                                            size="sm"
-                                            color="blue"
+                                    <div className="mt-4 space-y-2">
+                                        <button
+                                            type="button"
                                             onClick={() => setComparisonOpen(true)}
                                             disabled={comparisonRows.length === 0}
-                                            className="w-full font-semibold sm:w-auto"
+                                            className="flex w-full items-center justify-center rounded-xl bg-blue-600 px-4 py-2.5 text-sm font-semibold text-white hover:bg-blue-700 disabled:opacity-50"
                                         >
                                             {t('customerResults.compareVendorPrices')}
-                                        </Button>
+                                        </button>
+                                        <div className="flex gap-2">
+                                            <button
+                                                type="button"
+                                                onClick={goToModifySearch}
+                                                className="flex-1 rounded-xl border border-slate-300 bg-white px-3 py-2 text-xs font-semibold text-slate-700 hover:bg-slate-50"
+                                            >
+                                                {t('customerResults.modifySearch')}
+                                            </button>
+                                            {topVendors[0] && (
+                                                <button
+                                                    type="button"
+                                                    onClick={() => navigate(getVendorShopUrl(topVendors[0].slug))}
+                                                    className="flex-1 rounded-xl border border-slate-300 bg-white px-3 py-2 text-xs font-semibold text-slate-700 hover:bg-slate-50"
+                                                >
+                                                    {t('customerResults.openNearestShop')}
+                                                </button>
+                                            )}
+                                        </div>
                                     </div>
                                 </div>
                             </div>
-
-                            {!loading && !requestError && topVendors.length > 0 && (
-                                <div className="mt-3 rounded-2xl border border-slate-200 bg-white p-4 shadow-sm md:hidden">
-                                    <p className="text-xs font-semibold uppercase tracking-[0.14em] text-slate-500">{t('customerResults.closestMatches')}</p>
-                                    <div className="mt-2 max-h-[42dvh] space-y-2 overflow-y-auto pr-1">
-                                        {topVendors.map((vendor) => (
-                                            <div
-                                                key={vendor.id}
-                                                className="flex items-center justify-between rounded-xl border border-slate-200 bg-slate-50 px-3 py-2"
-                                            >
-                                                <div className="min-w-0 pr-2">
-                                                    <p className="truncate text-sm font-semibold text-slate-900">{vendor.businessName}</p>
-                                                    {vendor.verificationBadge && (
-                                                        <p className="mt-0.5 text-[10px] font-semibold uppercase tracking-wide text-emerald-700">
-                                                            {vendor.verificationBadge}
-                                                        </p>
-                                                    )}
-                                                    {vendor.isTestAccount && (
-                                                        <p className="mt-0.5 text-[10px] font-semibold uppercase tracking-wide text-amber-700">
-                                                            {t('customerResults.testAccountBadge')}
-                                                        </p>
-                                                    )}
-                                                    <p className="text-xs text-slate-600">
-                                                        {vendor.distanceKm != null
-                                                            ? t('customerResults.cardDistanceAway', { distance: vendor.distanceKm.toFixed(1) })
-                                                            : t('customerResults.cardDistanceUnavailable')}
-                                                    </p>
-                                                </div>
-                                                <button
-                                                    type="button"
-                                                    className="rounded-lg bg-blue-600 px-2.5 py-1 text-xs font-semibold text-white hover:bg-blue-700"
-                                                    onClick={() => navigate(getVendorShopUrl(vendor.slug))}
-                                                >
-                                                    {t('customerResults.cardView')}
-                                                </button>
-                                            </div>
-                                        ))}
-                                    </div>
-                                </div>
-                            )}
                         </aside>
 
-                        <div className="relative h-[calc(100dvh-170px)] min-h-[440px] flex-1 overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm sm:min-h-[560px]">
+                        <div className="relative h-[calc(100dvh-56px)] flex-1 overflow-hidden lg:h-[calc(100dvh-170px)] lg:min-h-[560px] lg:rounded-2xl lg:border lg:border-slate-200 lg:shadow-sm">
+                            {/* Mobile: floating stats + filter trigger bar */}
+                            <div className="absolute inset-x-0 top-0 z-[900] p-2 lg:hidden">
+                                <div className="flex items-center gap-2 rounded-2xl border border-white/30 bg-white/95 px-3 py-2 shadow-lg backdrop-blur-sm">
+                                    <div className="min-w-0 flex-1">
+                                        <p className="truncate text-xs font-semibold text-slate-800">
+                                            {addressLabel || t('customerResults.panelTitle')}
+                                        </p>
+                                        <div className="mt-1 flex flex-wrap gap-1">
+                                            <span className="rounded-full bg-blue-100 px-2 py-0.5 text-[10px] font-semibold text-blue-700">{radiusKm} km</span>
+                                            {vendorsWithPins.length > 0 && (
+                                                <span className="rounded-full bg-emerald-100 px-2 py-0.5 text-[10px] font-semibold text-emerald-700">
+                                                    {vendorsWithPins.length} pins
+                                                </span>
+                                            )}
+                                            {startDate && (
+                                                <span className="rounded-full bg-slate-100 px-2 py-0.5 text-[10px] font-medium text-slate-600">
+                                                    {formatDate(startDate)}
+                                                </span>
+                                            )}
+                                        </div>
+                                    </div>
+                                    <button
+                                        type="button"
+                                        onClick={() => setMobilePanelOpen(true)}
+                                        className="shrink-0 rounded-xl bg-slate-900 px-3 py-1.5 text-xs font-semibold text-white"
+                                    >
+                                        Filters
+                                    </button>
+                                </div>
+                            </div>
+
                             <MapContainer center={searchCenter} zoom={12} zoomControl={false} className="h-full w-full">
                                 <ResultsMapViewport
                                     center={searchCenter}
@@ -923,10 +908,10 @@ export default function CustomerResults() {
                                 ))}
                             </MapContainer>
 
-                            <div className="pointer-events-none absolute inset-x-0 top-0 z-[900] h-24 bg-gradient-to-b from-slate-950/30 to-transparent" />
+                            <div className="pointer-events-none absolute inset-x-0 top-0 z-[900] hidden h-24 bg-gradient-to-b from-slate-950/30 to-transparent lg:block" />
 
                             {!loading && !requestError && topVendors.length > 0 && (
-                                <div className="pointer-events-none absolute right-0 top-1/2 z-[1000] hidden -translate-y-1/2 md:block">
+                                <div className="pointer-events-none absolute right-0 top-1/2 z-[1000] hidden -translate-y-1/2 lg:block">
                                     <div className="relative flex items-center">
                                         <div
                                             className={`pointer-events-auto overflow-hidden rounded-l-2xl border border-r-0 border-slate-200/90 bg-white/95 shadow-2xl backdrop-blur transition-all duration-300 ${desktopMatchesOpen ? 'mr-0 max-w-[320px] opacity-100' : 'mr-[-1px] max-w-0 border-transparent opacity-0'}`}
@@ -1029,6 +1014,173 @@ export default function CustomerResults() {
                                 </div>
                             )}
                         </div>
+                    </div>
+                </div>
+
+                {/* Mobile: backdrop when sheet is open */}
+                {mobilePanelOpen && (
+                    <div
+                        className="fixed inset-0 z-[1300] bg-slate-900/30 backdrop-blur-[2px] lg:hidden"
+                        onClick={() => setMobilePanelOpen(false)}
+                    />
+                )}
+
+                {/* Mobile: slide-up bottom sheet with filters + vendor list */}
+                <div
+                    className={`fixed inset-x-0 bottom-0 z-[1400] rounded-t-3xl border-t border-slate-200 bg-white shadow-2xl transition-transform duration-300 ease-out lg:hidden ${mobilePanelOpen ? 'translate-y-0' : 'translate-y-[calc(100%-4.5rem)]'}`}
+                >
+                    {/* Drag handle + always-visible summary row */}
+                    <button
+                        type="button"
+                        onClick={() => setMobilePanelOpen((current) => !current)}
+                        className="w-full px-4 pb-3 pt-3 text-left"
+                    >
+                        <div className="mx-auto mb-2.5 h-1 w-10 rounded-full bg-slate-300" />
+                        <div className="flex items-center justify-between">
+                            <div>
+                                <p className="text-[11px] font-semibold uppercase tracking-[0.14em] text-blue-700">
+                                    {t('customerResults.panelLabel')}
+                                </p>
+                                <p className="text-sm font-bold text-slate-900">
+                                    {loading
+                                        ? t('customerResults.loadingNearby')
+                                        : `${vendorsWithPins.length} pins · ${radiusKm} km`}
+                                </p>
+                            </div>
+                            <span className="rounded-full bg-slate-100 px-2.5 py-1 text-xs text-slate-500">
+                                {mobilePanelOpen ? '▼' : '▲'}
+                            </span>
+                        </div>
+                    </button>
+
+                    {/* Scrollable sheet body */}
+                    <div className="max-h-[65dvh] overflow-y-auto px-4 pb-8">
+                        <p className="text-sm text-slate-600">
+                            {addressLabel
+                                ? t('customerResults.panelAroundAddress', { address: addressLabel })
+                                : t('customerResults.panelGeneric')}
+                        </p>
+                        <p className="mt-1.5 text-xs font-medium text-amber-700">{t('customerResults.routeHint')}</p>
+
+                        {activeRouteVendorId && (
+                            <div className="mt-2 rounded-lg border border-amber-200 bg-amber-50 px-3 py-2">
+                                <p className="text-xs font-semibold text-amber-900">
+                                    {loadingRoute
+                                        ? t('customerResults.routeDrawing')
+                                        : t('customerResults.routeToVendor', { vendor: activeRouteVendorName })}
+                                </p>
+                                {!loadingRoute && (
+                                    <p className="mt-0.5 text-xs text-amber-800">
+                                        {activeRouteOnRoads
+                                            ? t('customerResults.routeOnRoads')
+                                            : t('customerResults.routeFallback')}
+                                    </p>
+                                )}
+                            </div>
+                        )}
+
+                        <div className="mt-3 grid grid-cols-2 gap-2">
+                            <div className="rounded-xl border border-slate-200 bg-slate-50 px-3 py-2.5">
+                                <p className="text-[10px] font-semibold uppercase tracking-wide text-slate-500">{t('customerResults.panelRadius')}</p>
+                                <select
+                                    value={String(radiusKm)}
+                                    onChange={(event) => updateRadius(Number(event.target.value))}
+                                    title={`${radiusKm} km`}
+                                    className="mt-1 w-full rounded-md border border-slate-300 bg-white px-2 py-1 text-sm font-semibold text-slate-800 focus:border-blue-500 focus:outline-none"
+                                >
+                                    {radiusOptions.map((value) => (
+                                        <option key={value} value={String(value)}>
+                                            {value} km
+                                        </option>
+                                    ))}
+                                </select>
+                            </div>
+                            <div className="rounded-xl border border-slate-200 bg-slate-50 px-3 py-2.5">
+                                <p className="text-[10px] font-semibold uppercase tracking-wide text-slate-500">{t('customerResults.panelHelpers')}</p>
+                                <p className="mt-1 text-sm font-bold text-slate-800">{helpersNeeded}</p>
+                            </div>
+                            <div className="rounded-xl border border-slate-200 bg-slate-50 px-3 py-2.5">
+                                <p className="text-[10px] font-semibold uppercase tracking-wide text-slate-500">{t('customerResults.panelEquipment')}</p>
+                                <p className="mt-1 text-sm font-bold text-slate-800">{itemTypeIds.length || t('common.any')}</p>
+                            </div>
+                            <div className="rounded-xl border border-slate-200 bg-slate-50 px-3 py-2.5">
+                                <p className="text-[10px] font-semibold uppercase tracking-wide text-slate-500">{t('customerResults.panelPins')}</p>
+                                <p className="mt-1 text-sm font-bold text-slate-800">{vendorsWithPins.length}</p>
+                            </div>
+                            <div className="col-span-2 rounded-xl border border-slate-200 bg-slate-50 px-3 py-2.5">
+                                <p className="text-[10px] font-semibold uppercase tracking-wide text-slate-500">{t('common.dates')}</p>
+                                <p className="mt-1 text-sm font-bold text-slate-800">{dateRangeLabel}</p>
+                            </div>
+                        </div>
+
+                        <div className="mt-4 space-y-2">
+                            <button
+                                type="button"
+                                onClick={() => { setComparisonOpen(true); setMobilePanelOpen(false); }}
+                                disabled={comparisonRows.length === 0}
+                                className="flex w-full items-center justify-center rounded-xl bg-blue-600 px-4 py-3 text-sm font-semibold text-white hover:bg-blue-700 disabled:opacity-50"
+                            >
+                                {t('customerResults.compareVendorPrices')}
+                            </button>
+                            <div className="flex gap-2">
+                                <button
+                                    type="button"
+                                    onClick={goToModifySearch}
+                                    className="flex-1 rounded-xl border border-slate-300 bg-white px-3 py-2.5 text-xs font-semibold text-slate-700 hover:bg-slate-50"
+                                >
+                                    {t('customerResults.modifySearch')}
+                                </button>
+                                {topVendors[0] && (
+                                    <button
+                                        type="button"
+                                        onClick={() => navigate(getVendorShopUrl(topVendors[0].slug))}
+                                        className="flex-1 rounded-xl border border-slate-300 bg-white px-3 py-2.5 text-xs font-semibold text-slate-700 hover:bg-slate-50"
+                                    >
+                                        {t('customerResults.openNearestShop')}
+                                    </button>
+                                )}
+                            </div>
+                        </div>
+
+                        {!loading && !requestError && topVendors.length > 0 && (
+                            <div className="mt-5">
+                                <p className="text-xs font-semibold uppercase tracking-[0.14em] text-slate-500">{t('customerResults.closestMatches')}</p>
+                                <div className="mt-2 space-y-2">
+                                    {topVendors.map((vendor) => (
+                                        <div
+                                            key={vendor.id}
+                                            className="flex items-center justify-between rounded-xl border border-slate-200 bg-slate-50 px-3 py-2.5"
+                                        >
+                                            <div className="min-w-0 pr-2">
+                                                <p className="truncate text-sm font-semibold text-slate-900">{vendor.businessName}</p>
+                                                {vendor.verificationBadge && (
+                                                    <p className="mt-0.5 text-[10px] font-semibold uppercase tracking-wide text-emerald-700">
+                                                        {vendor.verificationBadge}
+                                                    </p>
+                                                )}
+                                                {vendor.isTestAccount && (
+                                                    <p className="mt-0.5 text-[10px] font-semibold uppercase tracking-wide text-amber-700">
+                                                        {t('customerResults.testAccountBadge')}
+                                                    </p>
+                                                )}
+                                                <p className="text-xs text-slate-600">
+                                                    {vendor.distanceKm != null
+                                                        ? t('customerResults.cardDistanceAway', { distance: vendor.distanceKm.toFixed(1) })
+                                                        : t('customerResults.cardDistanceUnavailable')}
+                                                </p>
+                                            </div>
+                                            <button
+                                                type="button"
+                                                className="shrink-0 rounded-lg bg-blue-600 px-3 py-1.5 text-xs font-semibold text-white hover:bg-blue-700"
+                                                onClick={() => navigate(getVendorShopUrl(vendor.slug))}
+                                            >
+                                                {t('customerResults.cardView')}
+                                            </button>
+                                        </div>
+                                    ))}
+                                </div>
+                            </div>
+                        )}
                     </div>
                 </div>
             </section>
