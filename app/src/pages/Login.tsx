@@ -35,7 +35,7 @@ export default function Login() {
             <LanguageSwitcher compact />
           </div>
           <div className="mb-4 flex justify-center">
-            <img src="/logo_primary.svg" alt={t('common.appName')} className="h-14 w-auto" />
+            <img src="/no_text_logo_primary.svg" alt={t('common.appName')} className="h-12 w-12" />
           </div>
           <h1 className="text-4xl font-bold text-gray-900 mb-2">{t('common.appName')}</h1>
           <p className="text-xl text-gray-500 mb-2">{t('login.tagline')}</p>
