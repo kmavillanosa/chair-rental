@@ -209,7 +209,7 @@ jobs:
           scp $SSH_OPTS chair-rental-deploy-bundle.tgz "$VPS_USER@$VPS_HOST:/tmp/chair-rental-deploy-bundle.tgz"
           scp $SSH_OPTS chair-rental.env "$VPS_USER@$VPS_HOST:/tmp/chair-rental.env"
 
-          ssh $SSH_OPTS "$VPS_USER@$VPS_HOST" "DEPLOY_SHA='$DEPLOY_SHA' FORCE_NO_CACHE='${FORCE_NO_CACHE:-false}' bash -s" <<'REMOTE'
+          ssh $SSH_OPTS "$VPS_USER@$VPS_HOST" "DEPLOY_SHA='$DEPLOY_SHA' FORCE_NO_CACHE='${FORCE_NO_CACHE:-false}' UI_REFRESH_WITH_API='${UI_REFRESH_WITH_API:-false}' UI_REFRESH_PRUNE_IMAGES='${UI_REFRESH_PRUNE_IMAGES:-false}' bash -s" <<'REMOTE'
           set -euo pipefail
 
           mkdir -p /root/chair-rental
@@ -266,6 +266,17 @@ jobs:
 
           docker compose -f docker-compose.yml -f docker-compose.release.yml run --rm api npm run db:migrate
           docker compose -f docker-compose.yml -f docker-compose.release.yml exec -T api npm run seed:all
+
+          echo "=== Running vps-refresh-ui.sh ==="
+          chmod +x vps-refresh-ui.sh
+          REFRESH_FLAGS=()
+          if [[ "${UI_REFRESH_WITH_API:-false}" == "true" ]]; then
+            REFRESH_FLAGS+=(--with-api)
+          fi
+          if [[ "${UI_REFRESH_PRUNE_IMAGES:-false}" == "true" ]]; then
+            REFRESH_FLAGS+=(--prune-images)
+          fi
+          ./vps-refresh-ui.sh "${REFRESH_FLAGS[@]}"
 
           echo "=== DEPLOYED SHA: ${DEPLOY_SHA} ==="
           docker compose -f docker-compose.yml -f docker-compose.release.yml ps
