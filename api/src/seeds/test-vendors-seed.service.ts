@@ -113,31 +113,30 @@ const TEST_VENDOR_IDENTITIES: TestVendorIdentity[] = [
 ];
 
 const TEST_VENDOR_SEED_INPUTS: TestVendorSeedInput[] = [
-  // Puerto Princesa City Center & Safe Haven / Barangay areas (verified on-land coordinates)
-  { lat: 9.7395, lng: 118.7355, prices: { chair: 15, table: 80, tent: 600, balloonArch: 1200, lights: 400, photobooth: 2500 } },
-  { lat: 9.7412, lng: 118.7388, prices: { chair: 12, table: 70, tent: 550, balloonArch: 1300, lights: 450, photobooth: 2600 } },
-  { lat: 9.7430, lng: 118.7372, prices: { chair: 18, table: 90, tent: 700, balloonArch: 1500, lights: 500, photobooth: 2800 } },
-  { lat: 9.7445, lng: 118.7340, prices: { chair: 14, table: 85, tent: 650, balloonArch: 1250, lights: 420, photobooth: 2700 } },
-  { lat: 9.7428, lng: 118.7315, prices: { chair: 16, table: 78, tent: 620, balloonArch: 1400, lights: 480, photobooth: 2650 } },
-  { lat: 9.7401, lng: 118.7399, prices: { chair: 13, table: 72, tent: 580, balloonArch: 1350, lights: 430, photobooth: 2550 } },
-  { lat: 9.7382, lng: 118.7368, prices: { chair: 15, table: 88, tent: 690, balloonArch: 1450, lights: 470, photobooth: 2750 } },
-  // Mid-range Puerto Princesa (Palanakan, Irawan, adjacent residential)
-  { lat: 9.7408, lng: 118.7342, prices: { chair: 17, table: 95, tent: 720, balloonArch: 1550, lights: 500, photobooth: 2900 } },
-  { lat: 9.7385, lng: 118.7325, prices: { chair: 14, table: 80, tent: 610, balloonArch: 1250, lights: 420, photobooth: 2600 } },
-  { lat: 9.7360, lng: 118.7395, prices: { chair: 16, table: 85, tent: 650, balloonArch: 1400, lights: 450, photobooth: 2750 } },
-  // Sta. Monica & Southern Puerto Princesa (inland)
-  { lat: 9.7355, lng: 118.7345, prices: { chair: 13, table: 75, tent: 600, balloonArch: 1300, lights: 430, photobooth: 2650 } },
-  { lat: 9.7340, lng: 118.7368, prices: { chair: 15, table: 80, tent: 620, balloonArch: 1350, lights: 440, photobooth: 2700 } },
-  { lat: 9.7375, lng: 118.7405, prices: { chair: 17, table: 90, tent: 680, balloonArch: 1500, lights: 480, photobooth: 2850 } },
-  { lat: 9.7390, lng: 118.7428, prices: { chair: 14, table: 78, tent: 610, balloonArch: 1380, lights: 450, photobooth: 2650 } },
-  // Northern inland Puerto Princesa (Barangay 3-4 region)
-  { lat: 9.7420, lng: 118.7395, prices: { chair: 16, table: 82, tent: 640, balloonArch: 1420, lights: 460, photobooth: 2700 } },
-  { lat: 9.7435, lng: 118.7372, prices: { chair: 15, table: 80, tent: 630, balloonArch: 1370, lights: 450, photobooth: 2680 } },
-  { lat: 9.7450, lng: 118.7342, prices: { chair: 13, table: 75, tent: 600, balloonArch: 1300, lights: 420, photobooth: 2600 } },
-  // Rizal Ave corridor & commercial inland zones
-  { lat: 9.7465, lng: 118.7365, prices: { chair: 16, table: 85, tent: 650, balloonArch: 1450, lights: 470, photobooth: 2750 } },
-  { lat: 9.7475, lng: 118.7380, prices: { chair: 14, table: 80, tent: 620, balloonArch: 1350, lights: 440, photobooth: 2680 } },
-  { lat: 9.7485, lng: 118.7355, prices: { chair: 17, table: 90, tent: 700, balloonArch: 1500, lights: 500, photobooth: 2800 } },
+  // Rizal Avenue commercial strip (lng 118.742+ safely inland of Puerto Princesa Bay)
+  { lat: 9.7345, lng: 118.7425, prices: { chair: 15, table: 80, tent: 600, balloonArch: 1200, lights: 400, photobooth: 2500 } },
+  { lat: 9.7362, lng: 118.7448, prices: { chair: 12, table: 70, tent: 550, balloonArch: 1300, lights: 450, photobooth: 2600 } },
+  { lat: 9.7378, lng: 118.7435, prices: { chair: 18, table: 90, tent: 700, balloonArch: 1500, lights: 500, photobooth: 2800 } },
+  { lat: 9.7392, lng: 118.7462, prices: { chair: 14, table: 85, tent: 650, balloonArch: 1250, lights: 420, photobooth: 2700 } },
+  { lat: 9.7405, lng: 118.7478, prices: { chair: 16, table: 78, tent: 620, balloonArch: 1400, lights: 480, photobooth: 2650 } },
+  // San Pedro / Manggagawa district
+  { lat: 9.7418, lng: 118.7455, prices: { chair: 13, table: 72, tent: 580, balloonArch: 1350, lights: 430, photobooth: 2550 } },
+  { lat: 9.7430, lng: 118.7442, prices: { chair: 15, table: 88, tent: 690, balloonArch: 1450, lights: 470, photobooth: 2750 } },
+  { lat: 9.7442, lng: 118.7468, prices: { chair: 17, table: 95, tent: 720, balloonArch: 1550, lights: 500, photobooth: 2900 } },
+  { lat: 9.7455, lng: 118.7452, prices: { chair: 14, table: 80, tent: 610, balloonArch: 1250, lights: 420, photobooth: 2600 } },
+  { lat: 9.7465, lng: 118.7480, prices: { chair: 16, table: 85, tent: 650, balloonArch: 1400, lights: 450, photobooth: 2750 } },
+  // Extension Milagrosa / Sta. Monica inland stretch
+  { lat: 9.7415, lng: 118.7495, prices: { chair: 13, table: 75, tent: 600, balloonArch: 1300, lights: 430, photobooth: 2650 } },
+  { lat: 9.7400, lng: 118.7512, prices: { chair: 15, table: 80, tent: 620, balloonArch: 1350, lights: 440, photobooth: 2700 } },
+  { lat: 9.7385, lng: 118.7498, prices: { chair: 17, table: 90, tent: 680, balloonArch: 1500, lights: 480, photobooth: 2850 } },
+  { lat: 9.7370, lng: 118.7525, prices: { chair: 14, table: 78, tent: 610, balloonArch: 1380, lights: 450, photobooth: 2650 } },
+  { lat: 9.7355, lng: 118.7508, prices: { chair: 16, table: 82, tent: 640, balloonArch: 1420, lights: 460, photobooth: 2700 } },
+  // Northern barangay inland areas (Barangay 3-6 corridor)
+  { lat: 9.7438, lng: 118.7515, prices: { chair: 15, table: 80, tent: 630, balloonArch: 1370, lights: 450, photobooth: 2680 } },
+  { lat: 9.7450, lng: 118.7498, prices: { chair: 13, table: 75, tent: 600, balloonArch: 1300, lights: 420, photobooth: 2600 } },
+  { lat: 9.7462, lng: 118.7532, prices: { chair: 16, table: 85, tent: 650, balloonArch: 1450, lights: 470, photobooth: 2750 } },
+  { lat: 9.7475, lng: 118.7515, prices: { chair: 14, table: 80, tent: 620, balloonArch: 1350, lights: 440, photobooth: 2680 } },
+  { lat: 9.7488, lng: 118.7548, prices: { chair: 17, table: 90, tent: 700, balloonArch: 1500, lights: 500, photobooth: 2800 } },
 ];
 
 const VEHICLE_TYPES = [
