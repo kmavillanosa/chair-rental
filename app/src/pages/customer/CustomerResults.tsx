@@ -159,6 +159,29 @@ function ResultsMapViewport({
     const map = useMap();
 
     useEffect(() => {
+        if (typeof window === 'undefined') return;
+
+        const syncSize = () => {
+            map.invalidateSize({ animate: false });
+        };
+
+        const raf = window.requestAnimationFrame(syncSize);
+        const timer = window.setTimeout(syncSize, 180);
+
+        window.addEventListener('resize', syncSize);
+        window.addEventListener('orientationchange', syncSize);
+
+        return () => {
+            window.cancelAnimationFrame(raf);
+            window.clearTimeout(timer);
+            window.removeEventListener('resize', syncSize);
+            window.removeEventListener('orientationchange', syncSize);
+        };
+    }, [map]);
+
+    useEffect(() => {
+        map.invalidateSize({ animate: false });
+
         const validVendorPoints = vendors
             .map((vendor) => {
                 const lat = Number(vendor.latitude);
@@ -760,7 +783,7 @@ export default function CustomerResults() {
                             </div>
                         </aside>
 
-                        <div className="relative h-[calc(100dvh-56px)] flex-1 overflow-hidden lg:h-[calc(100dvh-170px)] lg:min-h-[560px] lg:rounded-2xl lg:border lg:border-slate-200 lg:shadow-sm">
+                        <div className="relative h-[calc(100vh-56px)] min-h-[340px] supports-[height:100dvh]:h-[calc(100dvh-56px)] flex-1 overflow-hidden lg:h-[calc(100vh-170px)] lg:supports-[height:100dvh]:h-[calc(100dvh-170px)] lg:min-h-[560px] lg:rounded-2xl lg:border lg:border-slate-200 lg:shadow-sm">
                             {/* Mobile: floating stats + filter trigger bar */}
                             <div className="absolute inset-x-0 top-0 z-[900] p-2 lg:hidden">
                                 <div className="flex items-center gap-2 rounded-2xl border border-white/30 bg-white/95 px-3 py-2 shadow-lg backdrop-blur-sm">

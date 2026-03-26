@@ -92,9 +92,10 @@ export class PricingCalculationService {
             `Delivery tier: ${applicableTier.minDistanceKm}–${applicableTier.maxDistanceKm}km @ ₱${applicableTier.priceAmount}`,
           );
         } else {
+          const maxCoverage = this.getMaxDeliveryCoverage(config.deliveryTiers);
           throw new BadRequestException(
             `No delivery tier matches distance ${distanceKm}km. Max coverage: ${
-              config.deliveryTiers?.[config.deliveryTiers.length - 1]?.maxDistanceKm || 'N/A'
+              maxCoverage != null ? Number(maxCoverage).toFixed(2) : 'N/A'
             }km`,
           );
         }
@@ -183,20 +184,52 @@ export class PricingCalculationService {
   private findApplicableDeliveryTier(tiers: any[], distanceKm: number) {
     if (!tiers || tiers.length === 0) return null;
 
-    const sortedTiers = [...tiers].sort(
-      (a, b) => Number(a.minDistanceKm) - Number(b.minDistanceKm),
-    );
+    const normalizedDistance = Number(distanceKm);
+    if (!Number.isFinite(normalizedDistance)) return null;
 
-    for (const tier of sortedTiers) {
-      const min = parseFloat(tier.minDistanceKm.toString());
-      const max = parseFloat(tier.maxDistanceKm.toString());
+    const sortedRanges = [...tiers]
+      .map((tier) => ({
+        tier,
+        min: Number(tier.minDistanceKm),
+        max: Number(tier.maxDistanceKm),
+      }))
+      .filter((entry) => Number.isFinite(entry.min) && Number.isFinite(entry.max))
+      .sort((a, b) => a.min - b.min);
 
-      if (distanceKm >= min && distanceKm <= max) {
-        return tier;
+    if (sortedRanges.length === 0) return null;
+
+    // First pass: exact inclusive range match.
+    for (const entry of sortedRanges) {
+      if (normalizedDistance >= entry.min && normalizedDistance <= entry.max) {
+        return entry.tier;
       }
     }
 
+    // Second pass: if distance falls into a configuration gap,
+    // bill against the next higher tier instead of failing booking.
+    for (const entry of sortedRanges) {
+      if (normalizedDistance < entry.min) {
+        return entry.tier;
+      }
+    }
+
+    // Distance is beyond the last configured tier.
     return null;
+  }
+
+  private getMaxDeliveryCoverage(tiers: any[]): number | null {
+    if (!tiers || tiers.length === 0) return null;
+
+    let maxCoverage: number | null = null;
+    for (const tier of tiers) {
+      const max = Number(tier.maxDistanceKm);
+      if (!Number.isFinite(max)) continue;
+      if (maxCoverage == null || max > maxCoverage) {
+        maxCoverage = max;
+      }
+    }
+
+    return maxCoverage;
   }
 
   /**
