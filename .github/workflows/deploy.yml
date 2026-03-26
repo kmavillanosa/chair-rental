@@ -117,6 +117,8 @@ jobs:
           VPS_USER: ${{ secrets.VPS_USER }}
           DEPLOY_SHA: ${{ github.sha }}
           FORCE_NO_CACHE: ${{ secrets.FORCE_NO_CACHE }}
+          UI_REFRESH_WITH_API: ${{ secrets.UI_REFRESH_WITH_API }}
+          UI_REFRESH_PRUNE_IMAGES: ${{ secrets.UI_REFRESH_PRUNE_IMAGES }}
 
           API_PORT: ${{ secrets.API_PORT }}
           DB_SYNC: ${{ secrets.DB_SYNC }}
@@ -214,7 +216,7 @@ jobs:
           scp $SSH_OPTS chair-rental-deploy-bundle.tgz "$VPS_USER@$VPS_HOST:/tmp/chair-rental-deploy-bundle.tgz"
           scp $SSH_OPTS chair-rental.env "$VPS_USER@$VPS_HOST:/tmp/chair-rental.env"
 
-          ssh $SSH_OPTS "$VPS_USER@$VPS_HOST" "DEPLOY_SHA='$DEPLOY_SHA' FORCE_NO_CACHE='${FORCE_NO_CACHE:-false}' bash -s" <<'REMOTE'
+          ssh $SSH_OPTS "$VPS_USER@$VPS_HOST" "DEPLOY_SHA='$DEPLOY_SHA' FORCE_NO_CACHE='${FORCE_NO_CACHE:-false}' UI_REFRESH_WITH_API='${UI_REFRESH_WITH_API:-false}' UI_REFRESH_PRUNE_IMAGES='${UI_REFRESH_PRUNE_IMAGES:-false}' bash -s" <<'REMOTE'
           set -euo pipefail
 
           mkdir -p /root/chair-rental
@@ -259,7 +261,36 @@ jobs:
           docker compose -f docker-compose.yml -f docker-compose.release.yml run --rm api npm run db:migrate
           docker compose -f docker-compose.yml -f docker-compose.release.yml up -d --force-recreate api phpmyadmin
 
-          /root/chair-rental/vps-refresh-ui.sh --project-dir /root/chair-rental
+          REFRESH_UI_ARGS=(--project-dir /root/chair-rental)
+          case "${UI_REFRESH_WITH_API:-false}" in
+            true|TRUE|1|yes|YES|on|ON)
+              REFRESH_UI_ARGS+=(--with-api)
+              ;;
+          esac
+
+          case "${UI_REFRESH_PRUNE_IMAGES:-false}" in
+            true|TRUE|1|yes|YES|on|ON)
+              REFRESH_UI_ARGS+=(--prune-images)
+              ;;
+          esac
+
+          /root/chair-rental/vps-refresh-ui.sh "${REFRESH_UI_ARGS[@]}"
+
+          # Ensure phpMyAdmin is included in the final recreated services set.
+          docker compose -f docker-compose.yml -f docker-compose.release.yml up -d --force-recreate phpmyadmin
+
+          # Ensure core services are running before seeding all data.
+          docker compose -f docker-compose.yml -f docker-compose.release.yml up -d mysql api app staff_app nginx_proxy phpmyadmin
+          for svc in mysql api app staff_app nginx_proxy phpmyadmin; do
+            if ! docker compose -f docker-compose.yml -f docker-compose.release.yml ps --status running "$svc" | grep -q "$svc"; then
+              echo "service is not running: $svc"
+              docker compose -f docker-compose.yml -f docker-compose.release.yml ps
+              exit 1
+            fi
+          done
+
+          echo "Seeding all data after containers are running"
+          docker compose -f docker-compose.yml -f docker-compose.release.yml exec -T api npm run seed:all
 
           APP_LOCAL_VERSION="$(docker compose -f docker-compose.yml -f docker-compose.release.yml exec -T app sh -lc 'cat /usr/share/nginx/html/version.json 2>/dev/null || true')"
           STAFF_LOCAL_VERSION="$(docker compose -f docker-compose.yml -f docker-compose.release.yml exec -T staff_app sh -lc 'cat /usr/share/nginx/html/version.json 2>/dev/null || true')"

@@ -133,8 +133,8 @@ export class VendorDistanceSeedService {
   private computeCharge(distanceKm: number, helpersCount: number) {
     const normalizedHelpers = Math.max(0, Math.min(3, helpersCount));
 
-    const baseByHelper = [120, 220, 320, 420];
-    const perKmByHelper = [20, 24, 28, 32];
+    const baseByHelper = [120, 470, 820, 1170];
+    const perKmByHelper = [20, 22, 24, 26];
 
     let charge =
       baseByHelper[normalizedHelpers] +

@@ -70,7 +70,7 @@ const CATALOG_PROFILES: CatalogProfile[] = [
       'lounge-chairs',
       'picnic-chairs',
     ],
-    defaultRatePerDay: 80,
+    defaultRatePerDay: 12,
     eventTags: COMMON_EVENT_TAGS,
     setTags: ['seating-set', 'table-set', 'reception-set', 'ceremony-set'],
     brands: [
@@ -82,7 +82,7 @@ const CATALOG_PROFILES: CatalogProfile[] = [
   },
   {
     matchers: ['table', 'buffet', 'coffee-table', 'kids-tables', 'picnic-tables'],
-    defaultRatePerDay: 220,
+    defaultRatePerDay: 150,
     eventTags: COMMON_EVENT_TAGS,
     setTags: ['table-set', 'dining-set', 'buffet-set', 'reception-set'],
     brands: ['Lifetime Products', 'Iceberg Enterprises', 'COSCO', 'Correll'],
@@ -232,26 +232,26 @@ const SIZE_VARIANT_RULES: SizeVariantRule[] = [
     matchers: ['folding-tables', 'foldable-tables', 'folding-table', 'foldable-table'],
     includeBaseType: false,
     variants: [
-      { suffix: '4 ft', rate: 140 },
-      { suffix: '6 ft', rate: 170 },
+      { suffix: '4 ft', rate: 120 },
+      { suffix: '6 ft', rate: 150 },
     ],
   },
   {
     matchers: ['rectangular-banquet-tables', 'rectangular-banquet'],
     includeBaseType: false,
     variants: [
-      { suffix: '4 ft', rate: 250 },
-      { suffix: '6 ft', rate: 350 },
-      { suffix: '8 ft', rate: 450 },
+      { suffix: '4 ft', rate: 180 },
+      { suffix: '6 ft', rate: 250 },
+      { suffix: '8 ft', rate: 320 },
     ],
   },
   {
     matchers: ['round-banquet-tables', 'round-banquet'],
     includeBaseType: false,
     variants: [
-      { suffix: '4 ft', rate: 350 },
-      { suffix: '5 ft', rate: 450 },
-      { suffix: '6 ft', rate: 550 },
+      { suffix: '4 ft', rate: 250 },
+      { suffix: '5 ft', rate: 320 },
+      { suffix: '6 ft', rate: 400 },
     ],
   },
 ];

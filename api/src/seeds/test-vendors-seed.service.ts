@@ -48,31 +48,54 @@ const TEST_VENDOR_COORDINATES: Array<{ lat: number; lng: number }> = [
   { lat: 9.7472, lng: 118.7290 },
 ];
 
+const TEST_VENDOR_PROFILES: Array<{ businessName: string; ownerName: string }> = [
+  { businessName: 'Dela Cruz Event Rentals',     ownerName: 'Ramon Dela Cruz' },
+  { businessName: 'Santos Party Supplies',        ownerName: 'Maricel Santos' },
+  { businessName: 'Reyes Tent & Table Rental',    ownerName: 'Eduardo Reyes' },
+  { businessName: 'Garcia Events & Catering Supply', ownerName: 'Lorna Garcia' },
+  { businessName: 'Mendoza Event Services',       ownerName: 'Benito Mendoza' },
+  { businessName: 'Lim Brothers Party Rentals',   ownerName: 'Jerome Lim' },
+  { businessName: 'Aquino Rental Solutions',      ownerName: 'Natividad Aquino' },
+  { businessName: 'Flores Occasions Rental',      ownerName: 'Ricky Flores' },
+  { businessName: 'Bautista Event Supplies',      ownerName: 'Glenda Bautista' },
+  { businessName: 'Villanueva Party Needs',       ownerName: 'Alfredo Villanueva' },
+  { businessName: 'Ramos Tent & Chair Hire',      ownerName: 'Josefina Ramos' },
+  { businessName: 'Castillo Fiesta Rentals',      ownerName: 'Dante Castillo' },
+  { businessName: 'Torres Event Equipment',       ownerName: 'Marilou Torres' },
+  { businessName: 'Morales Party Center',         ownerName: 'Ernesto Morales' },
+  { businessName: 'Navarro Celebrations Supply',  ownerName: 'Corazon Navarro' },
+  { businessName: 'Pascual Venue & Linen Rental', ownerName: 'Rodrigo Pascual' },
+  { businessName: 'Salazar Event Hire',           ownerName: 'Teresita Salazar' },
+  { businessName: 'Cruz Complete Event Needs',    ownerName: 'Ferdinand Cruz' },
+  { businessName: 'Espiritu Party Essentials',    ownerName: 'Anita Espiritu' },
+  { businessName: 'Soriano Rental & Events',      ownerName: 'Roberto Soriano' },
+];
+
 const VENDOR_INVENTORY_CONFIGS: Array<{
   monoblockQty: number; monoblockRate: number;
   tableQty: number;    tableRate: number;
   tentQty: number;     tentRate: number;
 }> = [
-  { monoblockQty:  50, monoblockRate:  80, tableQty: 30, tableRate: 220, tentQty: 5, tentRate: 3500 },
-  { monoblockQty:  60, monoblockRate:  75, tableQty: 25, tableRate: 200, tentQty: 4, tentRate: 3000 },
-  { monoblockQty:  80, monoblockRate:  85, tableQty: 40, tableRate: 240, tentQty: 6, tentRate: 4000 },
-  { monoblockQty:  40, monoblockRate:  90, tableQty: 20, tableRate: 250, tentQty: 3, tentRate: 3200 },
-  { monoblockQty: 100, monoblockRate:  70, tableQty: 50, tableRate: 200, tentQty: 8, tentRate: 3500 },
-  { monoblockQty:  55, monoblockRate:  80, tableQty: 35, tableRate: 230, tentQty: 5, tentRate: 4500 },
-  { monoblockQty:  45, monoblockRate:  95, tableQty: 28, tableRate: 210, tentQty: 4, tentRate: 3000 },
-  { monoblockQty:  70, monoblockRate:  75, tableQty: 45, tableRate: 260, tentQty: 7, tentRate: 4000 },
-  { monoblockQty:  60, monoblockRate:  85, tableQty: 30, tableRate: 220, tentQty: 5, tentRate: 3500 },
-  { monoblockQty:  50, monoblockRate:  90, tableQty: 22, tableRate: 240, tentQty: 3, tentRate: 3200 },
-  { monoblockQty:  90, monoblockRate:  70, tableQty: 55, tableRate: 200, tentQty: 8, tentRate: 3800 },
-  { monoblockQty:  40, monoblockRate:  85, tableQty: 20, tableRate: 250, tentQty: 4, tentRate: 4200 },
-  { monoblockQty:  75, monoblockRate:  80, tableQty: 38, tableRate: 220, tentQty: 6, tentRate: 3500 },
-  { monoblockQty:  55, monoblockRate:  75, tableQty: 32, tableRate: 210, tentQty: 5, tentRate: 3000 },
-  { monoblockQty:  65, monoblockRate:  90, tableQty: 42, tableRate: 260, tentQty: 7, tentRate: 4500 },
-  { monoblockQty:  45, monoblockRate:  80, tableQty: 25, tableRate: 230, tentQty: 3, tentRate: 3200 },
-  { monoblockQty:  80, monoblockRate:  85, tableQty: 48, tableRate: 240, tentQty: 6, tentRate: 4000 },
-  { monoblockQty:  60, monoblockRate:  70, tableQty: 30, tableRate: 200, tentQty: 4, tentRate: 3500 },
-  { monoblockQty:  50, monoblockRate:  95, tableQty: 35, tableRate: 250, tentQty: 5, tentRate: 4200 },
-  { monoblockQty:  70, monoblockRate:  80, tableQty: 20, tableRate: 220, tentQty: 8, tentRate: 3000 },
+  { monoblockQty:  50, monoblockRate: 12, tableQty: 30, tableRate: 145, tentQty: 5, tentRate: 3000 },
+  { monoblockQty:  60, monoblockRate: 10, tableQty: 25, tableRate: 130, tentQty: 4, tentRate: 2800 },
+  { monoblockQty:  80, monoblockRate: 11, tableQty: 40, tableRate: 150, tentQty: 6, tentRate: 3200 },
+  { monoblockQty:  40, monoblockRate: 12, tableQty: 20, tableRate: 155, tentQty: 3, tentRate: 3500 },
+  { monoblockQty: 100, monoblockRate: 10, tableQty: 50, tableRate: 130, tentQty: 8, tentRate: 3000 },
+  { monoblockQty:  55, monoblockRate: 11, tableQty: 35, tableRate: 140, tentQty: 5, tentRate: 2500 },
+  { monoblockQty:  45, monoblockRate: 12, tableQty: 28, tableRate: 135, tentQty: 4, tentRate: 2800 },
+  { monoblockQty:  70, monoblockRate: 10, tableQty: 45, tableRate: 150, tentQty: 7, tentRate: 3200 },
+  { monoblockQty:  60, monoblockRate: 11, tableQty: 30, tableRate: 145, tentQty: 5, tentRate: 3000 },
+  { monoblockQty:  50, monoblockRate: 12, tableQty: 22, tableRate: 155, tentQty: 3, tentRate: 3500 },
+  { monoblockQty:  90, monoblockRate: 10, tableQty: 55, tableRate: 130, tentQty: 8, tentRate: 2800 },
+  { monoblockQty:  40, monoblockRate: 11, tableQty: 20, tableRate: 140, tentQty: 4, tentRate: 2500 },
+  { monoblockQty:  75, monoblockRate: 12, tableQty: 38, tableRate: 150, tentQty: 6, tentRate: 3000 },
+  { monoblockQty:  55, monoblockRate: 10, tableQty: 32, tableRate: 135, tentQty: 5, tentRate: 2800 },
+  { monoblockQty:  65, monoblockRate: 11, tableQty: 42, tableRate: 155, tentQty: 7, tentRate: 3500 },
+  { monoblockQty:  45, monoblockRate: 12, tableQty: 25, tableRate: 140, tentQty: 3, tentRate: 3200 },
+  { monoblockQty:  80, monoblockRate: 10, tableQty: 48, tableRate: 150, tentQty: 6, tentRate: 3000 },
+  { monoblockQty:  60, monoblockRate: 11, tableQty: 30, tableRate: 130, tentQty: 4, tentRate: 2500 },
+  { monoblockQty:  50, monoblockRate: 12, tableQty: 35, tableRate: 155, tentQty: 5, tentRate: 3200 },
+  { monoblockQty:  70, monoblockRate: 10, tableQty: 20, tableRate: 145, tentQty: 8, tentRate: 2800 },
 ];
 
 @Injectable()
@@ -126,9 +149,10 @@ export class TestVendorsSeedService {
       ];
       const ordinal = index + 1;
       const padded = String(ordinal).padStart(2, '0');
+      const profile = TEST_VENDOR_PROFILES[index];
       const email = `test-vendor-${padded}@rentalbasic.test`;
-      const businessName = `Test Vendor ${padded}`;
-      const ownerName = `QA Owner ${padded}`;
+      const businessName = profile.businessName;
+      const ownerName = profile.ownerName;
       const coords = TEST_VENDOR_COORDINATES[index];
 
       let user = await this.usersRepo.findOne({ where: { email } });
@@ -167,7 +191,7 @@ export class TestVendorsSeedService {
         vendorType: VendorType.REGISTERED_BUSINESS,
         businessName,
         ownerFullName: ownerName,
-        address: `Test Location ${padded}, Puerto Princesa, Palawan`,
+        address: `${businessName}, Puerto Princesa, Palawan`,
         latitude: coords.lat,
         longitude: coords.lng,
         slug,
@@ -231,8 +255,8 @@ export class TestVendorsSeedService {
             this.vendorItemRepo.create({
               vendorId,
               inventoryItemId: inventoryItem.id,
-              title: `${itemType.name} - Test Inventory`,
-              description: `Seeded test item for ${businessName}`,
+              title: `${itemType.name} - ${businessName}`,
+              description: `Available for rent from ${businessName}`,
               verificationStatus: VendorItemVerificationStatus.VERIFIED,
               rejectionReason: null,
               isSuspicious: false,
