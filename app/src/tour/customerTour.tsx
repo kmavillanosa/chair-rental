@@ -1,7 +1,13 @@
 import type { StepType } from '@reactour/tour';
 import type { TFunction } from 'i18next';
 
-export function getCustomerTourSteps(t: TFunction): StepType[] {
+interface TourUser {
+    role?: string;
+}
+
+export function getCustomerTourSteps(t: TFunction, user?: TourUser | null): StepType[] {
+    const hasMyBookings = Boolean(user);
+    const hasBecomeVendor = user?.role === 'customer';
     return [
         {
             selector: '[data-tour="guide-button"]',
@@ -49,11 +55,14 @@ export function getCustomerTourSteps(t: TFunction): StepType[] {
             ),
         },
         {
-            selector: '[data-tour="header-nav"]',
+            selector: hasMyBookings ? '[data-tour="nav-my-bookings"]' : '[data-tour="main-content"]',
             content: (
                 <div>
                     <h3 className="text-base font-semibold text-white">{t('tour.customer.step5.title')}</h3>
                     <p className="mt-2 text-sm leading-6 text-slate-200">{t('tour.customer.step5.body')}</p>
+                    {!hasMyBookings && (
+                        <p className="mt-2 text-xs text-slate-400">{t('tour.customer.step5.guestNote', { defaultValue: 'Sign in to access My Bookings.' })}</p>
+                    )}
                 </div>
             ),
         },
@@ -73,11 +82,14 @@ export function getCustomerTourSteps(t: TFunction): StepType[] {
             ),
         },
         {
-            selector: '[data-tour="header-nav"]',
+            selector: hasBecomeVendor ? '[data-tour="nav-become-vendor"]' : '[data-tour="main-content"]',
             content: (
                 <div>
                     <h3 className="text-base font-semibold text-white">{t('tour.customer.step7.title')}</h3>
                     <p className="mt-2 text-sm leading-6 text-slate-200">{t('tour.customer.step7.body')}</p>
+                    {!hasBecomeVendor && (
+                        <p className="mt-2 text-xs text-slate-400">{t('tour.customer.step7.guestNote', { defaultValue: 'Available once you sign in with a customer account.' })}</p>
+                    )}
                 </div>
             ),
         },

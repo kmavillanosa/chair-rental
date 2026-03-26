@@ -8,7 +8,7 @@ export const en = {
   },
   common: {
     appName: 'RentalBasic',
-    info: 'Info',
+    info: 'Guide',  // kept for backward compat, button now icon-only
     signIn: 'Sign In',
     signOut: 'Sign Out',
     loading: 'Loading...',

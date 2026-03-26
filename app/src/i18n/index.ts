@@ -14,8 +14,8 @@ void i18n
       en: { translation: en },
       tl: { translation: tl },
     },
-    lng: 'tl',
-    fallbackLng: 'en',
+    lng: 'en',
+    fallbackLng: 'tl',
     supportedLngs: ['tl', 'en'],
     interpolation: {
       escapeValue: false,

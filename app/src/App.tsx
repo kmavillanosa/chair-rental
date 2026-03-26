@@ -169,11 +169,34 @@ export default function App() {
 
   return (
     <TourProvider
-      steps={getCustomerTourSteps(t)}
+      steps={getCustomerTourSteps(t, user)}
       showNavigation
       showBadge={false}
       showDots
       padding={{ mask: 8, popover: [12, 16] }}
+      nextButton={({ Button, currentStep, stepsLength, setIsOpen, setCurrentStep }) => {
+        if (currentStep === stepsLength - 1) {
+          return (
+            <button
+              onClick={() => setIsOpen(false)}
+              style={{
+                display: 'block',
+                padding: '6px 16px',
+                border: 0,
+                background: '#3b82f6',
+                color: '#fff',
+                borderRadius: 8,
+                cursor: 'pointer',
+                fontWeight: 600,
+                fontSize: 14,
+              }}
+            >
+              {t('tour.complete', { defaultValue: 'Complete' })}
+            </button>
+          )
+        }
+        return <Button onClick={() => setCurrentStep(currentStep + 1)} kind="next" />
+      }}
       styles={{
         popover: (base) => ({
           ...base,
@@ -190,6 +213,17 @@ export default function App() {
         close: (base) => ({
           ...base,
           color: '#e2e8f0',
+        }),
+        button: (base) => ({
+          ...base,
+          padding: 8,
+          color: '#e2e8f0',
+        }),
+        arrow: ({ disabled }: { disabled?: boolean }) => ({
+          color: disabled ? '#475569' : '#e2e8f0',
+          width: 22,
+          height: 16,
+          flex: '0 0 22px',
         }),
       }}
     >

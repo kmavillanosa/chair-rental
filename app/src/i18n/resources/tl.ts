@@ -8,7 +8,7 @@ export const tl = {
   },
   common: {
     appName: 'RentalBasic',
-    info: 'Info',
+    info: 'Gabay',  // kept for backward compat, button now icon-only
     signIn: 'Login',
     signOut: 'Logout',
     loading: 'Naglo-load...',
