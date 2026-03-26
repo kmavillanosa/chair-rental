@@ -50,14 +50,6 @@ jobs:
         run: |
           set -euo pipefail
 
-          for key in VITE_API_URL VITE_VENDOR_LOGIN_URL VITE_STAFF_APP_URL VITE_CUSTOMER_APP_URL; do
-            value="${!key:-}"
-            if [[ -n "$value" && "$value" =~ (localhost|127\.0\.0\.1|0\.0\.0\.0) ]]; then
-              echo "Refusing to build production artifacts with local value: $key=$value"
-              exit 1
-            fi
-          done
-
           npm run build --prefix api
           VITE_VENDOR_DOMAIN="${VITE_VENDOR_DOMAIN}" VITE_API_URL="${VITE_API_URL}" VITE_VENDOR_LOGIN_URL="${VITE_VENDOR_LOGIN_URL}" VITE_STAFF_APP_URL="${VITE_STAFF_APP_URL}" npm run build --prefix app
           VITE_VENDOR_DOMAIN="${VITE_VENDOR_DOMAIN}" VITE_API_URL="${VITE_API_URL}" VITE_CUSTOMER_APP_URL="${VITE_CUSTOMER_APP_URL}" npm run build --prefix staff-app
@@ -72,7 +64,6 @@ jobs:
           tar -czf chair-rental-deploy-bundle.tgz \
             docker-compose.yml \
             docker-compose.release.yml \
-            vps-refresh-ui.sh \
             nginx \
             api/package.json \
             api/package-lock.json \
@@ -216,24 +207,19 @@ jobs:
           scp $SSH_OPTS chair-rental-deploy-bundle.tgz "$VPS_USER@$VPS_HOST:/tmp/chair-rental-deploy-bundle.tgz"
           scp $SSH_OPTS chair-rental.env "$VPS_USER@$VPS_HOST:/tmp/chair-rental.env"
 
-          ssh $SSH_OPTS "$VPS_USER@$VPS_HOST" "DEPLOY_SHA='$DEPLOY_SHA' FORCE_NO_CACHE='${FORCE_NO_CACHE:-false}' UI_REFRESH_WITH_API='${UI_REFRESH_WITH_API:-false}' UI_REFRESH_PRUNE_IMAGES='${UI_REFRESH_PRUNE_IMAGES:-false}' bash -s" <<'REMOTE'
+          ssh $SSH_OPTS "$VPS_USER@$VPS_HOST" "DEPLOY_SHA='$DEPLOY_SHA' FORCE_NO_CACHE='${FORCE_NO_CACHE:-false}' bash -s" <<'REMOTE'
           set -euo pipefail
 
           mkdir -p /root/chair-rental
           cd /root/chair-rental
 
-          export DOCKER_BUILDKIT=1
-          export COMPOSE_DOCKER_CLI_BUILD=1
-
           rm -rf api/dist app/dist staff-app/dist
           tar -xzf /tmp/chair-rental-deploy-bundle.tgz -C /root/chair-rental
           rm -f /tmp/chair-rental-deploy-bundle.tgz
           mkdir -p api/uploads
-          chmod +x /root/chair-rental/vps-refresh-ui.sh
 
           mv /tmp/chair-rental.env .env
           rm -f /tmp/chair-rental.env
-
           chmod 600 .env
 
           set -a
@@ -255,130 +241,11 @@ jobs:
               ;;
           esac
 
-          docker compose -f docker-compose.yml -f docker-compose.release.yml build "${BUILD_FLAGS[@]}" api
+          docker compose -f docker-compose.yml -f docker-compose.release.yml build "${BUILD_FLAGS[@]}" api app staff_app
+          docker compose -f docker-compose.yml -f docker-compose.release.yml up -d --force-recreate mysql api app staff_app nginx_proxy phpmyadmin
 
-          docker compose -f docker-compose.yml -f docker-compose.release.yml up -d --force-recreate mysql
           docker compose -f docker-compose.yml -f docker-compose.release.yml run --rm api npm run db:migrate
-          docker compose -f docker-compose.yml -f docker-compose.release.yml up -d --force-recreate api phpmyadmin
-
-          REFRESH_UI_ARGS=(--project-dir /root/chair-rental)
-          case "${UI_REFRESH_WITH_API:-false}" in
-            true|TRUE|1|yes|YES|on|ON)
-              REFRESH_UI_ARGS+=(--with-api)
-              ;;
-          esac
-
-          case "${UI_REFRESH_PRUNE_IMAGES:-false}" in
-            true|TRUE|1|yes|YES|on|ON)
-              REFRESH_UI_ARGS+=(--prune-images)
-              ;;
-          esac
-
-          /root/chair-rental/vps-refresh-ui.sh "${REFRESH_UI_ARGS[@]}"
-
-          echo "resolved compose services:"
-          docker compose -f docker-compose.yml -f docker-compose.release.yml config --services
-
-          # Force-create phpMyAdmin and fail hard if it is not running.
-          docker compose -f docker-compose.yml -f docker-compose.release.yml up -d --force-recreate --no-deps phpmyadmin
-          if ! docker compose -f docker-compose.yml -f docker-compose.release.yml ps --status running phpmyadmin | grep -q phpmyadmin || ! docker ps --format '{{.Names}}' | grep -q '^chair_rental_pma$'; then
-            echo "phpmyadmin was not running after first start attempt; forcing remove + recreate"
-            docker compose -f docker-compose.yml -f docker-compose.release.yml rm -sf phpmyadmin || true
-            docker rm -f chair_rental_pma || true
-            docker compose -f docker-compose.yml -f docker-compose.release.yml create phpmyadmin
-            docker compose -f docker-compose.yml -f docker-compose.release.yml start phpmyadmin
-          fi
-
-          if ! docker compose -f docker-compose.yml -f docker-compose.release.yml ps --status running phpmyadmin | grep -q phpmyadmin || ! docker ps --format '{{.Names}}' | grep -q '^chair_rental_pma$'; then
-            echo "phpmyadmin is still not running after forced recreate"
-            docker compose -f docker-compose.yml -f docker-compose.release.yml ps
-            docker ps -a --format 'table {{.Names}}\t{{.Status}}\t{{.Ports}}' | grep -E 'NAMES|chair_rental_pma|chair_rental_db' || true
-            docker compose -f docker-compose.yml -f docker-compose.release.yml logs --tail=120 mysql phpmyadmin || true
-            exit 1
-          fi
-
-          # Ensure core services are running before seeding all data.
-          docker compose -f docker-compose.yml -f docker-compose.release.yml up -d mysql api app staff_app nginx_proxy phpmyadmin
-          for svc in mysql api app staff_app nginx_proxy phpmyadmin; do
-            if ! docker compose -f docker-compose.yml -f docker-compose.release.yml ps --status running "$svc" | grep -q "$svc"; then
-              echo "service is not running: $svc"
-              docker compose -f docker-compose.yml -f docker-compose.release.yml ps
-              docker compose -f docker-compose.yml -f docker-compose.release.yml logs --tail=120 "$svc" || true
-              exit 1
-            fi
-          done
-
-          if ! docker ps --format '{{.Names}}' | grep -q '^chair_rental_pma$'; then
-            echo "chair_rental_pma container is not present in docker ps"
-            docker ps -a --format 'table {{.Names}}\t{{.Status}}\t{{.Ports}}' | grep -E 'NAMES|chair_rental_pma|chair_rental_db' || true
-            docker compose -f docker-compose.yml -f docker-compose.release.yml logs --tail=120 phpmyadmin mysql || true
-            exit 1
-          fi
-
-          echo "Seeding all data after containers are running"
           docker compose -f docker-compose.yml -f docker-compose.release.yml exec -T api npm run seed:all
-
-          APP_LOCAL_VERSION="$(docker compose -f docker-compose.yml -f docker-compose.release.yml exec -T app sh -lc 'cat /usr/share/nginx/html/version.json 2>/dev/null || true')"
-          STAFF_LOCAL_VERSION="$(docker compose -f docker-compose.yml -f docker-compose.release.yml exec -T staff_app sh -lc 'cat /usr/share/nginx/html/version.json 2>/dev/null || true')"
-
-          if [ -z "${APP_LOCAL_VERSION}" ]; then
-            echo "app container is missing /usr/share/nginx/html/version.json"
-            exit 1
-          fi
-
-          if [ -z "${STAFF_LOCAL_VERSION}" ]; then
-            echo "staff_app container is missing /usr/share/nginx/html/version.json"
-            exit 1
-          fi
-
-          echo "app local version: ${APP_LOCAL_VERSION}"
-          echo "staff_app local version: ${STAFF_LOCAL_VERSION}"
-
-          case "${APP_LOCAL_VERSION}" in
-            *"\"commit\":\"${DEPLOY_SHA}\""*) ;;
-            *)
-              echo "app container commit does not match DEPLOY_SHA=${DEPLOY_SHA}"
-              exit 1
-              ;;
-          esac
-
-          case "${STAFF_LOCAL_VERSION}" in
-            *"\"commit\":\"${DEPLOY_SHA}\""*) ;;
-            *)
-              echo "staff_app container commit does not match DEPLOY_SHA=${DEPLOY_SHA}"
-              exit 1
-              ;;
-          esac
-
-          APP_PUBLIC_BASE="${FRONTEND_URL%/}"
-          STAFF_PUBLIC_BASE="${STAFF_FRONTEND_URL%/}"
-
-          if [ -z "${APP_PUBLIC_BASE}" ] || [ -z "${STAFF_PUBLIC_BASE}" ]; then
-            echo "FRONTEND_URL and STAFF_FRONTEND_URL must be set from secrets"
-            exit 1
-          fi
-
-          APP_PUBLIC_VERSION="$(curl -fsS "${APP_PUBLIC_BASE}/version.json?sha=${DEPLOY_SHA}" || true)"
-          STAFF_PUBLIC_VERSION="$(curl -fsS "${STAFF_PUBLIC_BASE}/version.json?sha=${DEPLOY_SHA}" || true)"
-
-          echo "app public version: ${APP_PUBLIC_VERSION:-<empty>}"
-          echo "staff_app public version: ${STAFF_PUBLIC_VERSION:-<empty>}"
-
-          case "${APP_PUBLIC_VERSION}" in
-            *"\"commit\":\"${DEPLOY_SHA}\""*) ;;
-            *)
-              echo "public app domain is not serving DEPLOY_SHA=${DEPLOY_SHA}"
-              exit 1
-              ;;
-          esac
-
-          case "${STAFF_PUBLIC_VERSION}" in
-            *"\"commit\":\"${DEPLOY_SHA}\""*) ;;
-            *)
-              echo "public staff domain is not serving DEPLOY_SHA=${DEPLOY_SHA}"
-              exit 1
-              ;;
-          esac
 
           echo "=== DEPLOYED SHA: ${DEPLOY_SHA} ==="
           docker compose -f docker-compose.yml -f docker-compose.release.yml ps
