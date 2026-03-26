@@ -268,7 +268,19 @@ jobs:
 
           echo "=== Running vps-refresh-ui.sh ==="
           chmod +x vps-refresh-ui.sh
-          ./vps-refresh-ui.sh
+          nohup ./vps-refresh-ui.sh > /tmp/vps-refresh-ui.log 2>&1 &
+          REFRESH_PID=$!
+          echo "vps-refresh-ui.sh running as PID $REFRESH_PID, tailing log..."
+          tail -f /tmp/vps-refresh-ui.log &
+          TAIL_PID=$!
+          wait $REFRESH_PID
+          REFRESH_EXIT=$?
+          kill $TAIL_PID 2>/dev/null || true
+          if [ $REFRESH_EXIT -ne 0 ]; then
+            echo "=== vps-refresh-ui.sh FAILED (exit $REFRESH_EXIT) ==="
+            cat /tmp/vps-refresh-ui.log || true
+            exit $REFRESH_EXIT
+          fi
 
           echo "=== DEPLOYED SHA: ${DEPLOY_SHA} ==="
           docker compose -f docker-compose.yml -f docker-compose.release.yml ps
