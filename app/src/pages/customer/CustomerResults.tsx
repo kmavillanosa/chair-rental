@@ -79,28 +79,31 @@ function createRouteArrowIcon(bearing: number) {
     });
 }
 
+const vendorPinIcon = L.icon({
+    iconRetinaUrl: 'https://unpkg.com/leaflet@1.9.4/dist/images/marker-icon-2x.png',
+    iconUrl: 'https://unpkg.com/leaflet@1.9.4/dist/images/marker-icon.png',
+    shadowUrl: 'https://unpkg.com/leaflet@1.9.4/dist/images/marker-shadow.png',
+    iconSize: [18, 30],
+    iconAnchor: [9, 30],
+    popupAnchor: [1, -25],
+    shadowSize: [30, 30],
+    shadowAnchor: [9, 30],
+});
+
 const testVendorPinIcon = L.divIcon({
     className: 'test-vendor-pin-icon',
     html: `
-            <div style="position:relative;width:28px;height:40px;">
+            <div style="width:16px;height:26px;">
                 <img
                     src="https://unpkg.com/leaflet@1.9.4/dist/images/marker-icon.png"
-                    style="width:100%;height:100%;display:block;"
-                    alt="map pin"
+                    style="width:100%;height:100%;display:block;filter:hue-rotate(145deg) saturate(2.2) brightness(1.05);"
+                    alt="test vendor pin"
                 />
-                <span
-                    style="position:absolute;top:-7px;right:-9px;background:#b91c1c;color:#fff;border:1px solid #fff;border-radius:999px;padding:0 5px;font-size:8px;line-height:14px;font-weight:700;letter-spacing:0.05em;"
-                >
-                    TEST
-                </span>
             </div>
         `,
-    iconSize: [28, 40],
-    iconAnchor: [14, 40],
-    popupAnchor: [1, -34],
-    shadowUrl: 'https://unpkg.com/leaflet@1.9.4/dist/images/marker-shadow.png',
-    shadowSize: [41, 41],
-    shadowAnchor: [12, 41],
+    iconSize: [16, 26],
+    iconAnchor: [8, 26],
+    popupAnchor: [1, -22],
 });
 
 function buildRouteArrowPoints(path: [number, number][]) {
@@ -867,7 +870,7 @@ export default function CustomerResults() {
                                     <Marker
                                         key={vendor.id}
                                         position={[Number(vendor.latitude), Number(vendor.longitude)]}
-                                        {...(vendor.isTestAccount ? { icon: testVendorPinIcon } : {})}
+                                        icon={vendor.isTestAccount ? testVendorPinIcon : vendorPinIcon}
                                         eventHandlers={{
                                             click: () => {
                                                 void traceRouteToVendor(vendor);

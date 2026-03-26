@@ -1161,6 +1161,33 @@ export class VendorsService {
       ratesByVendor.set(rate.vendorId, list);
     }
 
+    const vendorCoordinates = vendors
+      .map((vendor) => {
+        const vendorLat = Number(vendor.latitude);
+        const vendorLng = Number(vendor.longitude);
+        if (!Number.isFinite(vendorLat) || !Number.isFinite(vendorLng)) {
+          return null;
+        }
+
+        return {
+          id: vendor.id,
+          lat: vendorLat,
+          lng: vendorLng,
+        };
+      })
+      .filter(
+        (
+          coordinate,
+        ): coordinate is { id: string; lat: number; lng: number } =>
+          Boolean(coordinate),
+      );
+
+    const roadDistanceKmByVendorId = await this.getRoadDistanceKmByVendorId(
+      lat,
+      lng,
+      vendorCoordinates,
+    );
+
     const reservedQuantityByVendorItemType = new Map<
       string,
       Map<string, number>
@@ -1216,8 +1243,16 @@ export class VendorsService {
           return null;
         }
 
-        const distanceKm = this.haversine(lat, lng, vendorLat, vendorLng);
-        if (!Number.isFinite(distanceKm)) return null;
+        const straightLineDistanceKm = this.haversine(
+          lat,
+          lng,
+          vendorLat,
+          vendorLng,
+        );
+        if (!Number.isFinite(straightLineDistanceKm)) return null;
+
+        const distanceKm =
+          roadDistanceKmByVendorId.get(vendor.id) ?? straightLineDistanceKm;
 
         const availableQuantityByItemType =
           availableQuantityByVendorItemType.get(vendor.id) ||
@@ -1427,6 +1462,60 @@ export class VendorsService {
       targetRates.find((rate) => rate.distanceTierKm >= distanceKm) ||
       targetRates[targetRates.length - 1]
     );
+  }
+
+  private async getRoadDistanceKmByVendorId(
+    originLat: number,
+    originLng: number,
+    destinations: Array<{ id: string; lat: number; lng: number }>,
+  ) {
+    const distanceMap = new Map<string, number>();
+    if (!destinations.length) return distanceMap;
+
+    // Keep tests deterministic and avoid external API calls while running CI.
+    if (process.env.NODE_ENV === 'test') return distanceMap;
+
+    const maxDestinationsPerRequest = 80;
+
+    for (
+      let offset = 0;
+      offset < destinations.length;
+      offset += maxDestinationsPerRequest
+    ) {
+      const batch = destinations.slice(offset, offset + maxDestinationsPerRequest);
+      const coordinates = [
+        `${originLng},${originLat}`,
+        ...batch.map((destination) => `${destination.lng},${destination.lat}`),
+      ];
+
+      try {
+        const url = new URL(
+          `https://router.project-osrm.org/table/v1/driving/${coordinates.join(';')}`,
+        );
+        url.searchParams.set('sources', '0');
+        url.searchParams.set('annotations', 'distance');
+
+        const response = await fetch(url.toString());
+        if (!response.ok) continue;
+
+        const payload = (await response.json()) as {
+          distances?: Array<Array<number | null>>;
+        };
+
+        const row = payload.distances?.[0];
+        if (!Array.isArray(row)) continue;
+
+        for (let index = 0; index < batch.length; index += 1) {
+          const meters = Number(row[index + 1]);
+          if (!Number.isFinite(meters) || meters < 0) continue;
+          distanceMap.set(batch[index].id, meters / 1000);
+        }
+      } catch {
+        // Ignore route service failures and let caller fall back to haversine.
+      }
+    }
+
+    return distanceMap;
   }
 
   private haversine(lat1: number, lng1: number, lat2: number, lng2: number) {
