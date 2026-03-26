@@ -269,14 +269,7 @@ jobs:
 
           echo "=== Running vps-refresh-ui.sh ==="
           chmod +x vps-refresh-ui.sh
-          REFRESH_FLAGS=()
-          if [[ "${UI_REFRESH_WITH_API:-false}" == "true" ]]; then
-            REFRESH_FLAGS+=(--with-api)
-          fi
-          if [[ "${UI_REFRESH_PRUNE_IMAGES:-false}" == "true" ]]; then
-            REFRESH_FLAGS+=(--prune-images)
-          fi
-          ./vps-refresh-ui.sh "${REFRESH_FLAGS[@]}"
+          ./vps-refresh-ui.sh
 
           echo "=== DEPLOYED SHA: ${DEPLOY_SHA} ==="
           docker compose -f docker-compose.yml -f docker-compose.release.yml ps
