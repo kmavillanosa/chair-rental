@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { Button } from 'flowbite-react';
-import { useNavigate, useParams } from 'react-router-dom';
+import { useNavigate, useParams, useSearchParams } from 'react-router-dom';
 import toast from 'react-hot-toast';
 import CustomerLayout from '../../components/layout/CustomerLayout';
 import {
@@ -16,6 +16,7 @@ import {
     openBookingDispute,
     submitBookingReview,
     updateBookingStatus,
+    verifyBookingPayment,
 } from '../../api/bookings';
 import type { Booking, BookingDocument } from '../../types';
 import { BookingStatusBadge } from '../../components/common/StatusBadge';
@@ -28,6 +29,7 @@ export default function MyBookingDetails() {
     const { t } = useTranslation();
     const navigate = useNavigate();
     const { bookingId } = useParams<{ bookingId: string }>();
+    const [searchParams, setSearchParams] = useSearchParams();
     const [booking, setBooking] = useState<Booking | null>(null);
     const [loading, setLoading] = useState(true);
     const [redirectingBookingId, setRedirectingBookingId] = useState<string | null>(null);
@@ -51,6 +53,36 @@ export default function MyBookingDetails() {
             })
             .finally(() => setLoading(false));
     }, [bookingId]);
+
+    useEffect(() => {
+        const paymentState = searchParams.get('payment');
+        if (!paymentState || !bookingId) return;
+
+        const clearParams = () => {
+            const next = new URLSearchParams(searchParams);
+            next.delete('payment');
+            setSearchParams(next, { replace: true });
+        };
+
+        if (paymentState === 'success') {
+            verifyBookingPayment(bookingId)
+                .then(() => {
+                    toast.success(t('myBookingsPage.toastPaymentVerified'));
+                    return loadBooking();
+                })
+                .catch((error: any) => {
+                    toast.error(error?.response?.data?.message || t('myBookingsPage.toastPaymentVerifyFailed'));
+                })
+                .finally(clearParams);
+            return;
+        }
+
+        if (paymentState === 'cancel') {
+            toast.error(t('myBookingsPage.toastPaymentCancelled'));
+        }
+
+        clearParams();
+    }, [bookingId, searchParams, setSearchParams, t]);
 
     const getCancellationPolicyLabel = (policyCode?: string) => {
         switch (policyCode) {
@@ -266,16 +298,21 @@ export default function MyBookingDetails() {
 
     const getBookingActionState = (currentBooking: Booking) => {
         const normalizedPaymentProvider = (currentBooking.paymentProvider || '').toLowerCase();
+        const totalAmount = Number(currentBooking.totalAmount || 0);
+        const totalPaidAmount = Number(currentBooking.totalPaidAmount || 0);
+        const outstandingAmount = Math.max(0, totalAmount - totalPaidAmount);
+        const isSettledStatus = ['paid', 'held', 'completed', 'refunded'].includes(currentBooking.paymentStatus);
+        const hasOutstandingAmount = outstandingAmount > 0.009;
+        const isFullyPaid = isSettledStatus || (totalAmount > 0 && !hasOutstandingAmount);
         const canContinuePayment =
             currentBooking.status === 'pending' &&
             normalizedPaymentProvider === 'paymongo' &&
-            ['pending', 'unpaid', 'checkout_pending'].includes(currentBooking.paymentStatus);
+            ['pending', 'unpaid', 'checkout_pending'].includes(currentBooking.paymentStatus) &&
+            hasOutstandingAmount &&
+            !isSettledStatus;
 
-        const canPayRemainingBalance =
-            normalizedPaymentProvider === 'paymongo' &&
-            !['cancelled', 'completed'].includes(currentBooking.status) &&
-            Number(currentBooking.totalPaidAmount || 0) > 0 &&
-            Number(currentBooking.remainingBalanceAmount || 0) > 0;
+        // Remaining-balance checkout has been removed on the API side.
+        const canPayRemainingBalance = false;
 
         const canConfirmDelivery =
             ['confirmed', 'completed'].includes(currentBooking.status) &&
@@ -285,6 +322,7 @@ export default function MyBookingDetails() {
             canContinuePayment,
             canPayRemainingBalance,
             canConfirmDelivery,
+            isFullyPaid,
         };
     };
 
@@ -353,7 +391,14 @@ export default function MyBookingDetails() {
                                     <p className="text-xs text-slate-500">{booking.deliveryAddress}</p>
                                 )}
                             </div>
-                            <BookingStatusBadge status={booking.status} />
+                            <div className="flex items-center gap-2">
+                                {actionState.isFullyPaid && (
+                                    <span className="rounded-full border border-emerald-200 bg-emerald-50 px-2 py-0.5 text-[11px] font-semibold text-emerald-700">
+                                        Paid
+                                    </span>
+                                )}
+                                <BookingStatusBadge status={booking.status} />
+                            </div>
                         </div>
                     </div>
 

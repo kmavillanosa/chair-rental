@@ -142,16 +142,21 @@ export default function MyBookings() {
 
     const getBookingActionState = (booking: Booking) => {
         const normalizedPaymentProvider = (booking.paymentProvider || '').toLowerCase();
+        const totalAmount = Number(booking.totalAmount || 0);
+        const totalPaidAmount = Number(booking.totalPaidAmount || 0);
+        const outstandingAmount = Math.max(0, totalAmount - totalPaidAmount);
+        const isSettledStatus = ['paid', 'held', 'completed', 'refunded'].includes(booking.paymentStatus);
+        const hasOutstandingAmount = outstandingAmount > 0.009;
+        const isFullyPaid = isSettledStatus || (totalAmount > 0 && !hasOutstandingAmount);
         const canContinuePayment =
             booking.status === 'pending' &&
             normalizedPaymentProvider === 'paymongo' &&
-            ['pending', 'unpaid', 'checkout_pending'].includes(booking.paymentStatus);
+            ['pending', 'unpaid', 'checkout_pending'].includes(booking.paymentStatus) &&
+            hasOutstandingAmount &&
+            !isSettledStatus;
 
-        const canPayRemainingBalance =
-            normalizedPaymentProvider === 'paymongo' &&
-            !['cancelled', 'completed'].includes(booking.status) &&
-            Number(booking.totalPaidAmount || 0) > 0 &&
-            Number(booking.remainingBalanceAmount || 0) > 0;
+        // Remaining-balance checkout has been removed on the API side.
+        const canPayRemainingBalance = false;
 
         const canConfirmDelivery =
             ['confirmed', 'completed'].includes(booking.status) &&
@@ -161,6 +166,7 @@ export default function MyBookings() {
             canContinuePayment,
             canPayRemainingBalance,
             canConfirmDelivery,
+            isFullyPaid,
         };
     };
 
@@ -253,7 +259,7 @@ export default function MyBookings() {
 
                         <div className="space-y-3">
                             {filteredBookings.map((booking) => {
-                                const { canContinuePayment, canPayRemainingBalance, canConfirmDelivery } =
+                                const { canContinuePayment, canPayRemainingBalance, canConfirmDelivery, isFullyPaid } =
                                     getBookingActionState(booking);
 
                                 return (
@@ -275,7 +281,14 @@ export default function MyBookings() {
                                                     </p>
                                                 )}
                                             </div>
-                                            <BookingStatusBadge status={booking.status} />
+                                            <div className="flex items-center gap-2">
+                                                {isFullyPaid && (
+                                                    <span className="rounded-full border border-emerald-200 bg-emerald-50 px-2 py-0.5 text-[11px] font-semibold text-emerald-700">
+                                                        Paid
+                                                    </span>
+                                                )}
+                                                <BookingStatusBadge status={booking.status} />
+                                            </div>
                                         </div>
 
                                         {booking.status === 'cancelled' && (

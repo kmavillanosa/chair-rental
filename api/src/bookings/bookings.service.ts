@@ -1545,12 +1545,12 @@ export class BookingsService {
     );
 
     const baseApi = String(process.env.PAYMONGO_API_BASE_URL || 'https://api.paymongo.com/v1').replace(/\/$/, '');
-    const successUrl = this.withBookingQuery(
+    const successUrl = this.withBookingPathQuery(
       process.env.PAYMONGO_SUCCESS_URL || `${process.env.FRONTEND_URL || 'http://127.0.0.1:43171'}/my-bookings`,
       booking.id,
       'success',
     );
-    const cancelUrl = this.withBookingQuery(
+    const cancelUrl = this.withBookingPathQuery(
       process.env.PAYMONGO_CANCEL_URL || `${process.env.FRONTEND_URL || 'http://127.0.0.1:43171'}/my-bookings`,
       booking.id,
       'cancel',
@@ -1711,14 +1711,39 @@ export class BookingsService {
     return Math.max(0, Math.round(parsed * 100));
   }
 
-  private withBookingQuery(baseUrl: string, bookingId: string, status: string) {
+  private withBookingPathQuery(baseUrl: string, bookingId: string, status: string) {
+    const normalisedBase = this.resolveAbsoluteFrontendUrl(baseUrl);
+    const detailsUrl = /\/my-bookings\/[A-Za-z0-9-]+$/i.test(normalisedBase)
+      ? normalisedBase
+      : `${normalisedBase}/${encodeURIComponent(bookingId)}`;
+
+    const separator = detailsUrl.includes('?') ? '&' : '?';
+    return `${detailsUrl}${separator}payment=${encodeURIComponent(status)}`;
+  }
+
+  private resolveAbsoluteFrontendUrl(baseUrl: string) {
     const safeBase = String(baseUrl || '').trim();
+    const frontendOrigin = String(
+      process.env.FRONTEND_URL || 'http://127.0.0.1:43171',
+    ).trim();
+
     if (!safeBase) {
       throw new BadRequestException('Missing payment redirect URL configuration');
     }
 
-    const separator = safeBase.includes('?') ? '&' : '?';
-    return `${safeBase}${separator}payment=${encodeURIComponent(status)}&bookingId=${encodeURIComponent(bookingId)}`;
+    try {
+      // Already absolute URL.
+      if (/^https?:\/\//i.test(safeBase)) {
+        return new URL(safeBase).toString().replace(/\/+$/, '');
+      }
+
+      // Relative URLs resolve against configured frontend host.
+      return new URL(safeBase, frontendOrigin).toString().replace(/\/+$/, '');
+    } catch {
+      throw new BadRequestException(
+        `Invalid payment redirect URL configuration: ${safeBase}`,
+      );
+    }
   }
 
   private extractPayMongoErrorMessage(payload: PayMongoCheckoutResponse) {
