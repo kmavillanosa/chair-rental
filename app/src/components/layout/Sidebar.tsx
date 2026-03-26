@@ -39,7 +39,7 @@ export default function Sidebar({ role, className = '', onNavigate }: Props) {
         <div className="flex items-start justify-between gap-2">
           <div>
             <div className="flex items-center gap-2">
-              <img src="/no_text_logo_dark.svg" alt={t('common.appName')} className="h-8 w-8" />
+              <img src="/no_text_logo_dark.svg" alt={t('common.appName')} className="h-7 w-7" />
               <span className="text-2xl font-bold leading-none">{t('common.appName')}</span>
             </div>
             <p className="text-blue-200 text-sm mt-1">{role === 'admin' ? t('nav.adminPanel') : t('nav.vendorPanel')}</p>

@@ -37,7 +37,7 @@ export default function Login() {
         <div className="grid w-full gap-6 lg:grid-cols-[1.25fr_0.75fr]">
           <section className="order-2 overflow-hidden rounded-[2rem] bg-[#1f2944] px-6 py-8 text-white shadow-[0_34px_90px_rgba(31,41,68,0.28)] sm:px-8 sm:py-10 lg:order-1 lg:px-10 lg:py-12">
             <div className="relative">
-              <img src="logo_primary.svg" alt="RentalBasic" className="h-12 w-12" />
+              <img src="logo_primary.svg" alt="RentalBasic" className="h-16 w-auto sm:h-20" />
 
 
               <h1 className="mt-6 max-w-3xl font-display text-4xl font-semibold leading-[0.95] sm:text-5xl lg:text-6xl">
@@ -76,7 +76,7 @@ export default function Login() {
           <section className="order-1 rounded-[2rem] border border-slate-200/80 bg-white/92 p-6 shadow-[0_26px_70px_rgba(15,23,42,0.14)] backdrop-blur sm:p-8 lg:order-2 lg:p-10">
             <div className="flex h-full flex-col justify-between">
               <div>
-                <img src="/logo_primary.svg" alt="RentalBasic" className="h-12 w-12" />
+                <img src="/logo_primary.svg" alt="RentalBasic" className="h-14 w-auto sm:h-16" />
                 <div className="inline-flex items-center rounded-full bg-[#eef3ff] px-3 py-1 text-xs font-semibold uppercase tracking-[0.16em] text-[#1f2944]">
                   Secure Sign-in
                 </div>
