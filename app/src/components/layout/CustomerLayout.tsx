@@ -73,9 +73,9 @@ export default function CustomerLayout({ children, hideHeaderBackground = false 
       <header className={headerClassName}>
         <div className="mx-auto max-w-7xl px-3 py-2 sm:px-4 sm:py-3">
           <div className="flex items-center justify-between gap-2">
-            <Link to="/" data-tour="header-brand" className="inline-flex min-w-0 items-center gap-2 sm:gap-3">
-              <img src="/no_text_logo_dark.svg" alt="" aria-hidden="true" className="h-6 w-6 sm:h-7 sm:w-7" />
-              <span className="truncate text-3xl font-bold leading-none">{t('common.appName')}</span>
+            <Link to="/" data-tour="header-brand" className="inline-flex min-w-0 items-center gap-2.5 sm:gap-3">
+              <img src="/no_text_logo_primary.svg" alt="" aria-hidden="true" className="h-8 w-8 shrink-0 sm:h-9 sm:w-9" />
+              <span className="truncate text-2xl font-extrabold leading-none tracking-tight text-[#b7e92f] sm:text-[2rem]">{t('common.appName')}</span>
             </Link>
 
             <div className="flex items-center gap-2">
