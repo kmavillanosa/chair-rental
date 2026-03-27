@@ -44,9 +44,9 @@ export default function VendorApplicantsList() {
             <div className="mx-auto w-full max-w-[1240px] space-y-5">
                 <div className="flex flex-wrap items-start justify-between gap-3">
                     <div>
-                        <h1 className="text-3xl font-bold text-slate-900">Vendor Applicants</h1>
+                        <h1 className="text-3xl font-bold text-slate-900">Rental Partner Applicants</h1>
                         <p className="mt-1 text-sm text-slate-600">
-                            Review pending KYC submissions before they enter the managed vendor list.
+                            Review pending KYC submissions before they enter the managed rental partner list.
                         </p>
                     </div>
 
@@ -56,7 +56,7 @@ export default function VendorApplicantsList() {
                         className="!border-slate-200 !bg-white !text-slate-700 hover:!bg-slate-100"
                         onClick={() => navigate('/admin/vendors')}
                     >
-                        Back to Vendors
+                        Back to Rental Partners
                     </Button>
                 </div>
 
@@ -66,7 +66,7 @@ export default function VendorApplicantsList() {
 
                 {requests.length === 0 ? (
                     <div className="rounded-xl border border-slate-200 bg-white p-6 text-sm text-slate-500 shadow-sm">
-                        No pending vendor registrations right now.
+                        No pending rental partner registrations right now.
                     </div>
                 ) : (
                     <div className="overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm">

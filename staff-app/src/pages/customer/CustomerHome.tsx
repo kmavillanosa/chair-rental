@@ -77,11 +77,11 @@ export default function CustomerHome() {
               </MapContainer>
             </div>
 
-            {/* Vendor Cards */}
+            {/* Rental Partner Cards */}
             <div className="space-y-4 overflow-visible max-h-none lg:max-h-96 lg:overflow-y-auto">
               {vendors.length === 0 && (
                 <div className="text-center py-10">
-                  <p className="text-2xl text-gray-400">😔 No vendors found nearby.</p>
+                  <p className="text-2xl text-gray-400">😔 No rental partners found nearby.</p>
                   <p className="text-xl text-gray-400 mt-2">Try searching in a different area.</p>
                 </div>
               )}

@@ -30,8 +30,8 @@ export default function MyBookings() {
         {bookings.length === 0 ? (
           <div className="text-center py-20">
             <p className="text-3xl text-gray-400">😔 No bookings yet.</p>
-            <p className="text-xl text-gray-400 mt-2">Find a vendor and book equipment!</p>
-            <Button size="xl" className="mt-6" onClick={() => window.location.href = '/'}>🔍 Find Vendors</Button>
+            <p className="text-xl text-gray-400 mt-2">Find a rental partner and book equipment!</p>
+            <Button size="xl" className="mt-6" onClick={() => window.location.href = '/'}>🔍 Find Rental Partners</Button>
           </div>
         ) : (
           <div className="space-y-4">

@@ -207,7 +207,7 @@ export default function MyBookings() {
                         <div className="mb-3 flex flex-wrap items-center gap-2">
                             <input
                                 type="text"
-                                placeholder="Search vendor or address"
+                                placeholder="Search rental partner or address"
                                 value={searchQuery}
                                 onChange={(event) => setSearchQuery(event.target.value)}
                                 className="rounded border border-slate-300 px-3 py-1.5 text-sm text-slate-800 placeholder-slate-400 focus:outline-none focus:ring-1 focus:ring-slate-400"

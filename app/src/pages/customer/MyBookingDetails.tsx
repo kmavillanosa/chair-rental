@@ -194,7 +194,7 @@ export default function MyBookingDetails() {
     };
 
     const rateVendor = async (currentBooking: Booking) => {
-        const ratingInput = window.prompt('Rate this vendor from 1 to 5:');
+        const ratingInput = window.prompt('Rate this rental partner from 1 to 5:');
         if (!ratingInput) return;
 
         const rating = Math.round(Number(ratingInput));
@@ -513,7 +513,7 @@ export default function MyBookingDetails() {
                                     onClick={() => rateVendor(booking)}
                                     disabled={actionBookingId === booking.id}
                                 >
-                                    Rate vendor
+                                    Rate rental partner
                                 </button>
                             )}
                             {['confirmed', 'completed'].includes(booking.status) && (

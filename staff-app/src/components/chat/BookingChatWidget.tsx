@@ -116,7 +116,7 @@ export default function BookingChatWidget({
     const roomLabel = chatToken?.roomName || `booking-${bookingId}`;
 
     const resolvedLabel =
-        userRole === 'vendor' ? 'Chat with Customer' : userRole === 'customer' ? 'Chat with Vendor' : 'Chat (Admin View)';
+        userRole === 'vendor' ? 'Chat with Customer' : userRole === 'customer' ? 'Chat with Rental Partner' : 'Chat (Admin View)';
 
     return (
         <div className={`rounded border border-slate-200 bg-white shadow-sm ${className}`}>

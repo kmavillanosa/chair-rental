@@ -297,7 +297,7 @@ export default function KycSettingsPage() {
                                 <div>
                                     <p className="text-lg font-semibold text-slate-900">Allow Orders Without Paying (Test Mode)</p>
                                     <p className="text-sm text-slate-600">
-                                        When enabled, customers can submit bookings without being forced into checkout, and vendors or admins can confirm unpaid PayMongo bookings. Keep this disabled in live mode.
+                                        When enabled, customers can submit bookings without being forced into checkout, and rental partners or admins can confirm unpaid PayMongo bookings. Keep this disabled in live mode.
                                     </p>
                                 </div>
                                 <FeatureFlagSwitch
@@ -335,9 +335,9 @@ export default function KycSettingsPage() {
                         <div className="rounded-xl border border-slate-200 p-4">
                             <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
                                 <div>
-                                    <p className="text-lg font-semibold text-slate-900">Show Test Vendors on Customer Map</p>
+                                    <p className="text-lg font-semibold text-slate-900">Show Test Rental Partners on Customer Map</p>
                                     <p className="text-sm text-slate-600">
-                                        When enabled, test vendor accounts can appear in customer map search results.
+                                        When enabled, test rental partner accounts can appear in customer map search results.
                                     </p>
                                 </div>
                                 <FeatureFlagSwitch
@@ -422,12 +422,12 @@ export default function KycSettingsPage() {
                         <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
                             <div className="md:col-span-2 xl:col-span-4 rounded-xl border border-slate-200 bg-slate-50 px-4 py-3">
                                 <p className="text-xs font-semibold uppercase tracking-wide text-slate-600">
-                                    Vendor Risk Guardrails
+                                    Rental Partner Risk Guardrails
                                 </p>
                             </div>
                             <div>
                                 <label className="mb-2 block text-sm font-semibold text-slate-800">
-                                    New Vendor Completion Threshold
+                                    New Rental Partner Completion Threshold
                                 </label>
                                 <TextInput
                                     type="number"
@@ -441,13 +441,13 @@ export default function KycSettingsPage() {
                                             newVendorCompletedOrdersThreshold: Math.max(0, Math.round(Number(event.target.value))),
                                         }))
                                     }
-                                    helperText="Vendors below this completed-order count are treated as new vendors for controls below."
+                                    helperText="Rental partners below this completed-order count are treated as new rental partners for controls below."
                                 />
                             </div>
 
                             <div>
                                 <label className="mb-2 block text-sm font-semibold text-slate-800">
-                                    New Vendor Max Listings
+                                    New Rental Partner Max Listings
                                 </label>
                                 <TextInput
                                     type="number"
@@ -461,13 +461,13 @@ export default function KycSettingsPage() {
                                             newVendorMaxActiveListings: Math.max(1, Math.round(Number(event.target.value))),
                                         }))
                                     }
-                                    helperText="Maximum inventory listings allowed for new vendors."
+                                    helperText="Maximum inventory listings allowed for new rental partners."
                                 />
                             </div>
 
                             <div>
                                 <label className="mb-2 block text-sm font-semibold text-slate-800">
-                                    Flagged Vendor Max Listings
+                                    Flagged Rental Partner Max Listings
                                 </label>
                                 <TextInput
                                     type="number"
@@ -481,13 +481,13 @@ export default function KycSettingsPage() {
                                             flaggedVendorMaxActiveListings: Math.max(1, Math.round(Number(event.target.value))),
                                         }))
                                     }
-                                    helperText="Maximum listings when a vendor is suspicious or low-rated."
+                                    helperText="Maximum listings when a rental partner is suspicious or low-rated."
                                 />
                             </div>
 
                             <div>
                                 <label className="mb-2 block text-sm font-semibold text-slate-800">
-                                    New Vendor Payout Delay (Days)
+                                    New Rental Partner Payout Delay (Days)
                                 </label>
                                 <TextInput
                                     type="number"
@@ -501,7 +501,7 @@ export default function KycSettingsPage() {
                                             payoutDelayDaysForNewVendors: Math.max(0, Math.round(Number(event.target.value))),
                                         }))
                                     }
-                                    helperText="How long payouts stay held for vendors still within the new-vendor threshold."
+                                    helperText="How long payouts stay held for rental partners still within the new-rental-partner threshold."
                                 />
                             </div>
                         </div>
@@ -610,16 +610,16 @@ export default function KycSettingsPage() {
                         <div>
                             <h2 className="text-2xl font-semibold text-slate-900">KYC Controls</h2>
                             <p className="text-sm text-slate-600">
-                                Manage vendor onboarding policies.
+                                Manage rental partner onboarding policies.
                             </p>
                         </div>
 
                         <div className="rounded-xl border border-slate-200 p-4">
                             <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
                                 <div>
-                                    <p className="text-lg font-semibold text-slate-900">Allow Customer Vendor Registration</p>
+                                    <p className="text-lg font-semibold text-slate-900">Allow Customer Rental Partner Registration</p>
                                     <p className="text-sm text-slate-600">
-                                        When disabled, customers cannot submit new vendor registration requests.
+                                        When disabled, customers cannot submit new rental partner registration requests.
                                     </p>
                                 </div>
                                 <label className="inline-flex items-center gap-2 text-sm font-medium text-slate-800">
@@ -642,7 +642,7 @@ export default function KycSettingsPage() {
                         <div className="rounded-xl border border-slate-200 p-4">
                             <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
                                 <div>
-                                    <p className="text-lg font-semibold text-slate-900">Require OTP Before Vendor Registration</p>
+                                    <p className="text-lg font-semibold text-slate-900">Require OTP Before Rental Partner Registration</p>
                                     <p className="text-sm text-slate-600">
                                         When enabled, customer email OTP verification is required before registration can be submitted.
                                     </p>

@@ -20,7 +20,7 @@ export default function VendorLayout({ children }: { children?: React.ReactNode 
   return (
     <div className="flex min-h-screen bg-gray-50">
       <div className="fixed inset-x-0 top-0 z-30 flex h-14 items-center justify-between border-b border-slate-200 bg-white/95 px-4 backdrop-blur lg:hidden">
-        <p className="text-sm font-semibold text-slate-900">Vendor Panel</p>
+        <p className="text-sm font-semibold text-slate-900">Rental Partner Panel</p>
         <button
           type="button"
           aria-label="Open menu"

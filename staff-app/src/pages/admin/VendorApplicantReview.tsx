@@ -214,7 +214,7 @@ export default function VendorApplicantReview() {
                 <div className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
                     <h1 className="text-2xl font-semibold text-slate-900">Applicant Review</h1>
                     <p className="mt-1 text-sm text-slate-600">
-                        Review documents and details, then approve or decline this vendor application.
+                        Review documents and details, then approve or decline this rental partner application.
                     </p>
 
                     <div className="mt-4 grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
@@ -227,7 +227,7 @@ export default function VendorApplicantReview() {
                             <p className="mt-1 text-sm font-medium text-slate-900">{ownerName}</p>
                         </div>
                         <div className="rounded-lg border border-slate-200 bg-slate-50 p-3">
-                            <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">Vendor Type</p>
+                            <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">Rental Partner Type</p>
                             <p className="mt-1 text-sm font-medium capitalize text-slate-900">{vendorTypeLabel}</p>
                         </div>
                         <div className="rounded-lg border border-slate-200 bg-slate-50 p-3">

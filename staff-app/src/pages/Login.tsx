@@ -8,7 +8,7 @@ export default function Login() {
 
   const workflowCards = [
     {
-      title: 'Vendor Onboarding',
+      title: 'Rental Partner Onboarding',
       subtitle: 'KYC + verification',
       description:
         'Review applicant records, validate submitted documents, and approve accounts with complete audit trail.',
@@ -41,11 +41,11 @@ export default function Login() {
 
 
               <h1 className="mt-6 max-w-3xl font-display text-4xl font-semibold leading-[0.95] sm:text-5xl lg:text-6xl">
-                One dashboard for vendor approvals, bookings, and payout operations.
+                One dashboard for rental partner approvals, bookings, and payout operations.
               </h1>
 
               <p className="mt-5 max-w-2xl text-sm leading-6 text-slate-200 sm:text-base">
-                Access the operations workspace where admin and vendor teams can process KYC,
+                Access the operations workspace where admin and rental partner teams can process KYC,
                 monitor reservations, and keep marketplace workflows moving in real time.
               </p>
 
@@ -67,7 +67,7 @@ export default function Login() {
               <div className="mt-8 flex flex-wrap gap-2 text-xs font-medium text-white/85 sm:text-sm">
                 <span className="rounded-full border border-white/20 bg-white/10 px-3 py-1.5">Google SSO</span>
                 <span className="rounded-full border border-white/20 bg-white/10 px-3 py-1.5">Role-aware access</span>
-                <span className="rounded-full border border-white/20 bg-white/10 px-3 py-1.5">Admin + Vendor portal</span>
+                <span className="rounded-full border border-white/20 bg-white/10 px-3 py-1.5">Admin + Rental Partner portal</span>
                 <span className="rounded-full border border-white/20 bg-white/10 px-3 py-1.5">Actionable operations view</span>
               </div>
             </div>
@@ -85,7 +85,7 @@ export default function Login() {
                 </h2>
 
                 <p className="mt-3 text-sm leading-6 text-slate-500 sm:text-base">
-                  Continue with the Google account linked to your approved admin or vendor profile.
+                  Continue with the Google account linked to your approved admin or rental partner profile.
                 </p>
 
                 {authError && (
@@ -111,7 +111,7 @@ export default function Login() {
                 <div className="mt-6 rounded-2xl border border-slate-200 bg-slate-50 px-4 py-4 text-sm text-slate-600">
                   <p className="font-semibold text-slate-800">Access notes</p>
                   <ul className="mt-2 space-y-1.5 leading-6">
-                    <li>Only approved admin and vendor accounts can enter this portal.</li>
+                    <li>Only approved admin and rental partner accounts can enter this portal.</li>
                     <li>If your role was updated recently, sign out and retry once.</li>
                     <li>Use the same Google account tied to your platform profile.</li>
                   </ul>

@@ -2,7 +2,7 @@ import { Link, useLocation } from 'react-router-dom';
 
 const legalLinks = [
     { to: '/legal/terms-of-service', label: 'Terms of Service' },
-    { to: '/legal/vendor-agreement', label: 'Vendor Agreement' },
+    { to: '/legal/vendor-agreement', label: 'Rental Partner Agreement' },
     { to: '/legal/platform-commission-policy', label: 'Commission Policy' },
     { to: '/legal/liability-disclaimer', label: 'Liability Disclaimer' },
 ];
@@ -28,7 +28,7 @@ export default function LegalFooter({ variant = 'light', className = '' }: Legal
                         Legal
                     </p>
                     <p className={`mt-1 text-sm ${isDark ? 'text-slate-300' : 'text-slate-500'}`}>
-                        Review the policies covering bookings, vendors, commissions, and liability.
+                        Review the policies covering bookings, rental partners, commissions, and liability.
                     </p>
                 </div>
 

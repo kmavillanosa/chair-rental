@@ -342,7 +342,7 @@ export default function BecomeVendor() {
         event.preventDefault();
 
         if (!kycSettings.vendorRegistrationEnabled) {
-            toast.error('Vendor registration is currently disabled by platform admin.');
+            toast.error('Rental partner registration is currently disabled by platform admin.');
             return;
         }
 
@@ -509,7 +509,7 @@ export default function BecomeVendor() {
                 <div className="max-w-3xl mx-auto px-4 py-10">
                     <h1 className="text-3xl font-bold text-gray-900">{t('becomeVendorPage.title')}</h1>
                     <p className="text-gray-600 mt-3">
-                        Vendor registration is temporarily disabled by platform admin.
+                        Rental partner registration is temporarily disabled by platform admin.
                     </p>
                     <Button className="mt-6" onClick={() => navigate('/')}>
                         {t('becomeVendorPage.backToHome')}
@@ -557,7 +557,7 @@ export default function BecomeVendor() {
 
                 <form onSubmit={handleSubmit} className="mt-8 bg-white rounded-2xl shadow p-6 space-y-5">
                     <div>
-                        <Label htmlFor="vendorType" value="Vendor Type" />
+                        <Label htmlFor="vendorType" value="Rental Partner Type" />
                         <select
                             id="vendorType"
                             value={form.vendorType}

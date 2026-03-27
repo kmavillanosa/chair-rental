@@ -19,7 +19,7 @@ export const legalDocuments: LegalDocument[] = [
     slug: 'terms-of-service',
     title: 'Terms of Service',
     summary:
-      'These terms define how customers, vendors, and platform operators use the marketplace, book rentals, process payments, and handle disputes.',
+      'These terms define how customers, rental partners, and platform operators use the marketplace, book rentals, process payments, and handle disputes.',
     updatedAt: 'March 15, 2026',
     sections: [
       {
@@ -32,7 +32,7 @@ export const legalDocuments: LegalDocument[] = [
       {
         heading: 'Marketplace Scope',
         paragraphs: [
-          'The platform connects customers with independent vendors offering chairs, tables, tents, audiovisual equipment, decor, and related event rentals.',
+          'The platform connects customers with independent rental partners offering chairs, tables, tents, audiovisual equipment, decor, and related event rentals.',
           'Unless stated otherwise in writing, the platform does not own, store, transport, install, or insure listed inventory.',
         ],
       },
@@ -66,7 +66,7 @@ export const legalDocuments: LegalDocument[] = [
         heading: 'Disclaimers and Liability Limits',
         paragraphs: [
           'The platform is provided on an as-is and as-available basis to the maximum extent allowed by law.',
-          'The operator does not guarantee vendor performance, uninterrupted service, error-free operation, or the quality and legality of any listing.',
+          'The operator does not guarantee rental partner performance, uninterrupted service, error-free operation, or the quality and legality of any listing.',
         ],
         bullets: [
           'Indirect, incidental, consequential, or punitive damages are excluded where legally permitted.',
@@ -83,59 +83,59 @@ export const legalDocuments: LegalDocument[] = [
   },
   {
     slug: 'vendor-agreement',
-    title: 'Vendor Agreement',
+    title: 'Rental Partner Agreement',
     summary:
-      'This agreement sets the rules for vendor onboarding, listings, fulfillment, payout handling, commission deductions, and vendor compliance responsibilities.',
+      'This agreement sets the rules for rental partner onboarding, listings, fulfillment, payout handling, commission deductions, and rental partner compliance responsibilities.',
     updatedAt: 'March 15, 2026',
     sections: [
       {
         heading: 'Parties and Purpose',
         paragraphs: [
-          'This agreement is between Kim Cyriel Samaniego Avillanosa, doing business as RentalBasic, and the vendor using the platform.',
-          'The vendor appoints the platform on a non-exclusive basis to host listings, accept booking requests, and facilitate payment flows where supported.',
+          'This agreement is between Kim Cyriel Samaniego Avillanosa, doing business as RentalBasic, and the rental partner using the platform.',
+          'The rental partner appoints the platform on a non-exclusive basis to host listings, accept booking requests, and facilitate payment flows where supported.',
         ],
       },
       {
-        heading: 'Vendor Eligibility',
+        heading: 'Rental Partner Eligibility',
         bullets: [
-          'The vendor must be legally authorized to operate the business it presents on the platform.',
-          'The vendor must hold required permits, registrations, tax records, and payout details.',
-          'Listed inventory must be lawfully owned, leased, or controlled by the vendor.',
+          'The rental partner must be legally authorized to operate the business it presents on the platform.',
+          'The rental partner must hold required permits, registrations, tax records, and payout details.',
+          'Listed inventory must be lawfully owned, leased, or controlled by the rental partner.',
           'The platform may request KYC documents, merchant onboarding information, and business records at any time.',
         ],
       },
       {
         heading: 'Listings and Fulfillment',
         paragraphs: [
-          'Vendors are responsible for keeping listings accurate, including price, quantity, condition, availability, business location, and delivery scope.',
+          'Rental partners are responsible for keeping listings accurate, including price, quantity, condition, availability, business location, and delivery scope.',
         ],
         bullets: [
-          'Vendors remain responsible for transport, setup, retrieval, maintenance, replacements, and event-day execution.',
-          'Vendors must not misrepresent stock, overbook, submit false permits, or route platform leads off-platform to avoid fees.',
+          'Rental partners remain responsible for transport, setup, retrieval, maintenance, replacements, and event-day execution.',
+          'Rental partners must not misrepresent stock, overbook, submit false permits, or route platform leads off-platform to avoid fees.',
         ],
       },
       {
         heading: 'Commission, Payouts, and Holds',
         paragraphs: [
-          'Vendor charges may be subject to the Platform Commission Policy and any vendor-specific written commercial terms.',
+          'Rental partner charges may be subject to the Platform Commission Policy and any rental partner-specific written commercial terms.',
           'The platform may deduct commission automatically before settlement when payout splitting or processor routing is enabled.',
         ],
         bullets: [
-          'Payouts may be delayed or offset for refunds, chargebacks, fraud checks, customer claims, or outstanding vendor balances.',
+          'Payouts may be delayed or offset for refunds, chargebacks, fraud checks, customer claims, or outstanding rental partner balances.',
           'You should state the standard payout schedule explicitly before publishing this agreement.',
         ],
       },
       {
         heading: 'Taxes, Insurance, and Risk',
         paragraphs: [
-          'Vendors are responsible for their own taxes, invoices, labor obligations, permits, insurance, and operating risks unless a written agreement says otherwise.',
+          'Rental partners are responsible for their own taxes, invoices, labor obligations, permits, insurance, and operating risks unless a written agreement says otherwise.',
         ],
       },
       {
         heading: 'Termination and Indemnity',
         paragraphs: [
-          'The platform may suspend or remove vendors for fraud, unsafe conduct, repeated complaints, fulfillment failures, or material policy breaches.',
-          'Vendors should indemnify the platform and operator for claims arising from their inventory, personnel, deliveries, setup work, or legal non-compliance.',
+          'The platform may suspend or remove rental partners for fraud, unsafe conduct, repeated complaints, fulfillment failures, or material policy breaches.',
+          'Rental partners should indemnify the platform and operator for claims arising from their inventory, personnel, deliveries, setup work, or legal non-compliance.',
         ],
       },
     ],
@@ -165,9 +165,9 @@ export const legalDocuments: LegalDocument[] = [
         ],
       },
       {
-        heading: 'Vendor-Specific Rates and Promotions',
+        heading: 'Rental Partner-Specific Rates and Promotions',
         paragraphs: [
-          'A vendor-specific rate may override the default rate where stored in vendor settings or agreed in writing.',
+          'A rental partner-specific rate may override the default rate where stored in rental partner settings or agreed in writing.',
           'The platform also supports an admin-controlled no-commission mode with an optional end date.',
         ],
       },
@@ -188,7 +188,7 @@ export const legalDocuments: LegalDocument[] = [
       {
         heading: 'Notice of Changes',
         paragraphs: [
-          'The operator may revise commission settings or policy text with reasonable notice through the platform, vendor communications, or admin controls.',
+          'The operator may revise commission settings or policy text with reasonable notice through the platform, rental partner communications, or admin controls.',
         ],
       },
     ],
@@ -197,34 +197,34 @@ export const legalDocuments: LegalDocument[] = [
     slug: 'liability-disclaimer',
     title: 'Liability Disclaimer',
     summary:
-      'This disclaimer clarifies that the platform is a marketplace, not the direct provider of vendor inventory or event execution services.',
+      'This disclaimer clarifies that the platform is a marketplace, not the direct provider of rental partner inventory or event execution services.',
     updatedAt: 'March 15, 2026',
     sections: [
       {
         heading: 'Marketplace Position',
         paragraphs: [
-          'The platform helps connect customers and independent vendors. It does not, by default, manufacture, own, warehouse, transport, install, inspect, or insure vendor inventory.',
+          'The platform helps connect customers and independent rental partners. It does not, by default, manufacture, own, warehouse, transport, install, inspect, or insure rental partner inventory.',
         ],
       },
       {
         heading: 'No Guarantee of Performance',
         bullets: [
-          'The platform does not guarantee vendor acceptance, inventory availability, or on-time fulfillment.',
+          'The platform does not guarantee rental partner acceptance, inventory availability, or on-time fulfillment.',
           'The platform does not guarantee that rented items are defect-free or fit for a specific event.',
-          'The platform does not guarantee that vendor permits, licenses, or insurance remain valid at all times.',
+          'The platform does not guarantee that rental partner permits, licenses, or insurance remain valid at all times.',
         ],
       },
       {
-        heading: 'Customer and Vendor Responsibility',
+        heading: 'Customer and Rental Partner Responsibility',
         paragraphs: [
           'Customers remain responsible for confirming event details, reviewing listings, inspecting delivered items when possible, and obtaining any venue approval or insurance they need.',
-          'Vendors remain responsible for inventory condition, setup, retrieval, safety, transport, personnel, taxes, permits, and insurance.',
+          'Rental partners remain responsible for inventory condition, setup, retrieval, safety, transport, personnel, taxes, permits, and insurance.',
         ],
       },
       {
         heading: 'Third-Party Services and Downtime',
         paragraphs: [
-          'The platform may depend on payment processors, maps, geocoding, authentication providers, hosting, messaging, and analytics vendors.',
+          'The platform may depend on payment processors, maps, geocoding, authentication providers, hosting, messaging, and analytics rental partners.',
         ],
         bullets: [
           'The operator is not responsible for outages, rate limits, data delays, or service interruptions caused by those third parties.',

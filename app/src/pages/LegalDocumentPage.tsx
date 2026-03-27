@@ -24,7 +24,7 @@ export default function LegalDocumentPage() {
                         </p>
                         <h1 className="mt-3 text-3xl font-bold sm:text-4xl">Legal and Commercial Documents</h1>
                         <p className="mt-3 max-w-3xl text-sm leading-7 text-slate-200 sm:text-base">
-                            These pages surface the platform rules for customer bookings, vendor participation, commission handling, and liability boundaries.
+                            These pages surface the platform rules for customer bookings, rental partner participation, commission handling, and liability boundaries.
                         </p>
                     </div>
 

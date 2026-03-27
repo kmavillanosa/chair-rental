@@ -94,7 +94,7 @@ export default function DisputesPage() {
                 <div>
                     <h1 className="text-xl font-semibold text-slate-800">Disputes</h1>
                     <p className="mt-2 text-sm text-slate-600">
-                        Review customer-vendor disputes and issue decisions.
+                        Review customer-rental partner disputes and issue decisions.
                     </p>
                 </div>
             </div>
@@ -193,7 +193,7 @@ export default function DisputesPage() {
                                 setResolutionOutcome(event.target.value as BookingDisputeOutcome)
                             }
                         >
-                            <option value="release_payment_to_vendor">Release payment to vendor</option>
+                            <option value="release_payment_to_vendor">Release payment to rental partner</option>
                             <option value="refund_customer">Refund customer</option>
                             <option value="partial_refund">Partial refund</option>
                         </Select>

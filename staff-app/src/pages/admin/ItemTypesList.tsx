@@ -136,7 +136,7 @@ export default function ItemTypesList() {
             <h3 className="text-xl font-bold">{item.name}</h3>
             <p className="text-slate-600">{item.description}</p>
             <p className="mt-2 font-semibold text-slate-800">PHP {item.defaultRatePerDay}/day</p>
-            <p className="mt-1 text-xs text-slate-500">Base price only. Vendors can override this in their inventory.</p>
+            <p className="mt-1 text-xs text-slate-500">Base price only. Rental partners can override this in their inventory.</p>
             <div className="mt-3">
               <span className={`inline-flex rounded-full px-3 py-1 text-xs font-semibold ${item.isActive ? 'bg-emerald-50 text-emerald-700' : 'bg-slate-200 text-slate-700'
                 }`}>
@@ -173,7 +173,7 @@ export default function ItemTypesList() {
               onChange={(e) => setForm(f => ({ ...f, isActive: e.target.checked }))}
               className="h-4 w-4"
             />
-            Enabled for vendors and customer search
+            Enabled for rental partners and customer search
           </label>
           {editingItem?.pictureUrl && !picture && (
             <img src={editingItem.pictureUrl} alt={editingItem.name} className="h-36 w-full rounded-xl object-cover" />

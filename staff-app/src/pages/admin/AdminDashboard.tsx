@@ -22,8 +22,8 @@ export default function AdminDashboard() {
   }, []);
 
   const cards = [
-    { label: 'Total Vendors', value: stats.vendors },
-    { label: 'Active Vendors', value: stats.active },
+    { label: 'Total Rental Partners', value: stats.vendors },
+    { label: 'Active Rental Partners', value: stats.active },
     { label: 'Total Payments', value: stats.payments },
     { label: 'Overdue Payments', value: stats.overdue },
   ];

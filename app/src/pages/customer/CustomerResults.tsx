@@ -97,7 +97,7 @@ const testVendorPinIcon = L.divIcon({
                 <img
                     src="https://unpkg.com/leaflet@1.9.4/dist/images/marker-icon.png"
                     style="width:100%;height:100%;display:block;filter:hue-rotate(145deg) saturate(2.2) brightness(1.05);"
-                    alt="test vendor pin"
+                    alt="test rental partner pin"
                 />
             </div>
         `,

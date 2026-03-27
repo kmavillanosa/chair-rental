@@ -6,7 +6,7 @@ const adminLinks = [
   { to: '/admin', label: 'Overview', exact: true },
   { to: '/admin/customers', label: 'Customers', exact: true },
   { to: '/admin/vendors/applicants', label: 'Applicants' },
-  { to: '/admin/vendors', label: 'Vendors', exact: true },
+  { to: '/admin/vendors', label: 'Rental Partners', exact: true },
   { to: '/admin/item-types', label: 'Item Types' },
   { to: '/admin/brands', label: 'Brands' },
   { to: '/admin/payments', label: 'Payments' },
@@ -194,7 +194,7 @@ export default function Sidebar({ role, className = '', onNavigate, dataTour }: 
       <div className="border-b border-[#2d3f63] p-6">
         <img
           src="/dark_logo.svg"
-          alt={role === 'admin' ? 'RentalBasic Admin Panel' : 'RentalBasic Vendor Panel'}
+          alt={role === 'admin' ? 'RentalBasic Admin Panel' : 'RentalBasic Rental Partner Panel'}
           className="h-20 w-auto"
         />
       </div>

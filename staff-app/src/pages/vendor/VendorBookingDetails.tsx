@@ -124,7 +124,7 @@ export default function VendorBookingDetails() {
             toast.success(
                 documentType === 'contract'
                     ? 'Signed booking contract downloaded.'
-                    : 'Signed vendor receipt downloaded.',
+                    : 'Signed rental partner receipt downloaded.',
             );
         } catch (error: any) {
             toast.error(

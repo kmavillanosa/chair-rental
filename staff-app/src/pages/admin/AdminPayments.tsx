@@ -25,8 +25,8 @@ const PAYMENT_TABS = [
   },
   {
     key: 'earnings',
-    label: 'Vendor Earnings',
-    description: 'Gross, fee, and release balances per vendor',
+    label: 'Rental Partner Earnings',
+    description: 'Gross, fee, and release balances per rental partner',
   },
   {
     key: 'billing',
@@ -36,7 +36,7 @@ const PAYMENT_TABS = [
   {
     key: 'payouts',
     label: 'Payout Queue',
-    description: 'Upcoming and ready-to-release vendor payouts',
+    description: 'Upcoming and ready-to-release rental partner payouts',
   },
 ] as const;
 
@@ -110,7 +110,7 @@ export default function AdminPayments() {
   const handleCreate = async () => {
     const amount = Number(form.amount);
     if (!form.vendorId || !Number.isFinite(amount) || amount <= 0 || !form.dueDate) {
-      toast.error('Vendor, amount, and due date are required.');
+      toast.error('Rental Partner, amount, and due date are required.');
       return;
     }
 
@@ -309,35 +309,35 @@ export default function AdminPayments() {
             <p className="mt-1 text-xs text-slate-500">Full payments collected by platform</p>
           </div>
           <div className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
-            <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">Vendor Pending Balance</p>
+            <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">Rental Partner Pending Balance</p>
             <p className="mt-2 text-2xl font-semibold text-slate-900">{formatCurrency(payoutSummary.vendorPending)}</p>
             <p className="mt-1 text-xs text-slate-500">Held until completion/payout release window</p>
           </div>
           <div className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
-            <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">Vendor Ready To Release</p>
+            <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">Rental Partner Ready To Release</p>
             <p className="mt-2 text-2xl font-semibold text-slate-900">{formatCurrency(payoutSummary.vendorReady)}</p>
             <p className="mt-1 text-xs text-slate-500">{payoutSummary.readyCount} payout(s) ready</p>
           </div>
           <div className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
-            <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">Vendor Released Total</p>
+            <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">Rental Partner Released Total</p>
             <p className="mt-2 text-2xl font-semibold text-slate-900">{formatCurrency(payoutSummary.vendorReleased)}</p>
             <p className="mt-1 text-xs text-slate-500">{payoutSummary.releasedCount} payout(s) released</p>
           </div>
           <div className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
             <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">Refunded/Cancelled Reversals</p>
             <p className="mt-2 text-2xl font-semibold text-slate-900">{formatCurrency(payoutSummary.reversed)}</p>
-            <p className="mt-1 text-xs text-slate-500">Net vendor payouts reversed</p>
+            <p className="mt-1 text-xs text-slate-500">Net rental partner payouts reversed</p>
           </div>
         </div>
       )}
 
       {activeTab === 'earnings' && (
         <div>
-          <h2 className="mb-3 text-base font-semibold text-slate-800">Vendor Earnings Breakdown</h2>
+          <h2 className="mb-3 text-base font-semibold text-slate-800">Rental Partner Earnings Breakdown</h2>
           <div className="overflow-x-auto rounded-xl shadow">
             <Table striped>
               <Table.Head>
-                <Table.HeadCell>Vendor</Table.HeadCell>
+                <Table.HeadCell>Rental Partner</Table.HeadCell>
                 <Table.HeadCell>Gross Collected</Table.HeadCell>
                 <Table.HeadCell>Platform Earnings</Table.HeadCell>
                 <Table.HeadCell>Pending</Table.HeadCell>
@@ -369,7 +369,7 @@ export default function AdminPayments() {
           <div className="overflow-x-auto rounded-xl shadow">
             <Table striped>
               <Table.Head>
-                <Table.HeadCell>Vendor</Table.HeadCell>
+                <Table.HeadCell>Rental Partner</Table.HeadCell>
                 <Table.HeadCell>Amount</Table.HeadCell>
                 <Table.HeadCell>Due Date</Table.HeadCell>
                 <Table.HeadCell>Status</Table.HeadCell>
@@ -416,11 +416,11 @@ export default function AdminPayments() {
 
       {activeTab === 'payouts' && (
         <div>
-          <h2 className="mb-3 text-base font-semibold text-slate-800">Vendor Payout Queue</h2>
+          <h2 className="mb-3 text-base font-semibold text-slate-800">Rental Partner Payout Queue</h2>
           <div className="overflow-x-auto rounded-xl shadow">
             <Table striped>
               <Table.Head>
-                <Table.HeadCell>Vendor</Table.HeadCell>
+                <Table.HeadCell>Rental Partner</Table.HeadCell>
                 <Table.HeadCell>Booking</Table.HeadCell>
                 <Table.HeadCell>Gross</Table.HeadCell>
                 <Table.HeadCell>Platform Fee</Table.HeadCell>
@@ -481,7 +481,7 @@ export default function AdminPayments() {
             value={form.vendorId}
             onChange={(event) => setForm((current) => ({ ...current, vendorId: event.target.value }))}
           >
-            <option value="">Select Vendor</option>
+            <option value="">Select Rental Partner</option>
             {vendors.map((vendor) => (
               <option key={vendor.id} value={vendor.id}>{vendor.businessName}</option>
             ))}

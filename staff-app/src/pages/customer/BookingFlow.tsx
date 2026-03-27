@@ -112,7 +112,7 @@ export default function BookingFlow() {
         notes,
         items: cartItems.map(i => ({ inventoryItemId: i.id, quantity: cart[i.id] })),
       });
-      toast.success('🎉 Booking submitted! Wait for vendor confirmation.');
+      toast.success('🎉 Booking submitted! Wait for rental partner confirmation.');
       navigate('/my-bookings');
     } catch (e: any) {
       toast.error(e.response?.data?.message || 'Booking failed. Please try again.');
@@ -128,7 +128,7 @@ export default function BookingFlow() {
   return (
     <CustomerLayout>
       <div className="max-w-3xl mx-auto px-4 py-8">
-        <h1 className="text-4xl font-bold mb-2">Book from {vendor?.businessName}</h1>
+        <h1 className="text-4xl font-bold mb-2">Book from Rental Partner: {vendor?.businessName}</h1>
 
         {/* Step indicator */}
         <div className="flex gap-2 mb-8">
@@ -241,7 +241,7 @@ export default function BookingFlow() {
               <div className="flex justify-between text-xl"><span>📍 Delivery to:</span><span className="text-right max-w-xs">{deliveryAddress}</span></div>
               <hr />
               <div className="flex justify-between text-2xl font-bold"><span>💵 Total:</span><span>{formatCurrency(total)}</span></div>
-              <p className="text-gray-400 text-sm">Platform fee ({formatCurrency(platformFee)}) included in vendor settlement.</p>
+              <p className="text-gray-400 text-sm">Platform fee ({formatCurrency(platformFee)}) included in rental partner settlement.</p>
             </div>
             <div className="flex gap-4">
               <Button color="gray" size="xl" className="flex-1" onClick={() => setStep(3)}>← Back</Button>

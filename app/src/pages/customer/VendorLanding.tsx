@@ -294,7 +294,7 @@ export default function VendorLanding({ slugOverride }: { slugOverride?: string 
                   <div className="flex-1 relative bg-slate-950 flex items-center justify-center min-h-80">
                     <img
                       src={galleryPhotos[selectedGalleryImage]}
-                      alt="Vendor gallery"
+                      alt="Rental Partner gallery"
                       className="max-w-full max-h-80 object-contain"
                     />
                   </div>

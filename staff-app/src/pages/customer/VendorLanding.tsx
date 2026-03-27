@@ -38,7 +38,7 @@ export default function VendorLanding() {
           <p className="text-xl text-blue-100">📍 {vendor.address}</p>
           {vendor.phone && <p className="text-xl text-blue-100 mt-1">📞 {vendor.phone}</p>}
           {vendor.description && <p className="text-xl mt-4">{vendor.description}</p>}
-          {vendor.isVerified && <span className="inline-block mt-3 bg-green-400 text-green-900 px-4 py-1 rounded-full font-semibold">✓ Verified Vendor</span>}
+          {vendor.isVerified && <span className="inline-block mt-3 bg-green-400 text-green-900 px-4 py-1 rounded-full font-semibold">✓ Verified Rental Partner</span>}
         </div>
 
         {/* Book Button */}

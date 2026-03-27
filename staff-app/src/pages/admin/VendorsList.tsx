@@ -176,7 +176,7 @@ export default function VendorsList() {
 
   const handleVerify = async (vendor: Vendor) => {
     await verifyVendor(vendor.id, !vendor.isVerified);
-    toast.success(`Vendor ${vendor.isVerified ? 'unverified' : 'verified'}!`);
+    toast.success(`Rental Partner ${vendor.isVerified ? 'unverified' : 'verified'}!`);
     load();
   };
 
@@ -188,7 +188,7 @@ export default function VendorsList() {
 
   const handleClearWarnings = async (vendor: Vendor) => {
     if (vendor.warningCount <= 0) {
-      toast('This vendor has no warnings to clear.');
+      toast('This rental partner has no warnings to clear.');
       return;
     }
 
@@ -204,7 +204,7 @@ export default function VendorsList() {
 
   const handleToggleActive = async (vendor: Vendor) => {
     await setVendorActive(vendor.id, !vendor.isActive);
-    toast.success(`Vendor ${vendor.isActive ? 'suspended' : 'activated'}!`);
+    toast.success(`Rental Partner ${vendor.isActive ? 'suspended' : 'activated'}!`);
     load();
   };
 
@@ -232,13 +232,13 @@ export default function VendorsList() {
       );
       toast.success(
         nextValue
-          ? 'Test vendors are now visible on customer map search.'
-          : 'Test vendors are now hidden from customer map search.',
+          ? 'Test rental partners are now visible on customer map search.'
+          : 'Test rental partners are now hidden from customer map search.',
       );
     } catch (error: any) {
       toast.error(
         error?.response?.data?.message ||
-        'Failed to update customer map test-vendors flag.',
+        'Failed to update customer map test-rental-partners flag.',
       );
     } finally {
       setSettingsLoading(false);
@@ -249,7 +249,7 @@ export default function VendorsList() {
     const confirmation = window.prompt(
       [
         `Type DELETE to permanently remove ${vendor.businessName}.`,
-        'This will hard-delete vendor-related bookings, payouts, inventory, KYC docs, and verification history.',
+        'This will hard-delete rental-partner-related bookings, payouts, inventory, KYC docs, and verification history.',
         'This action cannot be undone.',
       ].join('\n'),
       '',
@@ -268,7 +268,7 @@ export default function VendorsList() {
       toast.success(`${vendor.businessName} hard-deleted.`);
       load();
     } catch (error: any) {
-      toast.error(error?.response?.data?.message || 'Failed to hard-delete vendor.');
+      toast.error(error?.response?.data?.message || 'Failed to hard-delete rental partner.');
     } finally {
       setHardDeletingVendorId(null);
     }
@@ -277,7 +277,7 @@ export default function VendorsList() {
   const handleImpersonateVendor = async (vendor: Vendor) => {
     const vendorUserId = String(vendor.user?.id || '').trim();
     if (!vendorUserId) {
-      toast.error('Vendor user account is missing.');
+      toast.error('Rental partner user account is missing.');
       return;
     }
 
@@ -288,7 +288,7 @@ export default function VendorsList() {
       toast.success(`Now impersonating ${vendor.businessName}.`);
       window.location.href = '/vendor';
     } catch (error: any) {
-      toast.error(error?.response?.data?.message || 'Failed to impersonate vendor account.');
+      toast.error(error?.response?.data?.message || 'Failed to impersonate rental partner account.');
     } finally {
       setImpersonatingVendorId(null);
     }
@@ -357,7 +357,7 @@ export default function VendorsList() {
     setCreatingVendor(true);
     try {
       await createVendor(payload);
-      toast.success('Vendor created.');
+      toast.success('Rental Partner created.');
       setShowCreateModal(false);
       setCreateForm({
         userEmail: '',
@@ -369,7 +369,7 @@ export default function VendorsList() {
       });
       load();
     } catch (error: any) {
-      toast.error(error?.response?.data?.message || 'Failed to create vendor.');
+      toast.error(error?.response?.data?.message || 'Failed to create rental partner.');
     } finally {
       setCreatingVendor(false);
     }
@@ -386,7 +386,7 @@ export default function VendorsList() {
       ) || '';
 
     if (nextFlagState && !reason.trim()) {
-      toast.error('Please provide a reason before flagging a vendor.');
+      toast.error('Please provide a reason before flagging a rental partner.');
       return;
     }
 
@@ -436,9 +436,9 @@ export default function VendorsList() {
       <div className="mx-auto w-full max-w-[1240px]">
         <div className="mb-5 flex flex-wrap items-start justify-between gap-3">
           <div>
-            <h1 className="text-3xl font-bold text-slate-900">Vendors</h1>
+            <h1 className="text-3xl font-bold text-slate-900">Rental Partners</h1>
             <p className="mt-1 text-sm text-slate-600">
-              Manage approved, rejected, and manually created vendors separately from pending applicants.
+              Manage approved, rejected, and manually created rental partners separately from pending applicants.
             </p>
           </div>
 
@@ -456,7 +456,7 @@ export default function VendorsList() {
               className="!bg-slate-800 !px-4 !py-2 text-sm hover:!bg-slate-900"
               onClick={() => setShowCreateModal(true)}
             >
-              + Create Vendor
+              + Create Rental Partner
             </Button>
           </div>
         </div>
@@ -465,10 +465,10 @@ export default function VendorsList() {
           <div className="mb-4 flex flex-wrap items-center justify-between gap-3 rounded-lg border border-slate-200 bg-slate-50 px-3 py-3">
             <div>
               <p className="text-sm font-semibold text-slate-900">
-                Customer Map Test Vendors
+                Customer Map Test Rental Partners
               </p>
               <p className="text-xs text-slate-600">
-                Toggle whether test vendors appear in customer search results.
+                Toggle whether test rental partners appear in customer search results.
               </p>
             </div>
             <Button
@@ -484,7 +484,7 @@ export default function VendorsList() {
 
           <div className="flex flex-wrap items-center gap-2">
             <Badge color="gray">{filteredVendors.length} shown</Badge>
-            <Badge color="gray">{managedVendors.length} total vendors</Badge>
+            <Badge color="gray">{managedVendors.length} total rental partners</Badge>
             {pendingApplicantsCount > 0 && (
               <Badge color="gray">{pendingApplicantsCount} applicants pending review</Badge>
             )}
@@ -544,7 +544,7 @@ export default function VendorsList() {
               {filteredVendors.length === 0 ? (
                 <Table.Row>
                   <Table.Cell colSpan={6} className="py-8 text-center text-sm text-slate-500">
-                    No vendors match the current filters.
+                    No rental partners match the current filters.
                   </Table.Cell>
                 </Table.Row>
               ) : (
@@ -672,7 +672,7 @@ export default function VendorsList() {
       </div>
 
       <Modal show={showCreateModal} onClose={() => !creatingVendor && setShowCreateModal(false)}>
-        <Modal.Header>Create Vendor</Modal.Header>
+        <Modal.Header>Create Rental Partner</Modal.Header>
         <Modal.Body className="space-y-4">
           <TextInput
             placeholder="User Email"
@@ -724,7 +724,7 @@ export default function VendorsList() {
 
       <Modal show={showSuspendModal} onClose={() => !suspendingVendor && setShowSuspendModal(false)}>
         <Modal.Header>
-          Suspend Vendor{suspendTargetVendor ? `: ${suspendTargetVendor.businessName}` : ''}
+          Suspend Rental Partner{suspendTargetVendor ? `: ${suspendTargetVendor.businessName}` : ''}
         </Modal.Header>
         <Modal.Body className="space-y-4">
           <TextInput
