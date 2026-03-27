@@ -58,8 +58,54 @@ export default function BrandsList() {
           + {t('brandsList.addBrand')}
         </Button>
       </div>
-      <div className="overflow-x-auto rounded-xl shadow">
-        <Table striped>
+
+      <div className="space-y-3 md:hidden">
+        {brands.map((brand) => (
+          <article key={brand.id} className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
+            <p className="text-sm font-semibold text-slate-900">{brand.name}</p>
+            <dl className="mt-3 space-y-2 text-sm">
+              <div className="flex items-start justify-between gap-3">
+                <dt className="text-xs font-semibold uppercase tracking-wide text-slate-500">{t('brandsList.itemType')}</dt>
+                <dd className="text-right text-slate-700">{brand.itemType?.name || t('common.na')}</dd>
+              </div>
+              {brand.description ? (
+                <div className="flex items-start justify-between gap-3">
+                  <dt className="text-xs font-semibold uppercase tracking-wide text-slate-500">{t('brandsList.descriptionPlaceholder')}</dt>
+                  <dd className="text-right text-slate-700">{brand.description}</dd>
+                </div>
+              ) : null}
+            </dl>
+
+            <div className="mt-4 grid grid-cols-2 gap-2">
+              <Button
+                color="gray"
+                size="sm"
+                onClick={() => {
+                  setEditingBrandId(brand.id);
+                  setForm({
+                    name: brand.name || '',
+                    description: brand.description || '',
+                    itemTypeId: brand.itemTypeId || '',
+                  });
+                  setShowModal(true);
+                }}
+              >
+                {t('common.edit')}
+              </Button>
+              <Button
+                color="failure"
+                size="sm"
+                onClick={() => deleteBrand(brand.id).then(() => { toast.success(t('brandsList.toastDeleted')); load(); })}
+              >
+                {t('common.delete')}
+              </Button>
+            </div>
+          </article>
+        ))}
+      </div>
+
+      <div className="hidden overflow-x-auto rounded-xl shadow md:block">
+        <Table striped className="mobile-friendly-table">
           <Table.Head>
             <Table.HeadCell className="text-lg">{t('brandsList.brand')}</Table.HeadCell>
             <Table.HeadCell className="text-lg">{t('brandsList.itemType')}</Table.HeadCell>

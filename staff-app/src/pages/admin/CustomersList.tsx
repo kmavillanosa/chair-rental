@@ -109,7 +109,7 @@ export default function CustomersList() {
                 </div>
 
                 <div className="overflow-x-auto rounded-xl shadow">
-                    <Table striped>
+                    <Table striped className="mobile-friendly-table">
                         <Table.Head>
                             <Table.HeadCell>Name</Table.HeadCell>
                             <Table.HeadCell>Email</Table.HeadCell>

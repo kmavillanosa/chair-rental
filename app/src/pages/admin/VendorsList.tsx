@@ -174,8 +174,66 @@ export default function VendorsList() {
           </Button>
         </div>
       </div>
-      <div className="overflow-x-auto rounded-xl shadow">
-        <Table striped>
+
+      <div className="space-y-3 md:hidden">
+        {vendors.map((vendor) => (
+          <article key={vendor.id} className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
+            <div className="flex items-start justify-between gap-3">
+              <div>
+                <p className="text-sm font-semibold text-slate-900">{vendor.businessName}</p>
+                <p className="text-xs text-slate-500">{vendor.address}</p>
+              </div>
+              <Badge color={vendor.isActive ? 'success' : 'failure'}>
+                {vendor.isActive ? t('status.toggle.active') : t('status.toggle.inactive')}
+              </Badge>
+            </div>
+
+            <dl className="mt-3 space-y-2 text-sm">
+              <div className="flex items-start justify-between gap-3">
+                <dt className="text-xs font-semibold uppercase tracking-wide text-slate-500">{t('vendorsList.owner')}</dt>
+                <dd className="text-right text-slate-700">{vendor.user?.name || t('common.na')}</dd>
+              </div>
+              <div className="flex items-start justify-between gap-3">
+                <dt className="text-xs font-semibold uppercase tracking-wide text-slate-500">Email</dt>
+                <dd className="text-right text-slate-700">{vendor.user?.email || t('common.na')}</dd>
+              </div>
+              <div className="flex items-start justify-between gap-3">
+                <dt className="text-xs font-semibold uppercase tracking-wide text-slate-500">{t('vendorsList.warnings')}</dt>
+                <dd className="text-right text-slate-700">{vendor.warningCount}/3</dd>
+              </div>
+            </dl>
+
+            <div className="mt-3 flex flex-wrap gap-1.5">
+              {vendor.isVerified && <Badge color="indigo">{t('status.toggle.verified')}</Badge>}
+              {vendor.isTestAccount && <Badge color="warning">{t('vendorsList.testAccountBadge')}</Badge>}
+            </div>
+
+            <div className="mt-4 grid grid-cols-2 gap-2">
+              <Button size="xs" color={vendor.isVerified ? 'gray' : 'success'} onClick={() => handleVerify(vendor)}>
+                {vendor.isVerified ? `✓ ${t('vendorsList.verified')}` : t('vendorsList.verify')}
+              </Button>
+              <Button size="xs" color="warning" onClick={() => handleWarn(vendor)}>
+                ⚠️ {t('vendorsList.warn')}
+              </Button>
+              <Button size="xs" color={vendor.isActive ? 'failure' : 'success'} onClick={() => handleToggleActive(vendor)}>
+                {vendor.isActive ? t('vendorsList.suspend') : t('vendorsList.activate')}
+              </Button>
+              <Button
+                size="xs"
+                color={vendor.isTestAccount ? 'failure' : 'purple'}
+                onClick={() => handleToggleTestAccount(vendor)}
+              >
+                {vendor.isTestAccount
+                  ? t('vendorsList.removeTestAccount')
+                  : t('vendorsList.markAsTestAccount')}
+              </Button>
+            </div>
+          </article>
+        ))}
+      </div>
+
+      <div className="hidden overflow-x-auto rounded-xl shadow md:block">
+        <Table striped className="mobile-friendly-table">
           <Table.Head>
             <Table.HeadCell className="text-lg">{t('vendorsList.business')}</Table.HeadCell>
             <Table.HeadCell className="text-lg">{t('vendorsList.owner')}</Table.HeadCell>

@@ -30,7 +30,7 @@ export default function VendorPayments() {
         </div>
       )}
       <div className="overflow-x-auto rounded-xl shadow">
-        <Table striped>
+        <Table striped className="mobile-friendly-table">
           <Table.Head>
             <Table.HeadCell>Period</Table.HeadCell>
             <Table.HeadCell>Amount</Table.HeadCell>
@@ -54,7 +54,7 @@ export default function VendorPayments() {
 
       <h2 className="mt-6 mb-3 text-base font-semibold text-slate-800">Payout Queue</h2>
       <div className="overflow-x-auto rounded-xl shadow">
-        <Table striped>
+        <Table striped className="mobile-friendly-table">
           <Table.Head>
             <Table.HeadCell>Booking</Table.HeadCell>
             <Table.HeadCell>Net Amount</Table.HeadCell>

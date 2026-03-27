@@ -1432,8 +1432,55 @@ export default function CustomerResults() {
                                 )}
                             </div>
 
-                            <div className="overflow-x-auto rounded-xl border border-slate-200">
-                                <table className="min-w-full divide-y divide-slate-200">
+                            <div className="space-y-3 sm:hidden">
+                                {sortedComparisonRows.map((row, index) => (
+                                    <article key={row.id} className={`rounded-xl border p-4 shadow-sm ${index === 0 ? 'border-emerald-300 bg-emerald-50/50' : 'border-slate-200 bg-white'}`}>
+                                        <div className="flex items-start justify-between gap-2">
+                                            <p className="text-sm font-semibold text-slate-900">{row.vendorName}</p>
+                                            <span className="rounded-full bg-slate-100 px-2.5 py-1 text-xs font-medium text-slate-700">
+                                                {(row.bestValueScore * 100).toFixed(0)} {t('customerResults.compareScorePoints')}
+                                            </span>
+                                        </div>
+
+                                        <dl className="mt-3 space-y-2 text-sm">
+                                            <div className="flex items-start justify-between gap-3">
+                                                <dt className="text-xs font-semibold uppercase tracking-wide text-slate-500">{t('customerResults.compareEstimatedDelivery')}</dt>
+                                                <dd className="text-right text-slate-700">
+                                                    {row.estimatedDeliveryCharge != null
+                                                        ? formatCurrency(row.estimatedDeliveryCharge)
+                                                        : t('common.na')}
+                                                </dd>
+                                            </div>
+                                            <div className="flex items-start justify-between gap-3">
+                                                <dt className="text-xs font-semibold uppercase tracking-wide text-slate-500">{t('customerResults.compareStockMatchLabel')}</dt>
+                                                <dd className="text-right text-slate-700">
+                                                    {t('customerResults.popupStockMatch', {
+                                                        matched: row.matchedItemTypeCount,
+                                                        required: itemTypeIds.length,
+                                                    })}
+                                                </dd>
+                                            </div>
+                                            <div className="flex items-start justify-between gap-3">
+                                                <dt className="text-xs font-semibold uppercase tracking-wide text-slate-500">{t('customerResults.compareDistanceLabel')}</dt>
+                                                <dd className="text-right text-slate-700">
+                                                    {row.distanceKm != null
+                                                        ? t('customerResults.cardDistanceAway', {
+                                                            distance: row.distanceKm.toFixed(1),
+                                                        })
+                                                        : t('customerResults.cardDistanceUnavailable')}
+                                                </dd>
+                                            </div>
+                                        </dl>
+
+                                        <Button size="sm" className="mt-4 w-full" onClick={() => navigate(getVendorShopUrl(row.vendorSlug))}>
+                                            {index === 0 ? t('customerResults.compareTopPickCta') : t('customerResults.popupViewShop')}
+                                        </Button>
+                                    </article>
+                                ))}
+                            </div>
+
+                            <div className="hidden overflow-x-auto rounded-xl border border-slate-200 sm:block">
+                                <table className="mobile-friendly-table min-w-full divide-y divide-slate-200">
                                     <thead className="bg-slate-50">
                                         <tr>
                                             <th className="px-3 py-2 text-left text-xs font-semibold uppercase tracking-wide text-slate-600">{t('common.vendor')}</th>

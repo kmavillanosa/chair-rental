@@ -29,8 +29,35 @@ export default function VendorPayments() {
           })}
         </div>
       )}
-      <div className="overflow-x-auto rounded-xl shadow">
-        <Table striped>
+
+      <div className="space-y-3 md:hidden">
+        {payments.map((payment) => (
+          <article key={payment.id} className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
+            <div className="flex items-start justify-between gap-2">
+              <p className="text-sm font-semibold text-slate-900">{payment.period || t('common.na')}</p>
+              <PaymentStatusBadge status={payment.status} />
+            </div>
+
+            <dl className="mt-3 space-y-2 text-sm">
+              <div className="flex items-start justify-between gap-3">
+                <dt className="text-xs font-semibold uppercase tracking-wide text-slate-500">{t('common.amount')}</dt>
+                <dd className="text-right font-semibold text-slate-900">{formatCurrency(payment.amount)}</dd>
+              </div>
+              <div className="flex items-start justify-between gap-3">
+                <dt className="text-xs font-semibold uppercase tracking-wide text-slate-500">{t('common.dueDate')}</dt>
+                <dd className="text-right text-slate-700">{formatDate(payment.dueDate)}</dd>
+              </div>
+              <div className="flex items-start justify-between gap-3">
+                <dt className="text-xs font-semibold uppercase tracking-wide text-slate-500">{t('common.paidAt')}</dt>
+                <dd className="text-right text-slate-700">{payment.paidAt ? formatDate(payment.paidAt) : t('vendorPaymentsPage.emptyPaidAt')}</dd>
+              </div>
+            </dl>
+          </article>
+        ))}
+      </div>
+
+      <div className="hidden overflow-x-auto rounded-xl shadow md:block">
+        <Table striped className="mobile-friendly-table">
           <Table.Head>
             <Table.HeadCell className="text-lg">{t('common.period')}</Table.HeadCell>
             <Table.HeadCell className="text-lg">{t('common.amount')}</Table.HeadCell>

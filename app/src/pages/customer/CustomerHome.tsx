@@ -812,16 +812,18 @@ export default function CustomerHome() {
                     <div className="mx-auto max-w-3xl text-center text-white">
 
                         {/* Trust badge */}
-                        <div className="inline-flex items-center gap-2 rounded-full border border-sky-400/30 bg-sky-500/10 px-4 py-1.5 text-xs font-semibold uppercase tracking-widest text-sky-200 backdrop-blur-sm">
-                            <span className="inline-block h-1.5 w-1.5 rounded-full bg-sky-400" />
+                        <div className="inline-flex items-center gap-2 rounded-full border border-cyan-300/50 bg-cyan-500/20 px-5 py-2 text-xs font-bold uppercase tracking-widest text-cyan-100 backdrop-blur-sm">
+                            <span className="inline-block h-2 w-2 rounded-full bg-emerald-400" />
                             {t('customerHome.heroBadge', { defaultValue: 'Free to Browse' })}
                         </div>
 
-                        <h1 className="mt-5 text-3xl font-extrabold leading-tight tracking-tight sm:text-5xl sm:leading-[1.1]">
-                            {t('customerHome.heroTitle')}
+                        <h1 className="mt-6 text-4xl font-bold leading-tight tracking-tight sm:text-6xl lg:text-7xl">
+                            {t('customerHome.heroTitle', { defaultValue: 'Find event rentals near you without the usual hassle.' })}
                         </h1>
-                        <p className="mx-auto mt-4 max-w-xl text-sm leading-relaxed text-sky-100 sm:text-lg">
-                            {t('customerHome.heroSubtitle')}
+                        <p className="mx-auto mt-6 max-w-2xl text-lg leading-relaxed text-sky-100 sm:text-xl">
+                            {t('customerHome.heroSubtitle', {
+                                defaultValue: 'Search local suppliers, compare available equipment, and book what you need from one place.',
+                            })}
                         </p>
 
                         {/* CTAs */}
@@ -829,9 +831,9 @@ export default function CustomerHome() {
                             <Button
                                 size="lg"
                                 onClick={scrollToSearchHero}
-                                className="!rounded-full !bg-white !px-9 !py-3 !text-base !font-bold !text-[#0d3c73] shadow-lg shadow-white/10 hover:!bg-sky-50 hover:shadow-sky-200/30"
+                                className="!rounded-xl !bg-white !px-8 !py-3 !text-base !font-bold !text-[#04162e] shadow-2xl shadow-white/20 transition hover:!bg-blue-50 hover:shadow-white/40 hover:-translate-y-1"
                             >
-                                🔍&nbsp;{t('customerHome.heroFindRentals')}
+                                🔍&nbsp;{t('customerHome.heroFindRentals', { defaultValue: 'Find Rentals' })}
                             </Button>
                             <Button
                                 size="lg"
@@ -840,25 +842,25 @@ export default function CustomerHome() {
                                     savePostLoginRedirect(getCurrentAppPath());
                                     navigate('/login');
                                 }}
-                                className="!rounded-full !border-white/30 !bg-white/10 !px-9 !py-3 !text-base !font-semibold !text-white backdrop-blur-sm hover:!bg-white/20"
+                                className="!rounded-xl !border-white/40 !bg-white/15 !px-8 !py-3 !text-base !font-semibold !text-white backdrop-blur-md transition hover:!bg-white/25 hover:!border-white/60"
                             >
-                                {t('customerHome.heroCreateAccount')}
+                                {t('customerHome.heroCreateAccount', { defaultValue: 'Create Account' })}
                             </Button>
                         </div>
 
                         {/* Trust signals row */}
-                        <div className="mt-8 flex flex-wrap items-center justify-center gap-x-6 gap-y-2 text-xs text-sky-200/80">
-                            <span className="flex items-center gap-1.5">
-                                <svg className="h-3.5 w-3.5 text-emerald-400" fill="currentColor" viewBox="0 0 20 20"><path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" /></svg>
-                                {t('customerHome.heroTrust1', { defaultValue: 'Verified local rental partners' })}
+                        <div className="mt-10 flex flex-wrap items-center justify-center gap-x-8 gap-y-3 text-sm text-sky-100">
+                            <span className="flex items-center gap-2">
+                                <svg className="h-4 w-4 text-emerald-300 shrink-0" fill="currentColor" viewBox="0 0 20 20"><path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" /></svg>
+                                <span className="font-medium">{t('customerHome.heroTrust1', { defaultValue: 'Verified local partners' })}</span>
                             </span>
-                            <span className="flex items-center gap-1.5">
-                                <svg className="h-3.5 w-3.5 text-emerald-400" fill="currentColor" viewBox="0 0 20 20"><path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" /></svg>
-                                {t('customerHome.heroTrust2', { defaultValue: 'Compare prices instantly' })}
+                            <span className="flex items-center gap-2">
+                                <svg className="h-4 w-4 text-emerald-300 shrink-0" fill="currentColor" viewBox="0 0 20 20"><path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" /></svg>
+                                <span className="font-medium">{t('customerHome.heroTrust2', { defaultValue: 'Compare instantly' })}</span>
                             </span>
-                            <span className="flex items-center gap-1.5">
-                                <svg className="h-3.5 w-3.5 text-emerald-400" fill="currentColor" viewBox="0 0 20 20"><path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" /></svg>
-                                {t('customerHome.heroTrust3', { defaultValue: 'Book in minutes' })}
+                            <span className="flex items-center gap-2">
+                                <svg className="h-4 w-4 text-emerald-300 shrink-0" fill="currentColor" viewBox="0 0 20 20"><path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" /></svg>
+                                <span className="font-medium">{t('customerHome.heroTrust3', { defaultValue: 'Book in minutes' })}</span>
                             </span>
                         </div>
                     </div>
@@ -874,19 +876,19 @@ export default function CustomerHome() {
 
             <section
                 ref={searchHeroRef}
-                className="relative overflow-visible bg-white"
+                className="relative overflow-visible bg-gradient-to-b from-white to-slate-50"
             >
-                <div className="relative mx-auto max-w-7xl px-4 pb-12 pt-10 sm:pb-14 sm:pt-12">
+                <div className="relative mx-auto max-w-7xl px-4 pb-12 pt-12 sm:pb-16 sm:pt-16">
                     <div className="mx-auto max-w-3xl text-center text-slate-900">
-                        <h2 className="mt-3 text-2xl font-bold tracking-tight sm:text-4xl">
+                        <h2 className="text-3xl font-bold tracking-tight sm:text-5xl">
                             {t('customerHome.searchTitle')}
                         </h2>
-                        <p className="mx-auto mt-2 max-w-2xl text-sm text-slate-600 sm:text-base">
+                        <p className="mx-auto mt-3 max-w-2xl text-lg text-slate-600">
                             {t('customerHome.searchSubtitle')}
                         </p>
                     </div>
 
-                    <div className="mx-auto mt-6 max-w-6xl overflow-visible rounded-3xl border border-slate-200 bg-white px-5 py-7 shadow-lg sm:px-8 sm:py-8">
+                    <div className="mx-auto mt-10 max-w-6xl overflow-visible rounded-2xl border border-slate-200/80 bg-white px-6 py-9 shadow-xl sm:px-10 sm:py-10 backdrop-blur-sm hover:shadow-2xl transition-shadow">
                         <div className={`mx-auto max-w-5xl text-center font-semibold tracking-tight text-slate-800 ${HERO_SENTENCE_TEXT_CLASS}`}>
                             {t('customerHome.sentencePlanning')}
                             <select
@@ -992,7 +994,7 @@ export default function CustomerHome() {
                             <button
                                 type="button"
                                 onClick={openLocationModal}
-                                className="mx-1 my-1 inline-flex h-10 w-10 items-center justify-center rounded-full border border-slate-300 bg-slate-100 text-xl leading-none text-slate-700 transition hover:bg-slate-200 focus:border-blue-600 focus:outline-none"
+                                className="mx-1 my-1 inline-flex h-11 w-11 items-center justify-center rounded-full border-2 border-slate-300 bg-gradient-to-br from-slate-50 to-slate-100 text-2xl transition hover:border-slate-400 hover:from-slate-100 hover:to-slate-200 hover:shadow-md focus:border-blue-600 focus:outline-none"
                                 title={t('customerHome.locationPinTitle')}
                                 aria-label={t('customerHome.locationPinTitle')}
                             >
@@ -1128,21 +1130,21 @@ export default function CustomerHome() {
                             .
                         </div>
 
-                        <div className="mt-6 flex flex-wrap items-center justify-center gap-3">
+                        <div className="mt-8 flex flex-wrap items-center justify-center gap-4">
                             <Button
                                 size="lg"
                                 onClick={searchFromPin}
-                                className="!rounded-full !bg-[#1c4f93] !px-10 !py-2.5 !text-base !font-semibold !text-white hover:!bg-[#173f73]"
+                                className="!rounded-xl !bg-gradient-to-r !from-blue-600 !to-blue-700 !px-10 !py-3 !text-base !font-bold !text-white shadow-lg hover:!from-blue-700 hover:!to-blue-800 hover:shadow-xl hover:-translate-y-1 transition"
                             >
-                                {t('customerHome.letsGo')}
+                                ✨ {t('customerHome.letsGo')}
                             </Button>
                             <Button
                                 size="lg"
                                 color="light"
                                 onClick={findNearMe}
-                                className="!rounded-full !px-10 !py-2.5 !text-base !font-semibold"
+                                className="!rounded-xl !border-2 !border-slate-300 !bg-white !px-10 !py-3 !text-base !font-semibold !text-slate-700 hover:!border-slate-400 hover:!bg-slate-50 transition"
                             >
-                                {t('customerHome.useCurrentLocation')}
+                                📍 {t('customerHome.useCurrentLocation')}
                             </Button>
                         </div>
 
@@ -1157,49 +1159,49 @@ export default function CustomerHome() {
                 </div>
             </section>
 
-            <section className="bg-[#f4f7fb] py-14 sm:py-16">
+            <section className="bg-gradient-to-b from-white via-slate-50 to-[#f4f7fb] py-16 sm:py-20">
                 <div className="mx-auto max-w-7xl px-4">
                     <div className="mx-auto max-w-3xl text-center">
-                        <p className="text-[11px] font-semibold uppercase tracking-[0.2em] text-blue-700">
+                        <p className="text-[12px] font-bold uppercase tracking-[0.3em] text-blue-700">
                             {t('customerHome.benefitsLabel')}
                         </p>
-                        <h3 className="mt-3 text-2xl font-bold tracking-tight text-slate-900 sm:text-3xl">
+                        <h3 className="mt-4 text-3xl font-bold tracking-tight text-slate-900 sm:text-4xl">
                             {t('customerHome.benefitsTitle')}
                         </h3>
-                        <p className="mt-2 text-sm text-slate-600 sm:text-base">
+                        <p className="mt-3 text-lg text-slate-600">
                             {t('customerHome.benefitsSubtitle')}
                         </p>
                     </div>
 
-                    <div className="mt-8 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-                        <article className="rounded-2xl border border-blue-100 bg-white p-5 shadow-sm">
-                            <p className="text-xs font-semibold uppercase tracking-wide text-blue-700">{t('customerHome.card1Label')}</p>
-                            <h4 className="mt-2 text-lg font-semibold text-slate-900">{t('customerHome.card1Title')}</h4>
-                            <p className="mt-2 text-sm text-slate-600">
+                    <div className="mt-12 grid gap-6 sm:grid-cols-2 lg:grid-cols-4">
+                        <article className="group overflow-hidden rounded-2xl border border-slate-200/80 bg-white p-7 shadow-sm hover:shadow-lg hover:border-blue-200 transition">
+                            <p className="text-xs font-bold uppercase tracking-wider text-blue-700">{t('customerHome.card1Label')}</p>
+                            <h4 className="mt-3 text-lg font-bold text-slate-900">{t('customerHome.card1Title')}</h4>
+                            <p className="mt-3 text-sm leading-6 text-slate-600">
                                 {t('customerHome.card1Body')}
                             </p>
                         </article>
 
-                        <article className="rounded-2xl border border-blue-100 bg-white p-5 shadow-sm">
-                            <p className="text-xs font-semibold uppercase tracking-wide text-blue-700">{t('customerHome.card2Label')}</p>
-                            <h4 className="mt-2 text-lg font-semibold text-slate-900">{t('customerHome.card2Title')}</h4>
-                            <p className="mt-2 text-sm text-slate-600">
+                        <article className="group overflow-hidden rounded-2xl border border-slate-200/80 bg-white p-7 shadow-sm hover:shadow-lg hover:border-blue-200 transition">
+                            <p className="text-xs font-bold uppercase tracking-wider text-blue-700">{t('customerHome.card2Label')}</p>
+                            <h4 className="mt-3 text-lg font-bold text-slate-900">{t('customerHome.card2Title')}</h4>
+                            <p className="mt-3 text-sm leading-6 text-slate-600">
                                 {t('customerHome.card2Body')}
                             </p>
                         </article>
 
-                        <article className="rounded-2xl border border-blue-100 bg-white p-5 shadow-sm">
-                            <p className="text-xs font-semibold uppercase tracking-wide text-blue-700">{t('customerHome.card3Label')}</p>
-                            <h4 className="mt-2 text-lg font-semibold text-slate-900">{t('customerHome.card3Title')}</h4>
-                            <p className="mt-2 text-sm text-slate-600">
+                        <article className="group overflow-hidden rounded-2xl border border-slate-200/80 bg-white p-7 shadow-sm hover:shadow-lg hover:border-blue-200 transition">
+                            <p className="text-xs font-bold uppercase tracking-wider text-blue-700">{t('customerHome.card3Label')}</p>
+                            <h4 className="mt-3 text-lg font-bold text-slate-900">{t('customerHome.card3Title')}</h4>
+                            <p className="mt-3 text-sm leading-6 text-slate-600">
                                 {t('customerHome.card3Body')}
                             </p>
                         </article>
 
-                        <article className="rounded-2xl border border-blue-100 bg-white p-5 shadow-sm">
-                            <p className="text-xs font-semibold uppercase tracking-wide text-blue-700">{t('customerHome.card4Label')}</p>
-                            <h4 className="mt-2 text-lg font-semibold text-slate-900">{t('customerHome.card4Title')}</h4>
-                            <p className="mt-2 text-sm text-slate-600">
+                        <article className="group overflow-hidden rounded-2xl border border-slate-200/80 bg-white p-7 shadow-sm hover:shadow-lg hover:border-blue-200 transition">
+                            <p className="text-xs font-bold uppercase tracking-wider text-blue-700">{t('customerHome.card4Label')}</p>
+                            <h4 className="mt-3 text-lg font-bold text-slate-900">{t('customerHome.card4Title')}</h4>
+                            <p className="mt-3 text-sm leading-6 text-slate-600">
                                 {t('customerHome.card4Body')}
                             </p>
                         </article>
@@ -1207,32 +1209,119 @@ export default function CustomerHome() {
                 </div>
             </section>
 
-            <section className="bg-white py-14 sm:py-16">
+            <section className="bg-gradient-to-b from-white to-slate-50 py-16 sm:py-20">
                 <div className="mx-auto max-w-7xl px-4">
-                    <div className="relative overflow-hidden rounded-3xl border border-sky-200 bg-gradient-to-br from-[#0a2f62] via-[#13508f] to-[#2382a8] px-6 py-8 text-white shadow-xl sm:px-10 sm:py-10">
-                        <div className="pointer-events-none absolute -right-10 -top-10 h-36 w-36 rounded-full bg-white/15 blur-xl" />
-                        <div className="pointer-events-none absolute -bottom-14 left-1/3 h-40 w-40 rounded-full bg-cyan-300/20 blur-2xl" />
+                    <div className="relative overflow-hidden rounded-3xl border border-slate-300/50 bg-gradient-to-br from-blue-600 via-blue-700 to-cyan-600 px-8 py-12 text-white shadow-2xl sm:px-12 sm:py-14">
+                        <div className="pointer-events-none absolute -right-12 -top-12 h-40 w-40 rounded-full bg-white/10 blur-3xl" />
+                        <div className="pointer-events-none absolute -bottom-12 left-1/4 h-48 w-48 rounded-full bg-cyan-300/15 blur-3xl" />
 
-                        <div className="relative">
-                            <p className="text-[11px] font-semibold uppercase tracking-[0.22em] text-cyan-100">
+                        <div className="relative max-w-2xl">
+                            <p className="text-[12px] font-bold uppercase tracking-[0.3em] text-cyan-100">
                                 {t('customerHome.appComingLabel')}
                             </p>
-                            <h3 className="mt-2 text-2xl font-bold tracking-tight sm:text-3xl">
+                            <h3 className="mt-4 text-3xl font-bold tracking-tight sm:text-4xl">
                                 {t('customerHome.appComingTitle')}
                             </h3>
-                            <p className="mt-3 max-w-3xl text-sm text-sky-100 sm:text-base">
+                            <p className="mt-4 text-base leading-7 text-blue-100">
                                 {t('customerHome.appComingBody')}
                             </p>
 
-                            <div className="mt-5 flex flex-wrap gap-2">
-                                <span className="inline-flex items-center rounded-full border border-white/35 bg-white/10 px-3 py-1 text-xs font-semibold text-white">
-                                    {t('customerHome.appComingAndroid')}
+                            <div className="mt-6 flex flex-wrap gap-3">
+                                <span className="inline-flex items-center gap-2 rounded-xl border border-white/30 bg-white/15 px-4 py-2 text-sm font-semibold text-white backdrop-blur-sm">
+                                    🤖 {t('customerHome.appComingAndroid')}
                                 </span>
-                                <span className="inline-flex items-center rounded-full border border-white/35 bg-white/10 px-3 py-1 text-xs font-semibold text-white">
-                                    {t('customerHome.appComingIos')}
+                                <span className="inline-flex items-center gap-2 rounded-xl border border-white/30 bg-white/15 px-4 py-2 text-sm font-semibold text-white backdrop-blur-sm">
+                                    🍎 {t('customerHome.appComingIos')}
                                 </span>
                             </div>
                         </div>
+                    </div>
+                </div>
+            </section>
+
+            <section className="bg-white py-14 sm:py-16">
+                <div className="mx-auto max-w-7xl px-4">
+                    <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+                        <article className="rounded-2xl border border-slate-200 bg-slate-50/70 p-5">
+                            <p className="text-xs font-bold uppercase tracking-[0.22em] text-blue-700">Fast Discovery</p>
+                            <p className="mt-2 text-sm leading-6 text-slate-700">
+                                Browse local inventories in minutes and quickly narrow to what fits your event.
+                            </p>
+                        </article>
+                        <article className="rounded-2xl border border-slate-200 bg-slate-50/70 p-5">
+                            <p className="text-xs font-bold uppercase tracking-[0.22em] text-blue-700">Transparent Choices</p>
+                            <p className="mt-2 text-sm leading-6 text-slate-700">
+                                Compare options side by side so you can decide with confidence before booking.
+                            </p>
+                        </article>
+                        <article className="rounded-2xl border border-slate-200 bg-slate-50/70 p-5">
+                            <p className="text-xs font-bold uppercase tracking-[0.22em] text-blue-700">Verified Partners</p>
+                            <p className="mt-2 text-sm leading-6 text-slate-700">
+                                Work with curated rental partners focused on reliable delivery and service.
+                            </p>
+                        </article>
+                        <article className="rounded-2xl border border-slate-200 bg-slate-50/70 p-5">
+                            <p className="text-xs font-bold uppercase tracking-[0.22em] text-blue-700">One Place Workflow</p>
+                            <p className="mt-2 text-sm leading-6 text-slate-700">
+                                From discovery to booking details, manage your rental plan in one streamlined flow.
+                            </p>
+                        </article>
+                    </div>
+                </div>
+            </section>
+
+            <section className="bg-[#f5f8fc] py-16 sm:py-20">
+                <div className="mx-auto max-w-7xl px-4">
+                    <div className="mx-auto max-w-3xl text-center">
+                        <p className="text-[12px] font-bold uppercase tracking-[0.24em] text-blue-700">How It Works</p>
+                        <h3 className="mt-3 text-3xl font-bold tracking-tight text-slate-900 sm:text-4xl">
+                            Plan your rental in three quick steps
+                        </h3>
+                    </div>
+
+                    <div className="mt-10 grid gap-4 md:grid-cols-3">
+                        <article className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
+                            <p className="text-xs font-bold uppercase tracking-[0.22em] text-blue-700">01 Search</p>
+                            <h4 className="mt-2 text-lg font-bold text-slate-900">Set your location and event needs</h4>
+                            <p className="mt-2 text-sm leading-6 text-slate-600">
+                                Use the smart search controls to choose equipment type, dates, and distance.
+                            </p>
+                        </article>
+                        <article className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
+                            <p className="text-xs font-bold uppercase tracking-[0.22em] text-blue-700">02 Compare</p>
+                            <h4 className="mt-2 text-lg font-bold text-slate-900">Review available rental options</h4>
+                            <p className="mt-2 text-sm leading-6 text-slate-600">
+                                Check listings and narrow down the best options based on your event requirements.
+                            </p>
+                        </article>
+                        <article className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
+                            <p className="text-xs font-bold uppercase tracking-[0.22em] text-blue-700">03 Book</p>
+                            <h4 className="mt-2 text-lg font-bold text-slate-900">Secure your rentals faster</h4>
+                            <p className="mt-2 text-sm leading-6 text-slate-600">
+                                Move forward confidently once you have found the right setup for your event.
+                            </p>
+                        </article>
+                    </div>
+
+                    <div className="mt-10 flex flex-wrap items-center justify-center gap-3">
+                        <Button
+                            size="lg"
+                            onClick={scrollToSearchHero}
+                            className="!rounded-xl !bg-[#164f96] !px-8 !py-3 !text-base !font-bold !text-white hover:!bg-[#113d74]"
+                        >
+                            Start Searching Now
+                        </Button>
+                        <Button
+                            size="lg"
+                            color="light"
+                            onClick={() => {
+                                savePostLoginRedirect(getCurrentAppPath());
+                                navigate('/login');
+                            }}
+                            className="!rounded-xl !border-slate-300 !px-8 !py-3 !text-base !font-semibold !text-slate-700 hover:!bg-slate-50"
+                        >
+                            Create Free Account
+                        </Button>
                     </div>
                 </div>
             </section>
@@ -1361,6 +1450,6 @@ export default function CustomerHome() {
                     {t('customerHome.footerRights', { year: currentYear })}
                 </div>
             </footer>
-        </CustomerLayout>
+        </CustomerLayout >
     );
 }

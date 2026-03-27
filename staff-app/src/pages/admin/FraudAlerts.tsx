@@ -142,7 +142,7 @@ export default function FraudAlertsPage() {
             </div>
 
             <div className="overflow-x-auto rounded-xl shadow">
-                <Table striped>
+                <Table striped className="mobile-friendly-table">
                     <Table.Head>
                         <Table.HeadCell>Created</Table.HeadCell>
                         <Table.HeadCell>Severity</Table.HeadCell>

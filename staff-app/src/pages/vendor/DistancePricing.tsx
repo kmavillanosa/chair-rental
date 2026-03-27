@@ -75,7 +75,7 @@ export default function DistancePricing() {
                 </div>
             ) : (
                 <div className="overflow-x-auto rounded-xl shadow">
-                    <Table striped>
+                    <Table striped className="mobile-friendly-table">
                         <Table.Head>
                             <Table.HeadCell className="text-lg">Distance (km)</Table.HeadCell>
                             <Table.HeadCell className="text-lg">Delivery Charge</Table.HeadCell>

@@ -64,8 +64,52 @@ export default function AdminPayments() {
         <h1 className="text-4xl font-bold text-gray-900">💰 {t('adminPayments.title')}</h1>
         <Button size="xl" onClick={() => setShowCreateModal(true)}>+ {t('adminPayments.addPayment')}</Button>
       </div>
-      <div className="overflow-x-auto rounded-xl shadow">
-        <Table striped>
+
+      <div className="space-y-3 md:hidden">
+        {payments.map((payment) => (
+          <article key={payment.id} className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
+            <div className="flex items-start justify-between gap-2">
+              <p className="text-sm font-semibold text-slate-900">{payment.vendor?.businessName || t('common.na')}</p>
+              <PaymentStatusBadge status={payment.status} />
+            </div>
+
+            <dl className="mt-3 space-y-2 text-sm">
+              <div className="flex items-start justify-between gap-3">
+                <dt className="text-xs font-semibold uppercase tracking-wide text-slate-500">{t('common.amount')}</dt>
+                <dd className="text-right font-semibold text-slate-900">{formatCurrency(payment.amount)}</dd>
+              </div>
+              <div className="flex items-start justify-between gap-3">
+                <dt className="text-xs font-semibold uppercase tracking-wide text-slate-500">{t('common.dueDate')}</dt>
+                <dd className="text-right text-slate-700">{formatDate(payment.dueDate)}</dd>
+              </div>
+            </dl>
+
+            <div className="mt-4 grid grid-cols-1 gap-2">
+              {payment.status !== 'paid' && (
+                <Button
+                  size="sm"
+                  color="success"
+                  onClick={() => markPaid(payment.id).then(() => { toast.success(t('adminPayments.toastMarkedPaid')); load(); })}
+                >
+                  {t('adminPayments.markPaid')}
+                </Button>
+              )}
+              {payment.status === 'pending' && (
+                <Button
+                  size="sm"
+                  color="failure"
+                  onClick={() => markOverdue(payment.id).then(() => { toast.success(t('adminPayments.toastMarkedOverdue')); load(); })}
+                >
+                  {t('adminPayments.markOverdue')}
+                </Button>
+              )}
+            </div>
+          </article>
+        ))}
+      </div>
+
+      <div className="hidden overflow-x-auto rounded-xl shadow md:block">
+        <Table striped className="mobile-friendly-table">
           <Table.Head>
             <Table.HeadCell className="text-lg">{t('common.vendor')}</Table.HeadCell>
             <Table.HeadCell className="text-lg">{t('common.amount')}</Table.HeadCell>

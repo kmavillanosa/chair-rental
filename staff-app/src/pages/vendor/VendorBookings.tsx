@@ -146,8 +146,80 @@ export default function VendorBookings() {
                 </span>
             </div>
 
-            <div className="overflow-x-auto rounded-xl shadow">
-                <Table striped>
+            <div className="space-y-3 md:hidden">
+                {filteredBookings.length === 0 ? (
+                    <div className="rounded-xl border border-slate-200 bg-white px-4 py-6 text-center text-sm text-slate-500">
+                        {bookings.length === 0 ? 'No bookings yet.' : 'No bookings match your filters.'}
+                    </div>
+                ) : (
+                    filteredBookings.map((booking) => (
+                        <article key={booking.id} className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
+                            <div className="flex items-start justify-between gap-2">
+                                <div>
+                                    <p className="text-sm font-semibold text-slate-900">{booking.customer?.name || '-'}</p>
+                                    <p className="text-xs text-slate-500">{booking.customer?.email || 'No email'}</p>
+                                </div>
+                                <BookingStatusBadge status={booking.status} />
+                            </div>
+
+                            <dl className="mt-3 space-y-2 text-sm">
+                                <div className="flex items-start justify-between gap-3">
+                                    <dt className="text-xs font-semibold uppercase tracking-wide text-slate-500">Dates</dt>
+                                    <dd className="text-right text-slate-700">{formatDate(booking.startDate)} - {formatDate(booking.endDate)}</dd>
+                                </div>
+                                <div className="flex items-start justify-between gap-3">
+                                    <dt className="text-xs font-semibold uppercase tracking-wide text-slate-500">Items</dt>
+                                    <dd className="text-right text-slate-700">{booking.items?.length || 0} items</dd>
+                                </div>
+                                <div className="flex items-start justify-between gap-3">
+                                    <dt className="text-xs font-semibold uppercase tracking-wide text-slate-500">Amount</dt>
+                                    <dd className="text-right font-semibold text-slate-900">{formatCurrency(booking.totalAmount)}</dd>
+                                </div>
+                            </dl>
+
+                            <div className="mt-4 grid grid-cols-2 gap-2">
+                                <button
+                                    type="button"
+                                    className="rounded-lg border border-slate-300 px-3 py-2 text-sm font-medium text-slate-700"
+                                    onClick={() => navigate(`/vendor/bookings/${booking.id}`)}
+                                >
+                                    View Details
+                                </button>
+                                {booking.status === 'pending' && (
+                                    <>
+                                        <button
+                                            type="button"
+                                            className="rounded-lg border border-emerald-200 bg-emerald-50 px-3 py-2 text-sm font-medium text-emerald-700"
+                                            onClick={() => confirm(booking.id)}
+                                        >
+                                            Confirm
+                                        </button>
+                                        <button
+                                            type="button"
+                                            className="col-span-2 rounded-lg border border-rose-200 bg-rose-50 px-3 py-2 text-sm font-medium text-rose-700"
+                                            onClick={() => cancel(booking.id)}
+                                        >
+                                            Cancel Booking
+                                        </button>
+                                    </>
+                                )}
+                                {booking.status === 'confirmed' && (
+                                    <button
+                                        type="button"
+                                        className="rounded-lg border border-blue-200 bg-blue-50 px-3 py-2 text-sm font-medium text-blue-700"
+                                        onClick={() => complete(booking.id)}
+                                    >
+                                        Mark Complete
+                                    </button>
+                                )}
+                            </div>
+                        </article>
+                    ))
+                )}
+            </div>
+
+            <div className="hidden overflow-x-auto rounded-xl shadow md:block">
+                <Table striped className="mobile-friendly-table">
                     <Table.Head>
                         <Table.HeadCell>Customer</Table.HeadCell>
                         <Table.HeadCell>Dates</Table.HeadCell>

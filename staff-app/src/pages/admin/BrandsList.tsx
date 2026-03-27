@@ -58,7 +58,7 @@ export default function BrandsList() {
         </Button>
       </div>
       <div className="overflow-x-auto rounded-xl shadow">
-        <Table striped>
+        <Table striped className="mobile-friendly-table">
           <Table.Head>
             <Table.HeadCell className="text-lg">Brand</Table.HeadCell>
             <Table.HeadCell className="text-lg">Item Type</Table.HeadCell>

@@ -60,8 +60,47 @@ export default function VendorBookings() {
         <VendorLayout>
             <h1 className="text-4xl font-bold text-gray-900 mb-6">📅 {t('vendorBookings.title')}</h1>
 
-            <div className="overflow-x-auto rounded-xl shadow">
-                <Table striped>
+            <div className="space-y-3 md:hidden">
+                {bookings.map((booking) => (
+                    <article key={booking.id} className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
+                        <div className="flex items-start justify-between gap-2">
+                            <p className="text-sm font-semibold text-slate-900">{booking.customer?.name || t('common.na')}</p>
+                            <BookingStatusBadge status={booking.status} />
+                        </div>
+
+                        <dl className="mt-3 space-y-2 text-sm">
+                            <div className="flex items-start justify-between gap-3">
+                                <dt className="text-xs font-semibold uppercase tracking-wide text-slate-500">{t('common.dates')}</dt>
+                                <dd className="text-right text-slate-700">{formatDate(booking.startDate)} - {formatDate(booking.endDate)}</dd>
+                            </div>
+                            <div className="flex items-start justify-between gap-3">
+                                <dt className="text-xs font-semibold uppercase tracking-wide text-slate-500">{t('common.items')}</dt>
+                                <dd className="text-right text-slate-700">{t('vendorBookings.itemsCount', { count: booking.items?.length || 0 })}</dd>
+                            </div>
+                            <div className="flex items-start justify-between gap-3">
+                                <dt className="text-xs font-semibold uppercase tracking-wide text-slate-500">{t('common.amount')}</dt>
+                                <dd className="text-right font-semibold text-slate-900">{formatCurrency(booking.totalAmount)}</dd>
+                            </div>
+                        </dl>
+
+                        <div className="mt-4 grid grid-cols-2 gap-2">
+                            <Button size="sm" color="info" onClick={() => openBookingDetails(booking)}>👁️ {t('common.view')}</Button>
+                            {booking.status === 'pending' ? (
+                                <>
+                                    <Button size="sm" color="success" onClick={() => confirm(booking.id)}>✅ {t('vendorBookings.confirm')}</Button>
+                                    <Button size="sm" color="failure" onClick={() => cancel(booking.id)}>❌ {t('vendorBookings.cancel')}</Button>
+                                </>
+                            ) : null}
+                            {booking.status === 'confirmed' ? (
+                                <Button size="sm" color="indigo" onClick={() => complete(booking.id)}>🎉 {t('vendorBookings.complete')}</Button>
+                            ) : null}
+                        </div>
+                    </article>
+                ))}
+            </div>
+
+            <div className="hidden overflow-x-auto rounded-xl shadow md:block">
+                <Table striped className="mobile-friendly-table">
                     <Table.Head>
                         <Table.HeadCell className="text-lg">{t('common.customer')}</Table.HeadCell>
                         <Table.HeadCell className="text-lg">{t('common.dates')}</Table.HeadCell>

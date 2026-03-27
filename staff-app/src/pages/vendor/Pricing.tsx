@@ -67,7 +67,7 @@ export default function Pricing() {
         <Button size="xl" onClick={handleAdd}>+ Add Rate</Button>
       </div>
       <div className="overflow-x-auto rounded-xl shadow">
-        <Table striped>
+        <Table striped className="mobile-friendly-table">
           <Table.Head>
             <Table.HeadCell className="text-lg">Distance (km)</Table.HeadCell>
             <Table.HeadCell className="text-lg">Charge</Table.HeadCell>

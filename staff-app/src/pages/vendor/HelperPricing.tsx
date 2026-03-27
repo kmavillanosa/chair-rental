@@ -78,7 +78,7 @@ export default function HelperPricing() {
                 </div>
             ) : (
                 <div className="overflow-x-auto rounded-xl shadow">
-                    <Table striped>
+                    <Table striped className="mobile-friendly-table">
                         <Table.Head>
                             <Table.HeadCell className="text-lg">Number of Helpers</Table.HeadCell>
                             <Table.HeadCell className="text-lg">Helper Charge</Table.HeadCell>

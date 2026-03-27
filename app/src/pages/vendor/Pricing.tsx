@@ -437,8 +437,51 @@ export default function Pricing() {
             <h2 className="text-2xl font-bold">Delivery Distance Tiers</h2>
             <Button color="light" onClick={addDeliveryTier}>+ Add tier</Button>
           </div>
-          <div className="overflow-x-auto rounded-xl border border-slate-200">
-            <Table striped>
+
+          <div className="space-y-3 md:hidden">
+            {deliveryTiers.map((tier, index) => (
+              <article key={`delivery-tier-mobile-${index}`} className="rounded-xl border border-slate-200 bg-slate-50 p-4">
+                <p className="text-sm font-semibold text-slate-900">Tier {index + 1}</p>
+                <div className="mt-3 grid grid-cols-1 gap-3">
+                  <TextInput
+                    type="number"
+                    min="0"
+                    step="0.1"
+                    addon="Min km"
+                    value={tier.minDistanceKm}
+                    onChange={(event) => updateDeliveryTier(index, 'minDistanceKm', event.target.value)}
+                  />
+                  <TextInput
+                    type="number"
+                    min="0"
+                    step="0.1"
+                    addon="Max km"
+                    value={tier.maxDistanceKm}
+                    onChange={(event) => updateDeliveryTier(index, 'maxDistanceKm', event.target.value)}
+                  />
+                  <TextInput
+                    type="number"
+                    min="0"
+                    step="0.01"
+                    addon="Price"
+                    value={tier.priceAmount}
+                    onChange={(event) => updateDeliveryTier(index, 'priceAmount', event.target.value)}
+                  />
+                  <Button
+                    color="failure"
+                    size="sm"
+                    onClick={() => removeDeliveryTier(index)}
+                    disabled={deliveryTiers.length <= 1}
+                  >
+                    Remove Tier
+                  </Button>
+                </div>
+              </article>
+            ))}
+          </div>
+
+          <div className="hidden overflow-x-auto rounded-xl border border-slate-200 md:block">
+            <Table striped className="mobile-friendly-table">
               <Table.Head>
                 <Table.HeadCell>Min km</Table.HeadCell>
                 <Table.HeadCell>Max km</Table.HeadCell>
@@ -499,8 +542,43 @@ export default function Pricing() {
             <h2 className="text-2xl font-bold">Helper Tiers</h2>
             <Button color="light" onClick={addHelperTier}>+ Add tier</Button>
           </div>
-          <div className="overflow-x-auto rounded-xl border border-slate-200">
-            <Table striped>
+
+          <div className="space-y-3 md:hidden">
+            {helperTiers.map((tier, index) => (
+              <article key={`helper-tier-mobile-${index}`} className="rounded-xl border border-slate-200 bg-slate-50 p-4">
+                <p className="text-sm font-semibold text-slate-900">Tier {index + 1}</p>
+                <div className="mt-3 grid grid-cols-1 gap-3">
+                  <TextInput
+                    type="number"
+                    min="1"
+                    step="1"
+                    addon="Helpers"
+                    value={tier.helperCount}
+                    onChange={(event) => updateHelperTier(index, 'helperCount', event.target.value)}
+                  />
+                  <TextInput
+                    type="number"
+                    min="0"
+                    step="0.01"
+                    addon="Price"
+                    value={tier.priceAmount}
+                    onChange={(event) => updateHelperTier(index, 'priceAmount', event.target.value)}
+                  />
+                  <Button
+                    color="failure"
+                    size="sm"
+                    onClick={() => removeHelperTier(index)}
+                    disabled={helperTiers.length <= 1}
+                  >
+                    Remove Tier
+                  </Button>
+                </div>
+              </article>
+            ))}
+          </div>
+
+          <div className="hidden overflow-x-auto rounded-xl border border-slate-200 md:block">
+            <Table striped className="mobile-friendly-table">
               <Table.Head>
                 <Table.HeadCell>Helpers</Table.HeadCell>
                 <Table.HeadCell>Price</Table.HeadCell>

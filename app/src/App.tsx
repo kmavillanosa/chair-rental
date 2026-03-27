@@ -29,6 +29,7 @@ import LegalFooter from './components/common/LegalFooter'
 import { savePostLoginRedirect } from './utils/postLoginRedirect'
 import { useTranslation } from 'react-i18next'
 import { getCustomerTourSteps } from './tour/customerTour'
+import { enableMobileTableEnhancer } from './utils/mobileTableEnhancer'
 
 const VENDOR_DOMAIN = import.meta.env.VITE_VENDOR_DOMAIN || 'rentalbasic.com';
 const RESERVED_SUBDOMAINS = new Set(['www', 'app', 'vendors', 'api', 'mail', 'phpmyadmin']);
@@ -155,6 +156,10 @@ export default function App() {
     return () => {
       isMounted = false
     }
+  }, [])
+
+  useEffect(() => {
+    return enableMobileTableEnhancer()
   }, [])
 
   if (featureFlagsLoading) {

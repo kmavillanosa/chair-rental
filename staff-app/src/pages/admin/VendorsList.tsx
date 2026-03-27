@@ -530,8 +530,135 @@ export default function VendorsList() {
           </div>
         </div>
 
-        <div className="overflow-x-auto rounded-xl shadow">
-          <Table striped>
+        <div className="space-y-3 md:hidden">
+          {filteredVendors.length === 0 ? (
+            <div className="rounded-xl border border-slate-200 bg-white px-4 py-6 text-center text-sm text-slate-500">
+              No rental partners match the current filters.
+            </div>
+          ) : (
+            filteredVendors.map((vendor) => (
+              <article key={vendor.id} className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
+                <div className="flex items-start justify-between gap-3">
+                  <div>
+                    <p className="text-sm font-semibold text-slate-900">{vendor.businessName}</p>
+                    <p className="text-xs text-slate-500">{vendor.address}</p>
+                  </div>
+                  <Badge color={vendor.isActive ? 'success' : 'gray'}>
+                    {vendor.isActive ? 'Active' : 'Inactive'}
+                  </Badge>
+                </div>
+
+                <dl className="mt-3 space-y-2 text-sm">
+                  <div className="flex items-start justify-between gap-3">
+                    <dt className="text-xs font-semibold uppercase tracking-wide text-slate-500">Owner</dt>
+                    <dd className="text-right text-slate-700">{vendor.ownerFullName || vendor.user?.name || '-'}</dd>
+                  </div>
+                  <div className="flex items-start justify-between gap-3">
+                    <dt className="text-xs font-semibold uppercase tracking-wide text-slate-500">Email</dt>
+                    <dd className="text-right text-slate-700">{vendor.user?.email || '-'}</dd>
+                  </div>
+                  <div className="flex items-start justify-between gap-3">
+                    <dt className="text-xs font-semibold uppercase tracking-wide text-slate-500">Verification</dt>
+                    <dd className="text-right text-slate-700">{vendor.verificationStatus || 'pending_verification'}</dd>
+                  </div>
+                  <div className="flex items-start justify-between gap-3">
+                    <dt className="text-xs font-semibold uppercase tracking-wide text-slate-500">Warnings</dt>
+                    <dd className="text-right text-slate-700">{vendor.warningCount}/3</dd>
+                  </div>
+                </dl>
+
+                <div className="mt-3 flex flex-wrap gap-1.5">
+                  {vendor.isVerified && <Badge color="success">Verified</Badge>}
+                  {vendor.isSuspicious && <Badge color="failure">Suspicious</Badge>}
+                  {vendor.isTestAccount && <Badge color="warning">Test Account</Badge>}
+                </div>
+
+                <div className="mt-4 grid grid-cols-2 gap-2">
+                  <Button
+                    size="xs"
+                    color="light"
+                    className={vendor.isVerified ? mutedActionClass : successActionClass}
+                    onClick={() => handleVerify(vendor)}
+                  >
+                    {vendor.isVerified ? 'Verified' : 'Verify'}
+                  </Button>
+                  <Button
+                    size="xs"
+                    color="light"
+                    className={neutralActionClass}
+                    onClick={() => handleWarn(vendor)}
+                  >
+                    Warn
+                  </Button>
+                  <Button
+                    size="xs"
+                    color="light"
+                    className={`${neutralActionClass} disabled:!border-slate-200 disabled:!bg-slate-100 disabled:!text-slate-400`}
+                    onClick={() => handleClearWarnings(vendor)}
+                    disabled={vendor.warningCount <= 0}
+                  >
+                    Clear
+                  </Button>
+                  <Button
+                    size="xs"
+                    color="light"
+                    className={vendor.isSuspicious ? mutedActionClass : neutralActionClass}
+                    onClick={() => handleFlagSuspicious(vendor)}
+                  >
+                    {vendor.isSuspicious ? 'Unflag' : 'Flag'}
+                  </Button>
+                  <Button
+                    size="xs"
+                    color="light"
+                    className={vendor.isActive ? dangerActionClass : successActionClass}
+                    onClick={() => handleToggleActive(vendor)}
+                  >
+                    {vendor.isActive ? 'Deactivate' : 'Activate'}
+                  </Button>
+                  <Button
+                    size="xs"
+                    color="light"
+                    className={dangerActionClass}
+                    onClick={() => handleSuspend(vendor)}
+                  >
+                    Suspend
+                  </Button>
+                  <Button
+                    size="xs"
+                    color="light"
+                    className={vendor.isTestAccount ? dangerActionClass : neutralActionClass}
+                    onClick={() => handleToggleTestAccount(vendor)}
+                  >
+                    {vendor.isTestAccount ? 'Unmark Test' : 'Mark Test'}
+                  </Button>
+                  <Button
+                    size="xs"
+                    color="light"
+                    className={neutralActionClass}
+                    onClick={() => handleImpersonateVendor(vendor)}
+                    isProcessing={impersonatingVendorId === vendor.id}
+                    disabled={impersonatingVendorId === vendor.id || !vendor.isActive}
+                  >
+                    Impersonate
+                  </Button>
+                  <Button
+                    size="xs"
+                    color="light"
+                    className="col-span-2 !border-rose-200 !bg-rose-50 !text-rose-700 hover:!bg-rose-100"
+                    onClick={() => handleHardDelete(vendor)}
+                    isProcessing={hardDeletingVendorId === vendor.id}
+                    disabled={hardDeletingVendorId === vendor.id}
+                  >
+                    Hard Delete
+                  </Button>
+                </div>
+              </article>
+            ))
+          )}
+        </div>
+
+        <div className="hidden overflow-x-auto rounded-xl shadow md:block">
+          <Table striped className="mobile-friendly-table">
             <Table.Head>
               <Table.HeadCell className="text-xs uppercase tracking-wide">Business</Table.HeadCell>
               <Table.HeadCell className="text-xs uppercase tracking-wide">Owner</Table.HeadCell>

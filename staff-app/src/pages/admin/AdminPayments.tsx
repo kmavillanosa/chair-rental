@@ -334,8 +334,42 @@ export default function AdminPayments() {
       {activeTab === 'earnings' && (
         <div>
           <h2 className="mb-3 text-base font-semibold text-slate-800">Rental Partner Earnings Breakdown</h2>
-          <div className="overflow-x-auto rounded-xl shadow">
-            <Table striped>
+          <div className="space-y-3 md:hidden">
+            {vendorEarnings.map((row) => (
+              <article key={row.vendorId} className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
+                <p className="text-sm font-semibold text-slate-900">{row.vendorName}</p>
+                <dl className="mt-3 space-y-2 text-sm">
+                  <div className="flex items-start justify-between gap-3">
+                    <dt className="text-xs font-semibold uppercase tracking-wide text-slate-500">Gross Collected</dt>
+                    <dd className="text-right font-semibold text-slate-900">{formatCurrency(row.grossCollected)}</dd>
+                  </div>
+                  <div className="flex items-start justify-between gap-3">
+                    <dt className="text-xs font-semibold uppercase tracking-wide text-slate-500">Platform Earnings</dt>
+                    <dd className="text-right text-slate-700">{formatCurrency(row.platformAccrued)}</dd>
+                  </div>
+                  <div className="flex items-start justify-between gap-3">
+                    <dt className="text-xs font-semibold uppercase tracking-wide text-slate-500">Pending</dt>
+                    <dd className="text-right text-slate-700">{formatCurrency(row.pendingBalance)}</dd>
+                  </div>
+                  <div className="flex items-start justify-between gap-3">
+                    <dt className="text-xs font-semibold uppercase tracking-wide text-slate-500">Ready</dt>
+                    <dd className="text-right text-slate-700">{formatCurrency(row.readyBalance)}</dd>
+                  </div>
+                  <div className="flex items-start justify-between gap-3">
+                    <dt className="text-xs font-semibold uppercase tracking-wide text-slate-500">Released</dt>
+                    <dd className="text-right text-slate-700">{formatCurrency(row.releasedTotal)}</dd>
+                  </div>
+                  <div className="flex items-start justify-between gap-3">
+                    <dt className="text-xs font-semibold uppercase tracking-wide text-slate-500">Transactions</dt>
+                    <dd className="text-right text-slate-700">{row.records}</dd>
+                  </div>
+                </dl>
+              </article>
+            ))}
+          </div>
+
+          <div className="hidden overflow-x-auto rounded-xl shadow md:block">
+            <Table striped className="mobile-friendly-table">
               <Table.Head>
                 <Table.HeadCell>Rental Partner</Table.HeadCell>
                 <Table.HeadCell>Gross Collected</Table.HeadCell>
@@ -366,8 +400,53 @@ export default function AdminPayments() {
       {activeTab === 'billing' && (
         <div>
           <h2 className="mb-3 text-base font-semibold text-slate-800">Billing Records</h2>
-          <div className="overflow-x-auto rounded-xl shadow">
-            <Table striped>
+          <div className="space-y-3 md:hidden">
+            {payments.map((payment) => (
+              <article key={payment.id} className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
+                <div className="flex items-start justify-between gap-2">
+                  <p className="text-sm font-semibold text-slate-900">{payment.vendor?.businessName}</p>
+                  <PaymentStatusBadge status={payment.status} />
+                </div>
+
+                <dl className="mt-3 space-y-2 text-sm">
+                  <div className="flex items-start justify-between gap-3">
+                    <dt className="text-xs font-semibold uppercase tracking-wide text-slate-500">Amount</dt>
+                    <dd className="text-right font-semibold text-slate-900">{formatCurrency(payment.amount)}</dd>
+                  </div>
+                  <div className="flex items-start justify-between gap-3">
+                    <dt className="text-xs font-semibold uppercase tracking-wide text-slate-500">Due Date</dt>
+                    <dd className="text-right text-slate-700">{formatDate(payment.dueDate)}</dd>
+                  </div>
+                </dl>
+
+                <div className="mt-4 grid grid-cols-1 gap-2">
+                  {payment.status !== 'paid' && (
+                    <Button
+                      size="sm"
+                      color="light"
+                      className="!border-emerald-200 !bg-emerald-50 !text-emerald-800 hover:!bg-emerald-100"
+                      onClick={() => markPaid(payment.id).then(() => { toast.success('Marked paid!'); load(); })}
+                    >
+                      Mark Paid
+                    </Button>
+                  )}
+                  {payment.status === 'pending' && (
+                    <Button
+                      size="sm"
+                      color="light"
+                      className="!border-rose-200 !bg-rose-50 !text-rose-700 hover:!bg-rose-100"
+                      onClick={() => markOverdue(payment.id).then(() => { toast.success('Marked overdue!'); load(); })}
+                    >
+                      Mark Overdue
+                    </Button>
+                  )}
+                </div>
+              </article>
+            ))}
+          </div>
+
+          <div className="hidden overflow-x-auto rounded-xl shadow md:block">
+            <Table striped className="mobile-friendly-table">
               <Table.Head>
                 <Table.HeadCell>Rental Partner</Table.HeadCell>
                 <Table.HeadCell>Amount</Table.HeadCell>
@@ -417,8 +496,75 @@ export default function AdminPayments() {
       {activeTab === 'payouts' && (
         <div>
           <h2 className="mb-3 text-base font-semibold text-slate-800">Rental Partner Payout Queue</h2>
-          <div className="overflow-x-auto rounded-xl shadow">
-            <Table striped>
+          <div className="space-y-3 md:hidden">
+            {payouts.map((payout) => {
+              const payoutVendor =
+                payout.vendor || vendors.find((vendor) => vendor.id === payout.vendorId);
+              const payoutDestination = formatPayoutDestination(payoutVendor);
+
+              return (
+                <article key={payout.id} className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
+                  <div className="flex items-start justify-between gap-2">
+                    <p className="text-sm font-semibold text-slate-900">{payoutVendor?.businessName || payout.vendorId}</p>
+                    <span className="rounded-full bg-slate-100 px-2.5 py-1 text-xs font-medium capitalize text-slate-700">
+                      {payout.status.replace('_', ' ')}
+                    </span>
+                  </div>
+
+                  <dl className="mt-3 space-y-2 text-sm">
+                    <div className="flex items-start justify-between gap-3">
+                      <dt className="text-xs font-semibold uppercase tracking-wide text-slate-500">Booking</dt>
+                      <dd className="text-right text-slate-700">{payout.bookingId.slice(0, 8)}...</dd>
+                    </div>
+                    <div className="flex items-start justify-between gap-3">
+                      <dt className="text-xs font-semibold uppercase tracking-wide text-slate-500">Gross</dt>
+                      <dd className="text-right text-slate-700">{formatCurrency(toAmount(payout.grossAmount))}</dd>
+                    </div>
+                    <div className="flex items-start justify-between gap-3">
+                      <dt className="text-xs font-semibold uppercase tracking-wide text-slate-500">Platform Fee</dt>
+                      <dd className="text-right text-slate-700">{formatCurrency(toAmount(payout.platformFeeAmount))}</dd>
+                    </div>
+                    <div className="flex items-start justify-between gap-3">
+                      <dt className="text-xs font-semibold uppercase tracking-wide text-slate-500">Net Amount</dt>
+                      <dd className="text-right font-semibold text-slate-900">{formatCurrency(payout.netAmount)}</dd>
+                    </div>
+                    <div className="flex items-start justify-between gap-3">
+                      <dt className="text-xs font-semibold uppercase tracking-wide text-slate-500">Outstanding</dt>
+                      <dd className="text-right text-slate-700">{formatCurrency(payout.outstandingBalanceAmount)}</dd>
+                    </div>
+                    <div className="flex items-start justify-between gap-3">
+                      <dt className="text-xs font-semibold uppercase tracking-wide text-slate-500">Release On</dt>
+                      <dd className="text-right text-slate-700">{payout.releaseOn ? formatDate(payout.releaseOn) : 'Immediate'}</dd>
+                    </div>
+                    <div className="flex items-start justify-between gap-3">
+                      <dt className="text-xs font-semibold uppercase tracking-wide text-slate-500">Destination</dt>
+                      <dd className="text-right text-slate-700">{payoutDestination}</dd>
+                    </div>
+                  </dl>
+
+                  <div className="mt-4">
+                    {payout.status === 'ready' ? (
+                      <Button
+                        size="sm"
+                        color="success"
+                        className="w-full"
+                        onClick={() => handleReleasePayout(payout)}
+                        isProcessing={releasingPayoutId === payout.id}
+                        disabled={releasingPayoutId === payout.id}
+                      >
+                        Release Payout
+                      </Button>
+                    ) : (
+                      <p className="text-xs text-slate-500">No action required right now.</p>
+                    )}
+                  </div>
+                </article>
+              );
+            })}
+          </div>
+
+          <div className="hidden overflow-x-auto rounded-xl shadow md:block">
+            <Table striped className="mobile-friendly-table">
               <Table.Head>
                 <Table.HeadCell>Rental Partner</Table.HeadCell>
                 <Table.HeadCell>Booking</Table.HeadCell>

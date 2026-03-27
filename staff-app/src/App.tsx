@@ -29,6 +29,7 @@ import VendorPayments from './pages/vendor/VendorPayments'
 import MyBookings from './pages/customer/MyBookings'
 import LegalDocumentPage from './pages/LegalDocumentPage'
 import { getStaffTourSteps } from './tour/staffTour'
+import { enableMobileTableEnhancer } from './utils/mobileTableEnhancer'
 
 function ProtectedRoute({ children, role }: { children: React.ReactNode; role?: string }) {
   const { token, user } = useAuthStore()
@@ -75,6 +76,10 @@ export default function App() {
       isMounted = false
       window.removeEventListener('staff-feature-flags-updated', handleFeatureFlagsUpdated as EventListener)
     }
+  }, [])
+
+  useEffect(() => {
+    return enableMobileTableEnhancer()
   }, [])
 
   return (
