@@ -35,7 +35,7 @@ export default function Login() {
 
       <div className="relative mx-auto flex min-h-screen max-w-7xl items-center px-4 py-8 sm:px-6 lg:px-8">
         <div className="grid w-full gap-6 lg:grid-cols-[1.25fr_0.75fr]">
-          <section className="order-2 overflow-hidden rounded-[2rem] bg-[#1f2944] px-6 py-8 text-white shadow-[0_34px_90px_rgba(31,41,68,0.28)] sm:px-8 sm:py-10 lg:order-1 lg:px-10 lg:py-12">
+          <section className="order-2 hidden overflow-hidden rounded-[2rem] bg-[#1f2944] px-6 py-8 text-white shadow-[0_34px_90px_rgba(31,41,68,0.28)] lg:block sm:px-8 sm:py-10 lg:order-1 lg:px-10 lg:py-12">
             <div className="relative">
               <img src="/dark_logo.svg" alt="RentalBasic" className="h-14 w-auto sm:h-16" />
 
@@ -76,7 +76,19 @@ export default function Login() {
           <section className="order-1 rounded-[2rem] border border-slate-200/80 bg-white/92 p-6 shadow-[0_26px_70px_rgba(15,23,42,0.14)] backdrop-blur sm:p-8 lg:order-2 lg:p-10">
             <div className="flex h-full flex-col justify-between">
               <div>
-                <div className="inline-flex items-center rounded-full bg-[#eef3ff] px-3 py-1 text-xs font-semibold uppercase tracking-[0.16em] text-[#1f2944]">
+                <img src="/dark_logo.svg" alt="RentalBasic" className="mb-6 h-10 w-auto lg:hidden sm:h-12" />
+
+                <a
+                  href="https://rentalbasic.com"
+                  className="inline-flex items-center gap-2 rounded-lg border border-slate-200 bg-slate-50 px-4 py-2 text-xs font-medium text-slate-600 transition hover:bg-slate-100 hover:text-slate-700"
+                >
+                  <svg className="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                    <path d="M19 12H5M12 19l-7-7 7-7" />
+                  </svg>
+                  Back to RentalBasic
+                </a>
+
+                <div className="mt-6 inline-flex items-center rounded-full bg-[#eef3ff] px-3 py-1 text-xs font-semibold uppercase tracking-[0.16em] text-[#1f2944]">
                   Secure Sign-in
                 </div>
 
