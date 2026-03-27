@@ -13,6 +13,8 @@ export default function Login() {
   const authError = useMemo(() => searchParams.get('error')?.trim() || '', [searchParams]);
   const [deferredInstallPrompt, setDeferredInstallPrompt] = useState<BeforeInstallPromptEvent | null>(null);
   const [showInstallButton, setShowInstallButton] = useState(false);
+  const [isIosDevice, setIsIosDevice] = useState(false);
+  const [isIosSafari, setIsIosSafari] = useState(false);
   const [isIosInstallHint, setIsIosInstallHint] = useState(false);
 
   useEffect(() => {
@@ -43,13 +45,15 @@ export default function Login() {
         Boolean((window.navigator as Navigator & { standalone?: boolean }).standalone);
 
       const userAgent = window.navigator.userAgent;
-      const isIosDevice =
+      const nextIsIosDevice =
         /iPad|iPhone|iPod/i.test(userAgent) ||
         (userAgent.includes('Macintosh') && 'ontouchend' in document);
-      const isIosSafari = isIosDevice && /Safari/i.test(userAgent) && !/CriOS|FxiOS|EdgiOS/i.test(userAgent);
+      const nextIsIosSafari = nextIsIosDevice && /Safari/i.test(userAgent) && !/CriOS|FxiOS|EdgiOS/i.test(userAgent);
 
-      setIsIosInstallHint(isMobileViewport && isIosSafari && !isStandalone);
-      setShowInstallButton(isMobileViewport && !isStandalone && (Boolean(deferredInstallPrompt) || isIosSafari));
+      setIsIosDevice(nextIsIosDevice);
+      setIsIosSafari(nextIsIosSafari);
+      setIsIosInstallHint(isMobileViewport && nextIsIosSafari && !isStandalone);
+      setShowInstallButton(isMobileViewport && !isStandalone && (Boolean(deferredInstallPrompt) || nextIsIosDevice));
     };
 
     updateInstallAvailability();
@@ -74,12 +78,20 @@ export default function Login() {
     }
 
     if (isIosInstallHint) {
-      toast('On iPhone: tap Share, then choose Add to Home Screen.', { duration: 5000, icon: '📲' });
+      toast('iPhone requires Add to Home Screen in Safari. Tap Share then Add to Home Screen.', { duration: 5000, icon: '📲' });
+      return;
+    }
+
+    if (isIosDevice && !isIosSafari) {
+      toast('iPhone install is only supported in Safari. Open this page in Safari, then Add to Home Screen.', {
+        duration: 5500,
+        icon: '📲',
+      });
       return;
     }
 
     toast('Install is not available right now. Open your browser menu and tap Add to Home Screen.');
-  }, [deferredInstallPrompt, isIosInstallHint]);
+  }, [deferredInstallPrompt, isIosDevice, isIosInstallHint, isIosSafari]);
 
   const workflowCards = [
     {
@@ -203,7 +215,7 @@ export default function Login() {
                     onClick={handleAddToHomeScreen}
                     className="mt-3 flex w-full items-center justify-center gap-2 rounded-2xl border border-slate-300 bg-white px-5 py-3 text-sm font-semibold text-slate-700 transition hover:-translate-y-0.5 hover:bg-slate-50 lg:hidden"
                   >
-                    📲 Add to home screen
+                    📲 Install
                   </button>
                 )}
 
