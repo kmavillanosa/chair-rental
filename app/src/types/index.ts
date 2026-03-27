@@ -161,6 +161,7 @@ export interface InventoryItem {
   availableQuantity: number;
   ratePerDay: number;
   condition?: string;
+  notes?: string;
   pictureUrl?: string;
   galleryPhotos?: string[];
   createdAt: string;

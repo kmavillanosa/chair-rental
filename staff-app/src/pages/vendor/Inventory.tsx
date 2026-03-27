@@ -29,6 +29,7 @@ type InventoryFormState = {
   quantity: string;
   ratePerDay: string;
   condition: string;
+  notes: string;
 };
 
 const EMPTY_FORM: InventoryFormState = {
@@ -38,6 +39,7 @@ const EMPTY_FORM: InventoryFormState = {
   quantity: '',
   ratePerDay: '',
   condition: '',
+  notes: '',
 };
 
 const VENDOR_GALLERY_LIMIT = 10;
@@ -374,6 +376,18 @@ function InventoryFormFields({
           />
           <p className="text-xs text-slate-500">Optional internal note that appears in your inventory card.</p>
         </div>
+
+        <div className="space-y-2 md:col-span-2">
+          <label className="block text-sm font-semibold text-slate-800">Customer Notes</label>
+          <textarea
+            rows={3}
+            placeholder="e.g. Chairs include seat covers. Extension cord not included. Driver-only delivery."
+            value={form.notes}
+            onChange={(event) => onFieldChange('notes', event.target.value)}
+            className="block w-full rounded-xl border border-slate-300 bg-white px-4 py-3 text-sm text-slate-900 shadow-sm outline-none transition focus:border-cyan-500 focus:ring-2 focus:ring-cyan-100"
+          />
+          <p className="text-xs text-slate-500">Visible to customers on the booking page. Use this for inclusions, exclusions, or reminders.</p>
+        </div>
       </div>
     </div>
   );
@@ -508,6 +522,7 @@ export default function Inventory() {
       quantity: Number(form.quantity),
       ratePerDay: form.ratePerDay.trim() ? Number(form.ratePerDay) : undefined,
       condition: form.condition.trim() || undefined,
+      notes: form.notes.trim() || undefined,
     });
     toast.success('Item added!');
     closeCreateModal();
@@ -523,6 +538,7 @@ export default function Inventory() {
       quantity: String(item.quantity),
       ratePerDay: String(item.ratePerDay),
       condition: item.condition || '',
+      notes: item.notes || '',
     });
   };
 
@@ -542,6 +558,7 @@ export default function Inventory() {
       quantity: Number(editForm.quantity),
       ratePerDay: editForm.ratePerDay.trim() ? Number(editForm.ratePerDay) : undefined,
       condition: editForm.condition.trim() || undefined,
+      notes: editForm.notes.trim() || undefined,
     });
 
     toast.success('Item updated!');
@@ -649,6 +666,7 @@ export default function Inventory() {
                 <p>💵 Rate: <strong>{formatCurrency(item.ratePerDay)}/day</strong></p>
                 <p>🖼️ Gallery: <strong>{galleryCount}/{VENDOR_GALLERY_LIMIT}</strong></p>
                 {item.condition && <p>🔧 Condition: {item.condition}</p>}
+                {item.notes && <p className="mt-1 rounded-lg border border-amber-200 bg-amber-50 px-2 py-1 text-xs text-amber-800">📝 Note: {item.notes}</p>}
               </div>
               <div className="mt-3 flex flex-wrap items-center gap-2">
                 <Button color="light" size="sm" onClick={() => void openGalleryModal(item)}>Manage Photos</Button>

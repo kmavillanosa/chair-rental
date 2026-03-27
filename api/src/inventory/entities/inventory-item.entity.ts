@@ -50,6 +50,9 @@ export class InventoryItem {
   @Column({ nullable: true })
   pictureUrl: string;
 
+  @Column({ type: 'text', nullable: true })
+  notes: string;
+
   @CreateDateColumn()
   createdAt: Date;
 
