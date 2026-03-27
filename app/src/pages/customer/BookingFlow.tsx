@@ -916,13 +916,23 @@ export default function BookingFlow() {
               return (
                 <div
                   key={item.id}
-                  className={`bg-white rounded-2xl shadow p-5 flex items-center justify-between ${availQty <= 0 ? 'opacity-50 pointer-events-none' : ''}`}
+                  className={`bg-white rounded-2xl shadow p-4 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between sm:p-5 ${availQty <= 0 ? 'opacity-50 pointer-events-none' : ''}`}
                 >
-                  <div className="flex items-start gap-3">
-                    {itemPictureUrl && <img src={itemPictureUrl} alt={item.itemType?.name || 'Item'} className="h-16 w-16 rounded-lg object-cover" />}
-                    <div>
-                      <p className="text-xl font-bold">{getItemDisplayName(item)}</p>
-                      <p className="text-gray-500">{t('bookingFlow.itemAvailabilityLine', { rate: formatCurrency(item.ratePerDay), count: availQty })}</p>
+                  {/* Item info row */}
+                  <div className="flex items-center gap-4">
+                    {itemPictureUrl && (
+                      <img
+                        src={itemPictureUrl}
+                        alt={item.itemType?.name || 'Item'}
+                        className="h-20 w-20 shrink-0 rounded-xl object-cover sm:h-16 sm:w-16"
+                      />
+                    )}
+                    <div className="min-w-0">
+                      <p className="text-lg font-bold leading-snug">{getItemDisplayName(item)}</p>
+                      <p className="mt-0.5 text-sm text-gray-500">
+                        {formatCurrency(item.ratePerDay)}/day
+                        {availQty > 0 && <span className="ml-2 font-medium text-gray-400">{availQty} available</span>}
+                      </p>
                       {additionalItemImages.length > 0 && (
                         <div className="mt-2 flex flex-wrap items-center gap-1.5">
                           {additionalItemImages.map((imageUrl, index) => (
@@ -945,11 +955,13 @@ export default function BookingFlow() {
                       )}
                     </div>
                   </div>
+
+                  {/* Quantity controls — full width row on mobile, compact on desktop */}
                   {availQty > 0 ? (
-                    <div className="flex items-center gap-2">
+                    <div className={`flex items-center gap-3 rounded-2xl border p-3 sm:border-0 sm:p-0 sm:gap-2 ${currentQty > 0 ? 'border-blue-200 bg-blue-50' : 'border-gray-200 bg-gray-50'}`}>
                       <button
                         onClick={() => setItemQuantity(item.id, currentQty - 1, availQty)}
-                        className="flex-shrink-0 w-12 h-12 rounded-full bg-gray-200 text-2xl font-bold leading-none disabled:opacity-40 active:bg-gray-300 touch-manipulation"
+                        className="flex h-12 w-12 shrink-0 items-center justify-center rounded-full bg-white text-2xl font-bold shadow-sm transition active:scale-95 disabled:opacity-30 touch-manipulation border border-gray-200"
                         disabled={currentQty <= 0}
                         aria-label="Decrease quantity"
                       >
@@ -966,11 +978,11 @@ export default function BookingFlow() {
                           const parsed = raw === '' ? 0 : Number(raw);
                           setItemQuantity(item.id, parsed, availQty);
                         }}
-                        className="w-16 min-w-0 rounded-lg border border-gray-300 px-1 py-2 text-center text-lg font-bold"
+                        className="min-w-0 flex-1 rounded-xl border border-gray-300 bg-white px-2 py-2 text-center text-xl font-bold sm:w-16 sm:flex-none"
                       />
                       <button
                         onClick={() => setItemQuantity(item.id, currentQty + 1, availQty)}
-                        className="flex-shrink-0 w-12 h-12 rounded-full bg-blue-600 text-white text-2xl font-bold leading-none disabled:opacity-40 active:bg-blue-700 touch-manipulation"
+                        className="flex h-12 w-12 shrink-0 items-center justify-center rounded-full bg-blue-600 text-white text-2xl font-bold shadow-sm transition active:scale-95 disabled:opacity-30 touch-manipulation"
                         disabled={currentQty >= availQty}
                         aria-label="Increase quantity"
                       >
@@ -978,8 +990,8 @@ export default function BookingFlow() {
                       </button>
                     </div>
                   ) : (
-                    <div className="flex items-center gap-3">
-                      <span className="text-gray-400 font-semibold">Unavailable</span>
+                    <div className="flex items-center justify-center rounded-2xl border border-gray-200 bg-gray-50 px-4 py-3 sm:justify-end sm:border-0 sm:bg-transparent sm:p-0">
+                      <span className="text-sm font-semibold text-gray-400">Unavailable</span>
                     </div>
                   )}
                 </div>
