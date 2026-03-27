@@ -39,7 +39,7 @@ export default function Sidebar({ role, className = '', onNavigate }: Props) {
         <div className="flex items-start justify-between gap-2">
           <div>
             <img
-              src="/logo_dark.svg"
+              src="/light_logo.svg"
               alt={role === 'admin' ? t('nav.adminPanel') : t('nav.vendorPanel')}
               className="h-10 w-auto"
             />

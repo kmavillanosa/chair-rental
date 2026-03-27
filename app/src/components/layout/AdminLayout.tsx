@@ -20,7 +20,7 @@ export default function AdminLayout({ children }: { children?: React.ReactNode }
   return (
     <div className="flex min-h-screen bg-gray-50">
       <div className="fixed inset-x-0 top-0 z-30 flex h-14 items-center justify-between border-b border-slate-200 bg-white/95 px-4 backdrop-blur lg:hidden">
-        <img src="/logo_dark.svg" alt="RentalBasic Admin Panel" className="h-7 w-auto" />
+        <img src="/dark_logo.svg" alt="RentalBasic Admin Panel" className="h-7 w-auto" />
         <button
           type="button"
           aria-label="Open menu"
