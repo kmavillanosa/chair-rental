@@ -102,7 +102,7 @@ export default function HelperPricing() {
                 </div>
             )}
 
-            <Modal show={Boolean(editingRate)} onClose={closeEditModal} size="lg">
+            <Modal className="mobile-fullscreen-modal" show={Boolean(editingRate)} onClose={closeEditModal} size="lg">
                 <Modal.Header>Edit Helper Pricing Tier</Modal.Header>
                 <Modal.Body>
                     <div className="grid grid-cols-1 gap-4">

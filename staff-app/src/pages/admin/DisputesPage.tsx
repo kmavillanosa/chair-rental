@@ -176,7 +176,7 @@ export default function DisputesPage() {
                 </Table>
             </div>
 
-            <Modal show={Boolean(selectedDispute)} onClose={() => !resolving && setSelectedDispute(null)}>
+            <Modal className="mobile-fullscreen-modal" show={Boolean(selectedDispute)} onClose={() => !resolving && setSelectedDispute(null)}>
                 <Modal.Header>Resolve Dispute</Modal.Header>
                 <Modal.Body className="space-y-4">
                     <div className="rounded-lg border border-slate-200 bg-slate-50 p-3 text-sm text-slate-700">

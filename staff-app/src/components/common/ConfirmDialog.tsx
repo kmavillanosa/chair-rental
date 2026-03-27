@@ -13,7 +13,7 @@ interface Props {
 
 export default function ConfirmDialog({ open, title, message, onConfirm, onCancel, confirmText = 'Confirm', confirmColor = 'failure' }: Props) {
   return (
-    <Modal show={open} size="md" onClose={onCancel} popup>
+    <Modal className="mobile-fullscreen-modal" show={open} size="md" onClose={onCancel} popup>
       <Modal.Header />
       <Modal.Body>
         <div className="text-center">

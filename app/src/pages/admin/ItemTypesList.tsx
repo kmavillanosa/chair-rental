@@ -164,7 +164,7 @@ export default function ItemTypesList() {
         ))}
       </div>
 
-      <Modal show={showModal} onClose={() => setShowModal(false)} size="lg">
+      <Modal className="mobile-fullscreen-modal" show={showModal} onClose={() => setShowModal(false)} size="lg">
         <Modal.Header>{editingItem ? t('itemTypesList.modalEditItemType') : t('itemTypesList.modalAddItemType')}</Modal.Header>
         <Modal.Body className="space-y-4">
           <TextInput placeholder={t('itemTypesList.namePlaceholder')} value={form.name} onChange={e => setForm(f => ({ ...f, name: e.target.value }))} sizing="lg" />

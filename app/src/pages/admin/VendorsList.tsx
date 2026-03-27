@@ -281,7 +281,7 @@ export default function VendorsList() {
         </Table>
       </div>
 
-      <Modal show={showCreateModal} onClose={() => !submitting && setShowCreateModal(false)}>
+      <Modal className="mobile-fullscreen-modal" show={showCreateModal} onClose={() => !submitting && setShowCreateModal(false)}>
         <Modal.Header>{t('vendorsList.addVendor')}</Modal.Header>
         <Modal.Body className="space-y-4">
           <TextInput

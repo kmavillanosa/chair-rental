@@ -798,7 +798,7 @@ export default function VendorsList() {
         </div>
       </div>
 
-      <Modal show={showCreateModal} onClose={() => !creatingVendor && setShowCreateModal(false)}>
+      <Modal className="mobile-fullscreen-modal" show={showCreateModal} onClose={() => !creatingVendor && setShowCreateModal(false)}>
         <Modal.Header>Create Rental Partner</Modal.Header>
         <Modal.Body className="space-y-4">
           <TextInput
@@ -849,7 +849,7 @@ export default function VendorsList() {
         </Modal.Footer>
       </Modal>
 
-      <Modal show={showSuspendModal} onClose={() => !suspendingVendor && setShowSuspendModal(false)}>
+      <Modal className="mobile-fullscreen-modal" show={showSuspendModal} onClose={() => !suspendingVendor && setShowSuspendModal(false)}>
         <Modal.Header>
           Suspend Rental Partner{suspendTargetVendor ? `: ${suspendTargetVendor.businessName}` : ''}
         </Modal.Header>

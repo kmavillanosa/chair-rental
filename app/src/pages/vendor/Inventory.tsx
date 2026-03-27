@@ -114,7 +114,7 @@ export default function Inventory() {
         })}
         {items.length === 0 && <p className="col-span-full py-12 text-center text-xl text-gray-400">{t('inventoryPage.noItems')}</p>}
       </div>
-      <Modal show={showModal} onClose={() => setShowModal(false)} size="lg">
+      <Modal className="mobile-fullscreen-modal" show={showModal} onClose={() => setShowModal(false)} size="lg">
         <Modal.Header>{t('inventoryPage.modalTitle')}</Modal.Header>
         <Modal.Body className="space-y-4">
           <Select
@@ -164,7 +164,7 @@ export default function Inventory() {
         </Modal.Footer>
       </Modal>
 
-      <Modal show={Boolean(editingItem)} onClose={closeEditModal} size="lg">
+      <Modal className="mobile-fullscreen-modal" show={Boolean(editingItem)} onClose={closeEditModal} size="lg">
         <Modal.Header>{t('inventoryPage.editModalTitle')}</Modal.Header>
         <Modal.Body className="space-y-4">
           <Select

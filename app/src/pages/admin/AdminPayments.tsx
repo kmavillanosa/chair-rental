@@ -140,7 +140,7 @@ export default function AdminPayments() {
         </Table>
       </div>
 
-      <Modal show={showCreateModal} onClose={() => !submitting && setShowCreateModal(false)}>
+      <Modal className="mobile-fullscreen-modal" show={showCreateModal} onClose={() => !submitting && setShowCreateModal(false)}>
         <Modal.Header>{t('adminPayments.addPayment')}</Modal.Header>
         <Modal.Body className="space-y-4">
           <Select

@@ -16,7 +16,7 @@ export default function ConfirmDialog({ open, title, message, onConfirm, onCance
   const { t } = useTranslation();
 
   return (
-    <Modal show={open} size="md" onClose={onCancel} popup>
+    <Modal className="mobile-fullscreen-modal" show={open} size="md" onClose={onCancel} popup>
       <Modal.Header />
       <Modal.Body>
         <div className="text-center">

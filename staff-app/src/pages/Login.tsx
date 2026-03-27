@@ -76,17 +76,19 @@ export default function Login() {
           <section className="order-1 rounded-[2rem] border border-slate-200/80 bg-white/92 p-6 shadow-[0_26px_70px_rgba(15,23,42,0.14)] backdrop-blur sm:p-8 lg:order-2 lg:p-10">
             <div className="flex h-full flex-col justify-between">
               <div>
-                <img src="/dark_logo.svg" alt="RentalBasic" className="mb-6 h-10 w-auto lg:hidden sm:h-12" />
+                <div className="mb-6 flex items-center justify-between gap-3">
+                  <img src="/light_logo.svg" alt="RentalBasic" className="h-10 w-auto lg:hidden sm:h-12" />
 
-                <a
-                  href="https://rentalbasic.com"
-                  className="inline-flex items-center gap-2 rounded-lg border border-slate-200 bg-slate-50 px-4 py-2 text-xs font-medium text-slate-600 transition hover:bg-slate-100 hover:text-slate-700"
-                >
-                  <svg className="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                    <path d="M19 12H5M12 19l-7-7 7-7" />
-                  </svg>
-                  Back to RentalBasic
-                </a>
+                  <a
+                    href="https://rentalbasic.com"
+                    className="ml-auto inline-flex items-center gap-2 rounded-xl border border-slate-300 bg-white px-4 py-2 text-xs font-semibold text-slate-700 shadow-sm transition hover:-translate-y-0.5 hover:bg-slate-50"
+                  >
+                    <svg className="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                      <path d="M19 12H5M12 19l-7-7 7-7" />
+                    </svg>
+                    Back to RentalBasic
+                  </a>
+                </div>
 
                 <div className="mt-6 inline-flex items-center rounded-full bg-[#eef3ff] px-3 py-1 text-xs font-semibold uppercase tracking-[0.16em] text-[#1f2944]">
                   Secure Sign-in

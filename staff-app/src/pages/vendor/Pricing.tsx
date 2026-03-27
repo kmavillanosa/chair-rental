@@ -92,7 +92,7 @@ export default function Pricing() {
         </Table>
       </div>
 
-      <Modal show={Boolean(editingRate)} onClose={closeEditModal} size="lg">
+      <Modal className="mobile-fullscreen-modal" show={Boolean(editingRate)} onClose={closeEditModal} size="lg">
         <Modal.Header>Edit Delivery Rate</Modal.Header>
         <Modal.Body>
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4">

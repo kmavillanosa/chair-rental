@@ -137,7 +137,7 @@ export default function VendorBookings() {
                 </Table>
             </div>
 
-            <Modal show={showModal} onClose={() => setShowModal(false)} size="2xl">
+            <Modal className="mobile-fullscreen-modal" show={showModal} onClose={() => setShowModal(false)} size="2xl">
                 <Modal.Header>
                     <span>📋 Booking Details{selectedBooking ? ` - ${selectedBooking.customer?.name}` : ''}</span>
                 </Modal.Header>

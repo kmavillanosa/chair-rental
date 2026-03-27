@@ -141,7 +141,7 @@ export default function BrandsList() {
           </Table.Body>
         </Table>
       </div>
-      <Modal show={showModal} onClose={() => setShowModal(false)}>
+      <Modal className="mobile-fullscreen-modal" show={showModal} onClose={() => setShowModal(false)}>
         <Modal.Header>{editingBrandId ? t('brandsList.modalEditTitle') : t('brandsList.modalTitle')}</Modal.Header>
         <Modal.Body className="space-y-4">
           <TextInput placeholder={t('brandsList.brandNamePlaceholder')} value={form.name} onChange={e => setForm(f => ({ ...f, name: e.target.value }))} sizing="lg" />

@@ -660,7 +660,7 @@ export default function Inventory() {
         })}
         {items.length === 0 && <p className="col-span-full py-12 text-center text-xl text-gray-400">No items yet. Add your first item!</p>}
       </div>
-      <Modal show={showModal} onClose={closeCreateModal} size="xl">
+      <Modal className="mobile-fullscreen-modal" show={showModal} onClose={closeCreateModal} size="xl">
         <Modal.Header>Add Inventory Item</Modal.Header>
         <Modal.Body className="space-y-6">
           <InventoryFormFields
@@ -678,7 +678,7 @@ export default function Inventory() {
         </Modal.Footer>
       </Modal>
 
-      <Modal show={Boolean(editingItem)} onClose={closeEditModal} size="xl">
+      <Modal className="mobile-fullscreen-modal" show={Boolean(editingItem)} onClose={closeEditModal} size="xl">
         <Modal.Header>Edit Inventory Item</Modal.Header>
         <Modal.Body className="space-y-6">
           <InventoryFormFields
@@ -696,7 +696,7 @@ export default function Inventory() {
         </Modal.Footer>
       </Modal>
 
-      <Modal show={Boolean(galleryModalItem)} onClose={closeGalleryModal} size="4xl">
+      <Modal className="mobile-fullscreen-modal" show={Boolean(galleryModalItem)} onClose={closeGalleryModal} size="4xl">
         <Modal.Header>
           {galleryModalItem
             ? `Photo Gallery: ${galleryModalItem.itemType?.name || 'Inventory Item'}`

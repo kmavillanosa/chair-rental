@@ -66,6 +66,11 @@ interface NominatimReverseResult {
     display_name?: string;
 }
 
+interface BeforeInstallPromptEvent extends Event {
+    prompt: () => Promise<void>;
+    userChoice: Promise<{ outcome: 'accepted' | 'dismissed'; platform: string }>;
+}
+
 function fallbackEventLabel(tag: string) {
     return tag
         .split(/[\s_-]+/)
@@ -221,6 +226,9 @@ export default function CustomerHome() {
     const [modalSelectedAddressLabel, setModalSelectedAddressLabel] = useState('');
     const [modalAddressSuggestions, setModalAddressSuggestions] = useState<LocationSuggestion[]>([]);
     const [isModalAddressLoading, setIsModalAddressLoading] = useState(false);
+    const [deferredInstallPrompt, setDeferredInstallPrompt] = useState<BeforeInstallPromptEvent | null>(null);
+    const [showInstallButton, setShowInstallButton] = useState(false);
+    const [isIosInstallHint, setIsIosInstallHint] = useState(false);
 
     const hasIncomingSearchState = useMemo(
         () => [
@@ -248,6 +256,51 @@ export default function CustomerHome() {
                 toast.error(t('customerHome.toastUnableLoadItemTypes'));
             });
     }, [t]);
+
+    useEffect(() => {
+        const handleBeforeInstallPrompt = (event: Event) => {
+            const installEvent = event as BeforeInstallPromptEvent;
+            installEvent.preventDefault();
+            setDeferredInstallPrompt(installEvent);
+        };
+
+        const handleAppInstalled = () => {
+            setDeferredInstallPrompt(null);
+        };
+
+        window.addEventListener('beforeinstallprompt', handleBeforeInstallPrompt as EventListener);
+        window.addEventListener('appinstalled', handleAppInstalled);
+
+        return () => {
+            window.removeEventListener('beforeinstallprompt', handleBeforeInstallPrompt as EventListener);
+            window.removeEventListener('appinstalled', handleAppInstalled);
+        };
+    }, []);
+
+    useEffect(() => {
+        const updateInstallAvailability = () => {
+            const isMobileViewport = window.matchMedia('(max-width: 768px)').matches;
+            const isStandalone =
+                window.matchMedia('(display-mode: standalone)').matches ||
+                Boolean((window.navigator as Navigator & { standalone?: boolean }).standalone);
+
+            const userAgent = window.navigator.userAgent;
+            const isIosDevice =
+                /iPad|iPhone|iPod/i.test(userAgent) ||
+                (userAgent.includes('Macintosh') && 'ontouchend' in document);
+            const isIosSafari = isIosDevice && /Safari/i.test(userAgent) && !/CriOS|FxiOS|EdgiOS/i.test(userAgent);
+
+            setIsIosInstallHint(isMobileViewport && isIosSafari && !isStandalone);
+            setShowInstallButton(isMobileViewport && !isStandalone && (Boolean(deferredInstallPrompt) || isIosSafari));
+        };
+
+        updateInstallAvailability();
+        window.addEventListener('resize', updateInstallAvailability);
+
+        return () => {
+            window.removeEventListener('resize', updateInstallAvailability);
+        };
+    }, [deferredInstallPrompt]);
 
     // Restore form state from initial URL params (runs at most once on mount).
     useEffect(() => {
@@ -791,6 +844,40 @@ export default function CustomerHome() {
         window.scrollTo({ top: Math.max(0, targetY), behavior: 'smooth' });
     }, []);
 
+    const handleAddToHomeScreen = useCallback(async () => {
+        if (deferredInstallPrompt) {
+            await deferredInstallPrompt.prompt();
+            const choiceResult = await deferredInstallPrompt.userChoice;
+
+            if (choiceResult.outcome === 'accepted') {
+                toast.success(
+                    t('customerHome.installAccepted', {
+                        defaultValue: 'Great! RentalBasic has been added to your home screen.',
+                    }),
+                );
+            }
+
+            setDeferredInstallPrompt(null);
+            return;
+        }
+
+        if (isIosInstallHint) {
+            toast(
+                t('customerHome.installIosHint', {
+                    defaultValue: 'On iPhone: tap Share, then choose Add to Home Screen.',
+                }),
+                { duration: 5000, icon: '📲' },
+            );
+            return;
+        }
+
+        toast(
+            t('customerHome.installNotAvailable', {
+                defaultValue: 'Install is not available right now. Try your mobile browser menu and tap Add to Home Screen.',
+            }),
+        );
+    }, [deferredInstallPrompt, isIosInstallHint, t]);
+
     const currentYear = new Date().getFullYear();
 
     return (
@@ -846,6 +933,16 @@ export default function CustomerHome() {
                             >
                                 {t('customerHome.heroCreateAccount', { defaultValue: 'Create Account' })}
                             </Button>
+                            {showInstallButton && (
+                                <Button
+                                    size="lg"
+                                    color="light"
+                                    onClick={handleAddToHomeScreen}
+                                    className="md:hidden !rounded-xl !border-white/40 !bg-white/10 !px-6 !py-3 !text-base !font-semibold !text-white backdrop-blur-md transition hover:!bg-white/20 hover:!border-white/60"
+                                >
+                                    📲 {t('customerHome.addToHomeScreen', { defaultValue: 'Add to home screen' })}
+                                </Button>
+                            )}
                         </div>
 
                         {/* Trust signals row */}
@@ -1326,8 +1423,7 @@ export default function CustomerHome() {
                 </div>
             </section>
 
-            <Modal
-                show={showLocationModal}
+            <Modal className="mobile-fullscreen-modal" show={showLocationModal}
                 size="xl"
                 onClose={() => setShowLocationModal(false)}
             >

@@ -189,7 +189,7 @@ export default function VendorDeliveryVehicles() {
                 </div>
             )}
 
-            <Modal show={editingIndex !== null} onClose={closeEditModal} size="lg">
+            <Modal className="mobile-fullscreen-modal" show={editingIndex !== null} onClose={closeEditModal} size="lg">
                 <Modal.Header>Edit Delivery Vehicle</Modal.Header>
                 <Modal.Body>
                     <div className="grid grid-cols-1 gap-4">
