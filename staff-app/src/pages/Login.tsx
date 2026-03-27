@@ -37,7 +37,7 @@ export default function Login() {
         <div className="grid w-full gap-6 lg:grid-cols-[1.25fr_0.75fr]">
           <section className="order-2 overflow-hidden rounded-[2rem] bg-[#1f2944] px-6 py-8 text-white shadow-[0_34px_90px_rgba(31,41,68,0.28)] sm:px-8 sm:py-10 lg:order-1 lg:px-10 lg:py-12">
             <div className="relative">
-              <img src="/light_logo.svg" alt="RentalBasic" className="h-14 w-auto sm:h-16" />
+              <img src="/dark_logo.svg" alt="RentalBasic" className="h-14 w-auto sm:h-16" />
 
 
               <h1 className="mt-6 max-w-3xl font-display text-4xl font-semibold leading-[0.95] sm:text-5xl lg:text-6xl">
