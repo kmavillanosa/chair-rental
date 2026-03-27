@@ -53,7 +53,7 @@ export default function Login() {
       setIsIosDevice(nextIsIosDevice);
       setIsIosSafari(nextIsIosSafari);
       setIsIosInstallHint(isMobileViewport && nextIsIosSafari && !isStandalone);
-      setShowInstallButton(isMobileViewport && !isStandalone && (Boolean(deferredInstallPrompt) || nextIsIosDevice));
+      setShowInstallButton(!isStandalone && (Boolean(deferredInstallPrompt) || nextIsIosDevice));
     };
 
     updateInstallAvailability();

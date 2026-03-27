@@ -291,7 +291,7 @@ export default function CustomerHome() {
             const isIosSafari = isIosDevice && /Safari/i.test(userAgent) && !/CriOS|FxiOS|EdgiOS/i.test(userAgent);
 
             setIsIosInstallHint(isMobileViewport && isIosSafari && !isStandalone);
-            setShowInstallButton(isMobileViewport && !isStandalone && (Boolean(deferredInstallPrompt) || isIosSafari));
+            setShowInstallButton(!isStandalone && (Boolean(deferredInstallPrompt) || isIosDevice));
         };
 
         updateInstallAvailability();
