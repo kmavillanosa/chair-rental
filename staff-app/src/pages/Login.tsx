@@ -1,10 +1,85 @@
 import { loginWithGoogle } from '../api/auth';
-import { useMemo } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useSearchParams } from 'react-router-dom';
+import toast from 'react-hot-toast';
+
+interface BeforeInstallPromptEvent extends Event {
+  prompt: () => Promise<void>;
+  userChoice: Promise<{ outcome: 'accepted' | 'dismissed'; platform: string }>;
+}
 
 export default function Login() {
   const [searchParams] = useSearchParams();
   const authError = useMemo(() => searchParams.get('error')?.trim() || '', [searchParams]);
+  const [deferredInstallPrompt, setDeferredInstallPrompt] = useState<BeforeInstallPromptEvent | null>(null);
+  const [showInstallButton, setShowInstallButton] = useState(false);
+  const [isIosInstallHint, setIsIosInstallHint] = useState(false);
+
+  useEffect(() => {
+    const handleBeforeInstallPrompt = (event: Event) => {
+      const installEvent = event as BeforeInstallPromptEvent;
+      installEvent.preventDefault();
+      setDeferredInstallPrompt(installEvent);
+    };
+
+    const handleAppInstalled = () => {
+      setDeferredInstallPrompt(null);
+    };
+
+    window.addEventListener('beforeinstallprompt', handleBeforeInstallPrompt as EventListener);
+    window.addEventListener('appinstalled', handleAppInstalled);
+
+    return () => {
+      window.removeEventListener('beforeinstallprompt', handleBeforeInstallPrompt as EventListener);
+      window.removeEventListener('appinstalled', handleAppInstalled);
+    };
+  }, []);
+
+  useEffect(() => {
+    const updateInstallAvailability = () => {
+      const isMobileViewport = window.matchMedia('(max-width: 768px)').matches;
+      const isStandalone =
+        window.matchMedia('(display-mode: standalone)').matches ||
+        Boolean((window.navigator as Navigator & { standalone?: boolean }).standalone);
+
+      const userAgent = window.navigator.userAgent;
+      const isIosDevice =
+        /iPad|iPhone|iPod/i.test(userAgent) ||
+        (userAgent.includes('Macintosh') && 'ontouchend' in document);
+      const isIosSafari = isIosDevice && /Safari/i.test(userAgent) && !/CriOS|FxiOS|EdgiOS/i.test(userAgent);
+
+      setIsIosInstallHint(isMobileViewport && isIosSafari && !isStandalone);
+      setShowInstallButton(isMobileViewport && !isStandalone && (Boolean(deferredInstallPrompt) || isIosSafari));
+    };
+
+    updateInstallAvailability();
+    window.addEventListener('resize', updateInstallAvailability);
+
+    return () => {
+      window.removeEventListener('resize', updateInstallAvailability);
+    };
+  }, [deferredInstallPrompt]);
+
+  const handleAddToHomeScreen = useCallback(async () => {
+    if (deferredInstallPrompt) {
+      await deferredInstallPrompt.prompt();
+      const choiceResult = await deferredInstallPrompt.userChoice;
+
+      if (choiceResult.outcome === 'accepted') {
+        toast.success('Great! RentalBasic staff app has been added to your home screen.');
+      }
+
+      setDeferredInstallPrompt(null);
+      return;
+    }
+
+    if (isIosInstallHint) {
+      toast('On iPhone: tap Share, then choose Add to Home Screen.', { duration: 5000, icon: '📲' });
+      return;
+    }
+
+    toast('Install is not available right now. Open your browser menu and tap Add to Home Screen.');
+  }, [deferredInstallPrompt, isIosInstallHint]);
 
   const workflowCards = [
     {
@@ -121,6 +196,16 @@ export default function Login() {
                   </svg>
                   Continue with Google
                 </button>
+
+                {showInstallButton && (
+                  <button
+                    type="button"
+                    onClick={handleAddToHomeScreen}
+                    className="mt-3 flex w-full items-center justify-center gap-2 rounded-2xl border border-slate-300 bg-white px-5 py-3 text-sm font-semibold text-slate-700 transition hover:-translate-y-0.5 hover:bg-slate-50 lg:hidden"
+                  >
+                    📲 Add to home screen
+                  </button>
+                )}
 
                 <div className="mt-6 rounded-2xl border border-slate-200 bg-slate-50 px-4 py-4 text-sm text-slate-600">
                   <p className="font-semibold text-slate-800">Access notes</p>
