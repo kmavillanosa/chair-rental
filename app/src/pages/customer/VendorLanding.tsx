@@ -332,7 +332,7 @@ export default function VendorLanding({ slugOverride }: { slugOverride?: string 
 
                 {(vendor.verificationBadge || vendor.isVerified) && (
                   <span className="inline-flex items-center gap-1 rounded-full border border-emerald-500/30 bg-emerald-500/15 px-2.5 py-0.5 text-[11px] font-semibold text-emerald-700 mb-4">
-                    ✓ {vendor.verificationBadge || t('vendorLandingPage.verifiedVendor')}
+                     {vendor.verificationBadge || t('vendorLandingPage.verifiedVendor')}
                   </span>
                 )}
 

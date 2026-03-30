@@ -7,6 +7,7 @@ import VendorLayout from '../../components/layout/VendorLayout';
 import { getMyVendor, updateMyVendor } from '../../api/vendors';
 import type { Vendor } from '../../types';
 import LoadingSpinner from '../../components/common/LoadingSpinner';
+import { HiLocationMarker, HiOfficeBuilding, HiSave } from 'react-icons/hi';
 
 type VendorForm = {
   businessName: string;
@@ -125,7 +126,7 @@ export default function MyShop() {
       }
 
       await updateMyVendor(updatePayload);
-      toast.success('Shop updated! ✅');
+      toast.success('Shop updated!');
     } catch (error: any) {
       toast.error(
         error?.response?.data?.message ||
@@ -162,7 +163,10 @@ export default function MyShop() {
 
   return (
     <VendorLayout>
-      <h1 className="mb-4 text-2xl font-bold text-gray-900 sm:mb-6 sm:text-4xl">🏪 My Shop</h1>
+      <h1 className="mb-4 inline-flex items-center gap-3 text-2xl font-bold text-gray-900 sm:mb-6 sm:text-4xl">
+        <HiOfficeBuilding className="h-9 w-9 text-blue-600" />
+        My Shop
+      </h1>
       <div className="mx-auto max-w-3xl space-y-5 rounded-2xl bg-white p-4 shadow sm:p-8">
         <div>
           <label className="block text-xl font-semibold mb-2">Business Name</label>
@@ -216,7 +220,10 @@ export default function MyShop() {
         </div>
         <div>
           <div className="mb-2 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-            <label className="block text-xl font-semibold">Pin Shop Location</label>
+            <label className="inline-flex items-center gap-2 text-xl font-semibold">
+              <HiLocationMarker className="h-6 w-6 text-blue-600" />
+              Pin Shop Location
+            </label>
             <Button color="light" onClick={handleUseCurrentLocation} disabled={locating} isProcessing={locating} className="w-full sm:w-auto">
               Use Current Location
             </Button>
@@ -262,13 +269,16 @@ export default function MyShop() {
           </div>
         </div>
         <div className="bg-blue-50 rounded-xl p-4">
-          <p className="text-lg font-semibold text-blue-800">🔗 Your Shop URL:</p>
+          <p className="text-lg font-semibold text-blue-800">Your Shop URL:</p>
           <a href={publicShopUrl} target="_blank" rel="noopener noreferrer" className="break-all text-sm text-blue-600 hover:underline sm:text-xl">
             {publicShopUrl}
           </a>
         </div>
         <Button size="lg" onClick={handleSave} disabled={saving} isProcessing={saving} className="w-full sm:w-auto">
-          💾 Save Changes
+          <span className="inline-flex items-center gap-2">
+            <HiSave className="h-5 w-5" />
+            Save Changes
+          </span>
         </Button>
       </div>
     </VendorLayout>

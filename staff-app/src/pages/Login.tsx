@@ -2,6 +2,7 @@ import { loginWithGoogle } from '../api/auth';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import toast from 'react-hot-toast';
+import { HiDeviceMobile } from 'react-icons/hi';
 
 interface BeforeInstallPromptEvent extends Event {
   prompt: () => Promise<void>;
@@ -78,14 +79,17 @@ export default function Login() {
     }
 
     if (isIosInstallHint) {
-      toast('iPhone requires Add to Home Screen in Safari. Tap Share then Add to Home Screen.', { duration: 5000, icon: '📲' });
+      toast('iPhone requires Add to Home Screen in Safari. Tap Share then Add to Home Screen.', {
+        duration: 5000,
+        icon: <HiDeviceMobile className="h-4 w-4" />,
+      });
       return;
     }
 
     if (isIosDevice && !isIosSafari) {
       toast('iPhone install is only supported in Safari. Open this page in Safari, then Add to Home Screen.', {
         duration: 5500,
-        icon: '📲',
+        icon: <HiDeviceMobile className="h-4 w-4" />,
       });
       return;
     }
@@ -215,7 +219,8 @@ export default function Login() {
                     onClick={handleAddToHomeScreen}
                     className="mt-3 flex w-full items-center justify-center gap-2 rounded-2xl border border-slate-300 bg-white px-5 py-3 text-sm font-semibold text-slate-700 transition hover:-translate-y-0.5 hover:bg-slate-50 lg:hidden"
                   >
-                    📲 Install
+                    <HiDeviceMobile className="h-5 w-5" aria-hidden="true" />
+                    Install
                   </button>
                 )}
 

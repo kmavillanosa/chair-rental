@@ -7,6 +7,7 @@ import type { Booking } from '../../types';
 import { BookingStatusBadge } from '../../components/common/StatusBadge';
 import { formatDate, formatCurrency } from '../../utils/format';
 import LoadingSpinner from '../../components/common/LoadingSpinner';
+import { HiCalendar, HiLocationMarker, HiSearch, HiX } from 'react-icons/hi';
 
 export default function MyBookings() {
   const [bookings, setBookings] = useState<Booking[]>([]);
@@ -26,12 +27,20 @@ export default function MyBookings() {
   return (
     <CustomerLayout>
       <div className="max-w-4xl mx-auto px-4 py-8">
-        <h1 className="text-4xl font-bold text-gray-900 mb-6">📅 My Bookings</h1>
+        <h1 className="mb-6 flex items-center gap-3 text-4xl font-bold text-gray-900">
+          <HiCalendar className="h-9 w-9 text-blue-600" />
+          <span>My Bookings</span>
+        </h1>
         {bookings.length === 0 ? (
           <div className="text-center py-20">
-            <p className="text-3xl text-gray-400">😔 No bookings yet.</p>
+            <p className="text-3xl text-gray-400">No bookings yet.</p>
             <p className="text-xl text-gray-400 mt-2">Find a rental partner and book equipment!</p>
-            <Button size="xl" className="mt-6" onClick={() => window.location.href = '/'}>🔍 Find Rental Partners</Button>
+            <Button size="xl" className="mt-6" onClick={() => window.location.href = '/'}>
+              <span className="inline-flex items-center gap-2">
+                <HiSearch className="h-5 w-5" />
+                Find Rental Partners
+              </span>
+            </Button>
           </div>
         ) : (
           <div className="space-y-4">
@@ -40,8 +49,16 @@ export default function MyBookings() {
                 <div className="flex justify-between items-start mb-4">
                   <div>
                     <h3 className="text-2xl font-bold">{b.vendor?.businessName}</h3>
-                    <p className="text-gray-500 text-lg">📅 {formatDate(b.startDate)} – {formatDate(b.endDate)}</p>
-                    {b.deliveryAddress && <p className="text-gray-500 text-lg">📍 {b.deliveryAddress}</p>}
+                    <p className="mt-1 inline-flex items-center gap-2 text-lg text-gray-500">
+                      <HiCalendar className="h-5 w-5" />
+                      {formatDate(b.startDate)} - {formatDate(b.endDate)}
+                    </p>
+                    {b.deliveryAddress && (
+                      <p className="mt-1 inline-flex items-center gap-2 text-lg text-gray-500">
+                        <HiLocationMarker className="h-5 w-5" />
+                        {b.deliveryAddress}
+                      </p>
+                    )}
                   </div>
                   <BookingStatusBadge status={b.status} />
                 </div>
@@ -67,7 +84,12 @@ export default function MyBookings() {
                 <div className="flex justify-between items-center">
                   <p className="text-2xl font-bold text-blue-600">{formatCurrency(b.totalAmount)}</p>
                   {b.status === 'pending' && (
-                    <Button color="failure" size="lg" onClick={() => cancel(b.id)}>❌ Cancel</Button>
+                    <Button color="failure" size="lg" onClick={() => cancel(b.id)}>
+                      <span className="inline-flex items-center gap-2">
+                        <HiX className="h-5 w-5" />
+                        Cancel
+                      </span>
+                    </Button>
                   )}
                 </div>
               </div>

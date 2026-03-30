@@ -11,6 +11,7 @@ import {
 import type { ItemType } from '../../types';
 import LoadingSpinner from '../../components/common/LoadingSpinner';
 import { useTranslation } from 'react-i18next';
+import { HiCollection } from 'react-icons/hi';
 
 interface ItemTypeForm {
   name: string;
@@ -128,7 +129,10 @@ export default function ItemTypesList() {
   return (
     <AdminLayout>
       <div className="flex justify-between items-center mb-6">
-        <h1 className="text-4xl font-bold text-gray-900">📦 {t('itemTypesList.title')}</h1>
+        <h1 className="inline-flex items-center gap-2 text-4xl font-bold text-gray-900">
+          <HiCollection className="h-9 w-9 text-slate-700" aria-hidden="true" />
+          {t('itemTypesList.title')}
+        </h1>
         <Button size="xl" onClick={openCreate}>+ {t('itemTypesList.addItemType')}</Button>
       </div>
 

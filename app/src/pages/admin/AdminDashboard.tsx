@@ -5,6 +5,7 @@ import { getAllVendors } from '../../api/vendors';
 import { getAllPayments } from '../../api/payments';
 import LoadingSpinner from '../../components/common/LoadingSpinner';
 import { useTranslation } from 'react-i18next';
+import { HiChartBar, HiCheckCircle, HiCreditCard, HiExclamation, HiShoppingBag } from 'react-icons/hi';
 
 export default function AdminDashboard() {
   const { t } = useTranslation();
@@ -25,20 +26,26 @@ export default function AdminDashboard() {
   }, []);
 
   const cards = [
-    { key: 'totalVendors', icon: '🏪', value: stats.vendors, color: 'bg-blue-100 text-blue-800' },
-    { key: 'activeVendors', icon: '✅', value: stats.active, color: 'bg-green-100 text-green-800' },
-    { key: 'totalPayments', icon: '💰', value: stats.payments, color: 'bg-yellow-100 text-yellow-800' },
-    { key: 'overduePayments', icon: '⚠️', value: stats.overdue, color: 'bg-red-100 text-red-800' },
+    { key: 'totalVendors', icon: HiShoppingBag, value: stats.vendors, color: 'bg-blue-100 text-blue-800' },
+    { key: 'activeVendors', icon: HiCheckCircle, value: stats.active, color: 'bg-green-100 text-green-800' },
+    { key: 'totalPayments', icon: HiCreditCard, value: stats.payments, color: 'bg-yellow-100 text-yellow-800' },
+    { key: 'overduePayments', icon: HiExclamation, value: stats.overdue, color: 'bg-red-100 text-red-800' },
   ];
 
   return (
     <AdminLayout>
-      <h1 className="text-4xl font-bold text-gray-900 mb-8">📊 {t('adminDashboard.title')}</h1>
+      <h1 className="mb-8 inline-flex items-center gap-2 text-4xl font-bold text-gray-900">
+        <HiChartBar className="h-9 w-9 text-slate-700" aria-hidden="true" />
+        {t('adminDashboard.title')}
+      </h1>
       {loading ? <LoadingSpinner /> : (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
           {cards.map(c => (
             <div key={c.key} className={`rounded-2xl p-6 ${c.color}`}>
-              <p className="text-lg font-semibold">{c.icon} {t(`adminDashboard.${c.key}`)}</p>
+              <p className="inline-flex items-center gap-2 text-lg font-semibold">
+                <c.icon className="h-5 w-5" aria-hidden="true" />
+                {t(`adminDashboard.${c.key}`)}
+              </p>
               <p className="text-5xl font-bold mt-2">{c.value}</p>
             </div>
           ))}

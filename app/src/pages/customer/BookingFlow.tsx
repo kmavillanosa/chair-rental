@@ -104,7 +104,7 @@ function createRouteArrowIcon(bearing: number) {
 
   return L.divIcon({
     className: 'route-direction-arrow',
-    html: `<span style="display:inline-block;transform:rotate(${cssRotation.toFixed(2)}deg);font-size:14px;color:#ea580c;text-shadow:0 0 2px #ffffff,0 0 4px #ffffff;">➤</span>`,
+    html: `<span style="display:inline-block;transform:rotate(${cssRotation.toFixed(2)}deg);font-size:14px;color:#ea580c;text-shadow:0 0 2px #ffffff,0 0 4px #ffffff;"></span>`,
     iconSize: [16, 16],
     iconAnchor: [8, 8],
   });
@@ -804,15 +804,15 @@ export default function BookingFlow() {
 
   const steps = hasPredefinedDates
     ? [
-      `📦 ${t('bookingFlow.stepItems')}`,
-      `📍 ${t('bookingFlow.stepDelivery')}`,
-      `✅ ${t('bookingFlow.stepConfirm')}`,
+      t('bookingFlow.stepItems'),
+      t('bookingFlow.stepDelivery'),
+      t('bookingFlow.stepConfirm'),
     ]
     : [
-      `📦 ${t('bookingFlow.stepItems')}`,
-      `📅 ${t('bookingFlow.stepDates')}`,
-      `📍 ${t('bookingFlow.stepDelivery')}`,
-      `✅ ${t('bookingFlow.stepConfirm')}`,
+      t('bookingFlow.stepItems'),
+      t('bookingFlow.stepDates'),
+      t('bookingFlow.stepDelivery'),
+      t('bookingFlow.stepConfirm'),
     ];
 
   // Get available quantity for an item based on selected dates
@@ -854,27 +854,27 @@ export default function BookingFlow() {
       return {
         text: 'Checking availability for your selected schedule...',
         className: 'bg-blue-50 border-blue-200 text-blue-700',
-        icon: 'ℹ️',
+        icon: 'ℹ',
       };
     }
     if (hasDateAvailabilityData && !hasPartiallyUnavailableItems) {
       return {
         text: `Your selected schedule is available: ${selectedDateRangeLabel}`,
         className: 'bg-green-50 border-green-200 text-green-700',
-        icon: '✅',
+        icon: 'i',
       };
     }
     if (hasDateAvailabilityData && hasPartiallyUnavailableItems) {
       return {
         text: `Dates already selected for some items: ${selectedDateRangeLabel}`,
         className: 'bg-amber-50 border-amber-200 text-amber-700',
-        icon: 'ℹ️',
+        icon: 'ℹ',
       };
     }
     return {
       text: `Dates already selected: ${selectedDateRangeLabel}`,
       className: 'bg-blue-50 border-blue-200 text-blue-700',
-      icon: 'ℹ️',
+      icon: 'ℹ',
     };
   })();
 
@@ -955,7 +955,7 @@ export default function BookingFlow() {
                       )}
                       {item.notes && (
                         <p className="mt-2 rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-sm text-amber-800 leading-snug">
-                          📝 {item.notes}
+                          {item.notes}
                         </p>
                       )}
                     </div>
@@ -1020,7 +1020,7 @@ export default function BookingFlow() {
             </div>
             {startDate && endDate && (
               <div>
-                <p className="text-xl text-blue-600 font-semibold">📅 {t('bookingFlow.daysSelected', { count: days })}</p>
+                <p className="text-xl text-blue-600 font-semibold">{t('bookingFlow.daysSelected', { count: days })}</p>
                 {checkingAvailability && <p className="text-sm text-gray-500 mt-2">Checking availability...</p>}
                 {!checkingAvailability && startDate && endDate && (
                   <div className="mt-4 p-3 bg-blue-50 rounded-lg">
@@ -1211,7 +1211,7 @@ export default function BookingFlow() {
           <div className="space-y-4">
             <h2 className="text-2xl font-bold mb-4">{t('bookingFlow.reviewBooking')}</h2>
             <div className="bg-white rounded-2xl shadow p-6 space-y-3">
-              <h3 className="text-xl font-bold text-gray-700">📦 {t('bookingFlow.itemsHeading')}</h3>
+              <h3 className="text-xl font-bold text-gray-700">{t('bookingFlow.itemsHeading')}</h3>
               {cartItems.map(i => {
                 const itemPictureUrl = getPrimaryItemImageUrl(i);
 
@@ -1226,21 +1226,21 @@ export default function BookingFlow() {
                 );
               })}
               <hr />
-              <div className="flex justify-between text-xl"><span>📅 {t('bookingFlow.daysLine')}</span><span>{days}</span></div>
-              <div className="flex justify-between text-xl"><span>📍 {t('bookingFlow.deliveryTo')}</span><span className="text-right max-w-xs">{deliveryAddress}</span></div>
+              <div className="flex justify-between text-xl"><span>{t('bookingFlow.daysLine')}</span><span>{days}</span></div>
+              <div className="flex justify-between text-xl"><span>{t('bookingFlow.deliveryTo')}</span><span className="text-right max-w-xs">{deliveryAddress}</span></div>
               {deliveryCoordinates && (
                 <div className="flex justify-between text-xl">
-                  <span>🧭 {t('bookingFlow.deliveryCoordinatesLine')}</span>
+                  <span>{t('bookingFlow.deliveryCoordinatesLine')}</span>
                   <span className="text-right max-w-xs">{formatCoordinates(deliveryCoordinates)}</span>
                 </div>
               )}
               {deliveryDistanceKm != null && (
-                <div className="flex justify-between text-xl"><span>🛣️ {t('bookingFlow.distanceLine')}</span><span>{deliveryDistanceKm.toFixed(1)} km</span></div>
+                <div className="flex justify-between text-xl"><span>{t('bookingFlow.distanceLine')}</span><span>{deliveryDistanceKm.toFixed(1)} km</span></div>
               )}
               <hr />
               <div className="flex justify-between text-xl"><span>{t('bookingFlow.subtotal')}</span><span>{formatCurrency(itemsSubtotal)}</span></div>
               <div className="flex justify-between text-xl"><span>{t('bookingFlow.deliveryCharge')}</span><span>{formatCurrency(deliveryCharge)}</span></div>
-              <div className="flex justify-between text-2xl font-bold"><span>💵 {t('bookingFlow.total')}</span><span>{formatCurrency(total)}</span></div>
+              <div className="flex justify-between text-2xl font-bold"><span>{t('bookingFlow.total')}</span><span>{formatCurrency(total)}</span></div>
               <p className="text-gray-400 text-sm">{t('bookingFlow.platformFeeIncluded', { fee: formatCurrency(platformFee) })}</p>
             </div>
             <div className="flex gap-4">
@@ -1252,7 +1252,7 @@ export default function BookingFlow() {
                 disabled={submitting || cartItems.length === 0}
                 isProcessing={submitting}
               >
-                🎉 {t('bookingFlow.confirmBooking')}
+                {t('bookingFlow.confirmBooking')}
               </Button>
             </div>
           </div>

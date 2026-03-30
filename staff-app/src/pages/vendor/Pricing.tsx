@@ -6,6 +6,7 @@ import { getDeliveryRates, addDeliveryRate, updateDeliveryRate, deleteDeliveryRa
 import type { DeliveryRate } from '../../types';
 import LoadingSpinner from '../../components/common/LoadingSpinner';
 import { formatCurrency } from '../../utils/format';
+import { HiCurrencyDollar } from 'react-icons/hi';
 
 export default function Pricing() {
   const [rates, setRates] = useState<DeliveryRate[]>([]);
@@ -56,7 +57,10 @@ export default function Pricing() {
 
   return (
     <VendorLayout>
-      <h1 className="text-4xl font-bold text-gray-900 mb-6">💵 Delivery Pricing</h1>
+      <h1 className="mb-6 inline-flex items-center gap-2 text-4xl font-bold text-gray-900">
+        <HiCurrencyDollar className="h-9 w-9 text-slate-700" aria-hidden="true" />
+        Delivery Pricing
+      </h1>
       <div className="bg-white rounded-2xl shadow p-6 mb-6">
         <h2 className="text-2xl font-bold mb-4">Add Delivery Rate</h2>
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-4">

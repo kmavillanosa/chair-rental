@@ -7,6 +7,7 @@ import { PaymentStatusBadge } from '../../components/common/StatusBadge';
 import { formatCurrency, formatDate } from '../../utils/format';
 import LoadingSpinner from '../../components/common/LoadingSpinner';
 import { useTranslation } from 'react-i18next';
+import { HiCreditCard, HiExclamation } from 'react-icons/hi';
 
 export default function VendorPayments() {
   const { t } = useTranslation();
@@ -20,13 +21,19 @@ export default function VendorPayments() {
 
   return (
     <VendorLayout>
-      <h1 className="text-4xl font-bold text-gray-900 mb-6">💰 {t('vendorPaymentsPage.title')}</h1>
+      <h1 className="mb-6 inline-flex items-center gap-2 text-4xl font-bold text-gray-900">
+        <HiCreditCard className="h-9 w-9 text-slate-700" aria-hidden="true" />
+        {t('vendorPaymentsPage.title')}
+      </h1>
       {overdue.length > 0 && (
         <div className="bg-red-100 border-l-4 border-red-500 text-red-700 p-4 mb-6 rounded-lg text-xl">
-          ❌ {t('vendorPaymentsPage.overdueBanner', {
-            count: overdue.length,
-            amount: formatCurrency(overdue.reduce((s, p) => s + p.amount, 0)),
-          })}
+          <span className="inline-flex items-center gap-2">
+            <HiExclamation className="h-5 w-5" aria-hidden="true" />
+            {t('vendorPaymentsPage.overdueBanner', {
+              count: overdue.length,
+              amount: formatCurrency(overdue.reduce((s, p) => s + p.amount, 0)),
+            })}
+          </span>
         </div>
       )}
 

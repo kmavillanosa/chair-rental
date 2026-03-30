@@ -6,6 +6,7 @@ import { getDeliveryRates, addDeliveryRate, updateDeliveryRate, deleteDeliveryRa
 import type { DeliveryRate } from '../../types';
 import LoadingSpinner from '../../components/common/LoadingSpinner';
 import { formatCurrency } from '../../utils/format';
+import { HiLocationMarker } from 'react-icons/hi';
 
 export default function DistancePricing() {
     const [rates, setRates] = useState<DeliveryRate[]>([]);
@@ -55,7 +56,10 @@ export default function DistancePricing() {
 
     return (
         <VendorLayout>
-            <h1 className="text-4xl font-bold text-gray-900 mb-6">📍 Distance Pricing</h1>
+            <h1 className="mb-6 inline-flex items-center gap-2 text-4xl font-bold text-gray-900">
+                <HiLocationMarker className="h-9 w-9 text-slate-700" aria-hidden="true" />
+                Distance Pricing
+            </h1>
             <p className="text-gray-600 mb-6">Set your delivery charges based on distance. Customers will be quoted based on the distance to their delivery location.</p>
 
             <div className="bg-white rounded-2xl shadow p-6 mb-6">

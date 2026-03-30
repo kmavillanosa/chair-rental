@@ -17,6 +17,7 @@ import {
 import type { Vendor } from '../../types';
 import LoadingSpinner from '../../components/common/LoadingSpinner';
 import { useTranslation } from 'react-i18next';
+import { HiExclamation, HiShoppingBag } from 'react-icons/hi';
 
 export default function VendorsList() {
   const { t } = useTranslation();
@@ -152,7 +153,10 @@ export default function VendorsList() {
   return (
     <AdminLayout>
       <div className="mb-6 flex items-center justify-between gap-3">
-        <h1 className="text-4xl font-bold text-gray-900">🏪 {t('vendorsList.title')}</h1>
+        <h1 className="inline-flex items-center gap-2 text-4xl font-bold text-gray-900">
+          <HiShoppingBag className="h-9 w-9 text-slate-700" aria-hidden="true" />
+          {t('vendorsList.title')}
+        </h1>
         <Button size="xl" onClick={() => setShowCreateModal(true)}>+ {t('vendorsList.addVendor')}</Button>
       </div>
       <div className="mb-4 rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
@@ -210,10 +214,13 @@ export default function VendorsList() {
 
             <div className="mt-4 grid grid-cols-2 gap-2">
               <Button size="xs" color={vendor.isVerified ? 'gray' : 'success'} onClick={() => handleVerify(vendor)}>
-                {vendor.isVerified ? `✓ ${t('vendorsList.verified')}` : t('vendorsList.verify')}
+                {vendor.isVerified ? t('vendorsList.verified') : t('vendorsList.verify')}
               </Button>
               <Button size="xs" color="warning" onClick={() => handleWarn(vendor)}>
-                ⚠️ {t('vendorsList.warn')}
+                <span className="inline-flex items-center gap-1">
+                  <HiExclamation className="h-4 w-4" aria-hidden="true" />
+                  {t('vendorsList.warn')}
+                </span>
               </Button>
               <Button size="xs" color={vendor.isActive ? 'failure' : 'success'} onClick={() => handleToggleActive(vendor)}>
                 {vendor.isActive ? t('vendorsList.suspend') : t('vendorsList.activate')}
@@ -258,9 +265,14 @@ export default function VendorsList() {
                 <Table.Cell>
                   <div className="flex gap-2 flex-wrap">
                     <Button size="sm" color={v.isVerified ? 'gray' : 'success'} onClick={() => handleVerify(v)}>
-                      {v.isVerified ? `✓ ${t('vendorsList.verified')}` : t('vendorsList.verify')}
+                      {v.isVerified ? t('vendorsList.verified') : t('vendorsList.verify')}
                     </Button>
-                    <Button size="sm" color="warning" onClick={() => handleWarn(v)}>⚠️ {t('vendorsList.warn')}</Button>
+                    <Button size="sm" color="warning" onClick={() => handleWarn(v)}>
+                      <span className="inline-flex items-center gap-1">
+                        <HiExclamation className="h-4 w-4" aria-hidden="true" />
+                        {t('vendorsList.warn')}
+                      </span>
+                    </Button>
                     <Button size="sm" color={v.isActive ? 'failure' : 'success'} onClick={() => handleToggleActive(v)}>
                       {v.isActive ? t('vendorsList.suspend') : t('vendorsList.activate')}
                     </Button>

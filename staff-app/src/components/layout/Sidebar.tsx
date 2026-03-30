@@ -1,37 +1,78 @@
 import { Link, useLocation } from 'react-router-dom';
 import { useEffect, useState } from 'react';
 import { useAuthStore } from '../../store/authStore';
-
-const adminLinks = [
-  { to: '/admin', label: 'Overview', exact: true },
-  { to: '/admin/customers', label: 'Customers', exact: true },
-  { to: '/admin/vendors/applicants', label: 'Applicants' },
-  { to: '/admin/vendors', label: 'Rental Partners', exact: true },
-  { to: '/admin/item-types', label: 'Item Types' },
-  { to: '/admin/brands', label: 'Brands' },
-  { to: '/admin/payments', label: 'Payments' },
-  { to: '/admin/fraud-alerts', label: 'Fraud Alerts' },
-  { to: '/admin/disputes', label: 'Disputes' },
-  { to: '/admin/settings/feature-flags', label: 'Feature Flags' },
-  { to: '/admin/settings/cancellation', label: 'Cancellation Policy' },
-  { to: '/admin/settings/kyc', label: 'KYC Controls' },
-];
+import {
+  HiAdjustments,
+  HiCalendar,
+  HiChartBar,
+  HiClipboardList,
+  HiCollection,
+  HiCreditCard,
+  HiCurrencyDollar,
+  HiLogout,
+  HiShoppingBag,
+  HiTruck,
+} from 'react-icons/hi';
+import type { IconType } from 'react-icons';
 
 interface MenuLink {
   to?: string;
   label: string;
-  icon?: string;
+  icon?: IconType;
   exact?: boolean;
   matchPrefixes?: string[];
   children?: MenuLink[];
 }
 
+const adminLinks: MenuLink[] = [
+  { to: '/admin', label: 'Overview', icon: HiChartBar, exact: true },
+  {
+    label: 'Vendors',
+    icon: HiShoppingBag,
+    matchPrefixes: ['/admin/vendors'],
+    children: [
+      { to: '/admin/vendors/applicants', label: 'Applicants' },
+      { to: '/admin/vendors', label: 'Rental Partners', exact: true },
+    ],
+  },
+  {
+    label: 'Operations',
+    icon: HiClipboardList,
+    matchPrefixes: ['/admin/customers', '/admin/disputes', '/admin/fraud-alerts'],
+    children: [
+      { to: '/admin/customers', label: 'Customers', exact: true },
+      { to: '/admin/disputes', label: 'Disputes' },
+      { to: '/admin/fraud-alerts', label: 'Fraud Alerts' },
+    ],
+  },
+  {
+    label: 'Catalog',
+    icon: HiCollection,
+    matchPrefixes: ['/admin/item-types', '/admin/brands'],
+    children: [
+      { to: '/admin/item-types', label: 'Item Types' },
+      { to: '/admin/brands', label: 'Brands' },
+    ],
+  },
+  { to: '/admin/payments', label: 'Payments', icon: HiCreditCard },
+  {
+    label: 'Settings',
+    icon: HiAdjustments,
+    matchPrefixes: ['/admin/settings'],
+    children: [
+      { to: '/admin/settings/feature-flags', label: 'Feature Flags' },
+      { to: '/admin/settings/cancellation', label: 'Cancellation Policy' },
+      { to: '/admin/settings/kyc', label: 'KYC Controls' },
+    ],
+  },
+];
+
 const vendorLinks: MenuLink[] = [
-  { to: '/vendor', label: 'Overview', icon: '📊', exact: true },
-  { to: '/vendor/inventory', label: 'Inventory', icon: '📦' },
+  { to: '/vendor', label: 'Overview', icon: HiChartBar, exact: true },
+  { to: '/vendor/inventory', label: 'Inventory', icon: HiCollection },
   {
     label: 'Bookings',
-    icon: '📅',
+    icon: HiCalendar,
     matchPrefixes: ['/vendor/bookings'],
     children: [
       { to: '/vendor/bookings', label: 'List of Bookings', exact: true },
@@ -40,16 +81,16 @@ const vendorLinks: MenuLink[] = [
   },
   {
     label: 'Pricing',
-    icon: '💵',
+    icon: HiCurrencyDollar,
     matchPrefixes: ['/vendor/pricing'],
     children: [
       { to: '/vendor/pricing/distance', label: 'Distance Pricing' },
       { to: '/vendor/pricing/helpers', label: 'Helper Pricing' },
     ],
   },
-  { to: '/vendor/vehicles', label: 'Delivery Vehicles', icon: '🚚' },
-  { to: '/vendor/shop', label: 'My Shop', icon: '🏪' },
-  { to: '/vendor/payments', label: 'Payments', icon: '💰' },
+  { to: '/vendor/vehicles', label: 'Delivery Vehicles', icon: HiTruck },
+  { to: '/vendor/shop', label: 'My Shop', icon: HiShoppingBag },
+  { to: '/vendor/payments', label: 'Payments', icon: HiCreditCard },
 ];
 
 interface Props {
@@ -75,6 +116,7 @@ function isPathActive(
 }
 
 function SidebarLink({ link, onNavigate, location }: { link: MenuLink; onNavigate?: () => void; location: ReturnType<typeof useLocation> }) {
+  const LinkIcon = link.icon;
   const linkIsActive = isPathActive(
     location.pathname,
     link.to,
@@ -109,7 +151,11 @@ function SidebarLink({ link, onNavigate, location }: { link: MenuLink; onNavigat
             }`}
         >
           <span className="inline-flex items-center gap-2">
-            <span aria-hidden="true">{link.icon || '•'}</span>
+            {LinkIcon ? (
+              <LinkIcon className="h-4 w-4" aria-hidden="true" />
+            ) : (
+              <span aria-hidden="true">•</span>
+            )}
             <span>{link.label}</span>
           </span>
           <svg
@@ -173,7 +219,11 @@ function SidebarLink({ link, onNavigate, location }: { link: MenuLink; onNavigat
         }`}
     >
       <span className="inline-flex items-center gap-2">
-        <span aria-hidden="true">{link.icon || '•'}</span>
+        {LinkIcon ? (
+          <LinkIcon className="h-4 w-4" aria-hidden="true" />
+        ) : (
+          <span aria-hidden="true">•</span>
+        )}
         <span>{link.label}</span>
       </span>
     </Link>
@@ -183,7 +233,7 @@ function SidebarLink({ link, onNavigate, location }: { link: MenuLink; onNavigat
 export default function Sidebar({ role, className = '', onNavigate, dataTour }: Props) {
   const location = useLocation();
   const { logout, user, adminToken, adminUser, stopImpersonation } = useAuthStore();
-  const links = role === 'admin' ? adminLinks : vendorLinks;
+  const links: MenuLink[] = role === 'admin' ? adminLinks : vendorLinks;
   const isImpersonating = Boolean(user?.impersonation?.active && adminToken && adminUser);
 
   return (
@@ -199,22 +249,9 @@ export default function Sidebar({ role, className = '', onNavigate, dataTour }: 
         />
       </div>
       <nav className="flex-1 min-h-0 overflow-y-auto p-4 space-y-1">
-        {role === 'admin'
-          ? links.map(({ to, label, exact }) => {
-            const active = exact ? location.pathname === to : location.pathname === to || location.pathname.startsWith(`${to}/`);
-            return (
-              <Link
-                key={to}
-                to={to}
-                onClick={() => onNavigate?.()}
-                className={`flex items-center px-3 py-2 rounded text-sm font-medium transition-colors ${active ? 'bg-[#b7e92f] text-[#1f2944]' : 'text-slate-100 hover:bg-[#2d3f63]'
-                  }`}
-              >
-                {label}
-              </Link>
-            );
-          })
-          : (links as MenuLink[]).map((link) => <SidebarLink key={link.label} link={link} onNavigate={onNavigate} location={location} />)}
+        {links.map((link) => (
+          <SidebarLink key={link.label} link={link} onNavigate={onNavigate} location={location} />
+        ))}
       </nav>
       <div className="border-t border-[#2d3f63] p-4">
         {isImpersonating && (
@@ -244,7 +281,10 @@ export default function Sidebar({ role, className = '', onNavigate, dataTour }: 
           }}
           className="w-full rounded-lg px-4 py-2 text-left text-base text-slate-100 transition-colors hover:bg-[#2d3f63]"
         >
-          Sign Out
+          <span className="inline-flex items-center gap-2">
+            <HiLogout className="h-5 w-5" aria-hidden="true" />
+            Sign Out
+          </span>
         </button>
       </div>
     </aside>

@@ -5,6 +5,7 @@ import VendorLayout from '../../components/layout/VendorLayout';
 import { getMyVendor, updateMyVendor } from '../../api/vendors';
 import type { Vendor } from '../../types';
 import LoadingSpinner from '../../components/common/LoadingSpinner';
+import { HiTruck } from 'react-icons/hi';
 
 const vehicleTypeOptions = [
     { value: 'van', label: 'Van' },
@@ -121,7 +122,10 @@ export default function VendorDeliveryVehicles() {
 
     return (
         <VendorLayout>
-            <h1 className="text-4xl font-bold text-gray-900 mb-6">🚐 Delivery Vehicles</h1>
+            <h1 className="mb-6 inline-flex items-center gap-2 text-4xl font-bold text-gray-900">
+                <HiTruck className="h-9 w-9 text-slate-700" aria-hidden="true" />
+                Delivery Vehicles
+            </h1>
             <p className="text-gray-600 mb-6">Manage the vehicles you use for deliveries. This helps customers understand your delivery capabilities.</p>
 
             <div className="bg-white rounded-2xl shadow p-6 mb-6">

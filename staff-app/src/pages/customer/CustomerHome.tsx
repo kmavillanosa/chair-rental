@@ -3,6 +3,7 @@ import { MapContainer, TileLayer, Marker, Popup } from 'react-leaflet';
 import { Button } from 'flowbite-react';
 import { useNavigate } from 'react-router-dom';
 import L from 'leaflet';
+import { HiCheckCircle, HiLocationMarker, HiSearch } from 'react-icons/hi';
 import CustomerLayout from '../../components/layout/CustomerLayout';
 import { getNearbyVendors } from '../../api/vendors';
 import type { Vendor } from '../../types';
@@ -47,11 +48,17 @@ export default function CustomerHome() {
       <div className="max-w-7xl mx-auto px-4 py-8">
         {/* Hero */}
         <div className="text-center mb-10">
-          <h1 className="text-5xl font-bold text-gray-900 mb-4">🪑 Find Event Equipment Near You</h1>
+          <h1 className="mb-4 flex items-center justify-center gap-3 text-5xl font-bold text-gray-900">
+            <HiLocationMarker className="h-10 w-10 text-blue-600" />
+            <span>Find Event Equipment Near You</span>
+          </h1>
           <p className="text-2xl text-gray-500 mb-8">Chairs • Tables • Videoke • Tents • More</p>
           <Button size="xl" onClick={findNearMe} disabled={loading} isProcessing={loading}
             className="text-2xl px-10 py-4">
-            📍 Search Near Me
+            <span className="inline-flex items-center gap-2">
+              <HiSearch className="h-6 w-6" />
+              Search Near Me
+            </span>
           </Button>
         </div>
 
@@ -81,7 +88,7 @@ export default function CustomerHome() {
             <div className="space-y-4 overflow-visible max-h-none lg:max-h-96 lg:overflow-y-auto">
               {vendors.length === 0 && (
                 <div className="text-center py-10">
-                  <p className="text-2xl text-gray-400">😔 No rental partners found nearby.</p>
+                  <p className="text-2xl text-gray-400">No rental partners found nearby.</p>
                   <p className="text-xl text-gray-400 mt-2">Try searching in a different area.</p>
                 </div>
               )}
@@ -91,13 +98,18 @@ export default function CustomerHome() {
                   <div className="flex justify-between items-start">
                     <div>
                       <h3 className="text-2xl font-bold text-gray-900">{v.businessName}</h3>
-                      <p className="text-gray-500 text-lg mt-1">📍 {v.address}</p>
-                      {v.distanceKm && <p className="text-blue-600 font-semibold text-lg mt-1">🚗 {v.distanceKm.toFixed(1)} km away</p>}
+                      <p className="text-gray-500 text-lg mt-1">{v.address}</p>
+                      {v.distanceKm && <p className="text-blue-600 font-semibold text-lg mt-1">{v.distanceKm.toFixed(1)} km away</p>}
                     </div>
-                    {v.isVerified && <span className="bg-green-100 text-green-800 text-sm px-3 py-1 rounded-full">✓ Verified</span>}
+                    {v.isVerified && (
+                      <span className="inline-flex items-center gap-1 rounded-full bg-green-100 px-3 py-1 text-sm text-green-800">
+                        <HiCheckCircle className="h-4 w-4" />
+                        Verified
+                      </span>
+                    )}
                   </div>
                   {v.description && <p className="text-gray-600 mt-2 text-lg line-clamp-2">{v.description}</p>}
-                  <Button color="blue" size="lg" className="mt-3 w-full">View Shop →</Button>
+                  <Button color="blue" size="lg" className="mt-3 w-full">View Shop</Button>
                 </div>
               ))}
             </div>

@@ -9,6 +9,7 @@ import type { InventoryItem, ItemType, ProductBrand } from '../../types';
 import LoadingSpinner from '../../components/common/LoadingSpinner';
 import { formatCurrency } from '../../utils/format';
 import { useTranslation } from 'react-i18next';
+import { HiCollection } from 'react-icons/hi';
 
 export default function Inventory() {
   const { t } = useTranslation();
@@ -86,7 +87,10 @@ export default function Inventory() {
   return (
     <VendorLayout>
       <div className="flex justify-between items-center mb-6">
-        <h1 className="text-4xl font-bold text-gray-900">📦 {t('inventoryPage.title')}</h1>
+        <h1 className="inline-flex items-center gap-2 text-4xl font-bold text-gray-900">
+          <HiCollection className="h-9 w-9 text-slate-700" aria-hidden="true" />
+          {t('inventoryPage.title')}
+        </h1>
         <Button size="lg" onClick={() => setShowModal(true)}>+ {t('inventoryPage.addItem')}</Button>
       </div>
       <div className="grid grid-cols-[repeat(auto-fill,minmax(240px,1fr))] gap-4">
@@ -99,11 +103,11 @@ export default function Inventory() {
               <h3 className="text-lg font-bold">{item.itemType?.name}</h3>
               <p className="text-sm text-gray-500">{item.brand?.name}</p>
               <div className="mt-2 space-y-0.5 text-base">
-                {item.color && <p>🎨 {t('inventoryPage.color')}: <strong>{item.color}</strong></p>}
-                <p>📦 {t('inventoryPage.total')}: <strong>{item.quantity}</strong></p>
-                <p>✅ {t('inventoryPage.available')}: <strong className="text-green-600">{item.availableQuantity}</strong></p>
-                <p>💵 {t('inventoryPage.rate')}: <strong>{formatCurrency(item.ratePerDay)}/day</strong></p>
-                {item.condition && <p>🔧 {t('inventoryPage.condition')}: {item.condition}</p>}
+                {item.color && <p>{t('inventoryPage.color')}: <strong>{item.color}</strong></p>}
+                <p>{t('inventoryPage.total')}: <strong>{item.quantity}</strong></p>
+                <p>{t('inventoryPage.available')}: <strong className="text-green-600">{item.availableQuantity}</strong></p>
+                <p>{t('inventoryPage.rate')}: <strong>{formatCurrency(item.ratePerDay)}/day</strong></p>
+                {item.condition && <p>{t('inventoryPage.condition')}: {item.condition}</p>}
               </div>
               <div className="mt-3 flex items-center gap-2">
                 <Button color="light" size="sm" onClick={() => openEditModal(item)}>{t('common.edit')}</Button>

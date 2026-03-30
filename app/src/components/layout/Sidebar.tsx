@@ -3,22 +3,40 @@ import { useAuthStore } from '../../store/authStore';
 import { useTranslation } from 'react-i18next';
 import LanguageSwitcher from '../common/LanguageSwitcher';
 import { clearPostLoginRedirect } from '../../utils/postLoginRedirect';
+import {
+  HiChartBar,
+  HiCollection,
+  HiCreditCard,
+  HiLogout,
+  HiShoppingBag,
+  HiTag,
+  HiCalendar,
+  HiCurrencyDollar,
+} from 'react-icons/hi';
+import type { IconType } from 'react-icons';
 
-const adminLinks = [
-  { to: '/admin', labelKey: 'nav.admin.overview', icon: '📊', exact: true },
-  { to: '/admin/vendors', labelKey: 'nav.admin.vendors', icon: '🏪' },
-  { to: '/admin/item-types', labelKey: 'nav.admin.itemTypes', icon: '📦' },
-  { to: '/admin/brands', labelKey: 'nav.admin.brands', icon: '🏷️' },
-  { to: '/admin/payments', labelKey: 'nav.admin.payments', icon: '💰' },
+interface NavLink {
+  to: string;
+  labelKey: string;
+  icon: IconType;
+  exact?: boolean;
+}
+
+const adminLinks: NavLink[] = [
+  { to: '/admin', labelKey: 'nav.admin.overview', icon: HiChartBar, exact: true },
+  { to: '/admin/vendors', labelKey: 'nav.admin.vendors', icon: HiShoppingBag },
+  { to: '/admin/item-types', labelKey: 'nav.admin.itemTypes', icon: HiCollection },
+  { to: '/admin/brands', labelKey: 'nav.admin.brands', icon: HiTag },
+  { to: '/admin/payments', labelKey: 'nav.admin.payments', icon: HiCreditCard },
 ];
 
-const vendorLinks = [
-  { to: '/vendor', labelKey: 'nav.vendor.overview', icon: '📊', exact: true },
-  { to: '/vendor/inventory', labelKey: 'nav.vendor.inventory', icon: '📦' },
-  { to: '/vendor/bookings', labelKey: 'nav.vendor.bookings', icon: '📅' },
-  { to: '/vendor/pricing', labelKey: 'nav.vendor.pricing', icon: '💵' },
-  { to: '/vendor/shop', labelKey: 'nav.vendor.shop', icon: '🏪' },
-  { to: '/vendor/payments', labelKey: 'nav.vendor.payments', icon: '💰' },
+const vendorLinks: NavLink[] = [
+  { to: '/vendor', labelKey: 'nav.vendor.overview', icon: HiChartBar, exact: true },
+  { to: '/vendor/inventory', labelKey: 'nav.vendor.inventory', icon: HiCollection },
+  { to: '/vendor/bookings', labelKey: 'nav.vendor.bookings', icon: HiCalendar },
+  { to: '/vendor/pricing', labelKey: 'nav.vendor.pricing', icon: HiCurrencyDollar },
+  { to: '/vendor/shop', labelKey: 'nav.vendor.shop', icon: HiShoppingBag },
+  { to: '/vendor/payments', labelKey: 'nav.vendor.payments', icon: HiCreditCard },
 ];
 
 interface Props {
@@ -48,7 +66,7 @@ export default function Sidebar({ role, className = '', onNavigate }: Props) {
         </div>
       </div>
       <nav className="flex-1 p-4 space-y-1">
-        {links.map(({ to, labelKey, icon, exact }) => {
+        {links.map(({ to, labelKey, icon: Icon, exact }) => {
           const active = exact ? location.pathname === to : location.pathname.startsWith(to);
           return (
             <Link
@@ -58,7 +76,9 @@ export default function Sidebar({ role, className = '', onNavigate }: Props) {
               className={`flex items-center px-4 py-3 rounded-lg text-lg font-medium transition-colors ${active ? 'bg-white text-blue-700' : 'hover:bg-blue-600'
                 }`}
             >
-              <span className="mr-2">{icon}</span>
+              <span className="mr-2" aria-hidden="true">
+                <Icon className="h-5 w-5" />
+              </span>
               {t(labelKey)}
             </Link>
           );
@@ -81,7 +101,10 @@ export default function Sidebar({ role, className = '', onNavigate }: Props) {
           }}
           className="w-full text-left px-4 py-2 rounded-lg hover:bg-blue-600 text-lg"
         >
-          🚪 {t('common.signOut')}
+          <span className="inline-flex items-center gap-2">
+            <HiLogout className="h-5 w-5" aria-hidden="true" />
+            {t('common.signOut')}
+          </span>
         </button>
       </div>
     </aside>

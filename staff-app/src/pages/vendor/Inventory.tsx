@@ -1,6 +1,6 @@
 import { type ChangeEvent, useEffect, useMemo, useRef, useState } from 'react';
 import { Button, Modal, TextInput, Select } from 'flowbite-react';
-import { HiCheck, HiChevronDown, HiSearch, HiX } from 'react-icons/hi';
+import { HiCheck, HiChevronDown, HiCollection, HiSearch, HiX } from 'react-icons/hi';
 import toast from 'react-hot-toast';
 import VendorLayout from '../../components/layout/VendorLayout';
 import { getInventory, createInventoryItem, updateInventoryItem, deleteInventoryItem } from '../../api/items';
@@ -288,7 +288,7 @@ function InventoryFormFields({
             />
           ) : (
             <div className="flex h-32 items-center justify-center rounded-xl bg-white text-4xl shadow-sm">
-              📦
+              <HiCollection className="h-12 w-12 text-cyan-500" />
             </div>
           )}
 
@@ -644,7 +644,7 @@ export default function Inventory() {
   return (
     <VendorLayout>
       <div className="flex justify-between items-center mb-6">
-        <h1 className="text-4xl font-bold text-gray-900">📦 My Inventory</h1>
+        <h1 className="text-4xl font-bold text-gray-900"> My Inventory</h1>
         <Button size="lg" onClick={() => setShowModal(true)}>+ Add Item</Button>
       </div>
       <div className="grid grid-cols-[repeat(auto-fill,minmax(240px,1fr))] gap-4">
@@ -660,13 +660,13 @@ export default function Inventory() {
               <h3 className="text-lg font-bold">{item.itemType?.name}</h3>
               <p className="text-sm text-gray-500">{item.brand?.name}</p>
               <div className="mt-2 space-y-0.5 text-base">
-                {item.color && <p>🎨 Color: <strong>{item.color}</strong></p>}
-                <p>📦 Total: <strong>{item.quantity}</strong></p>
-                <p>✅ Available: <strong className="text-green-600">{item.availableQuantity}</strong></p>
-                <p>💵 Rate: <strong>{formatCurrency(item.ratePerDay)}/day</strong></p>
-                <p>🖼️ Gallery: <strong>{galleryCount}/{VENDOR_GALLERY_LIMIT}</strong></p>
-                {item.condition && <p>🔧 Condition: {item.condition}</p>}
-                {item.notes && <p className="mt-1 rounded-lg border border-amber-200 bg-amber-50 px-2 py-1 text-xs text-amber-800">📝 Note: {item.notes}</p>}
+                {item.color && <p> Color: <strong>{item.color}</strong></p>}
+                <p> Total: <strong>{item.quantity}</strong></p>
+                <p> Available: <strong className="text-green-600">{item.availableQuantity}</strong></p>
+                <p> Rate: <strong>{formatCurrency(item.ratePerDay)}/day</strong></p>
+                <p> Gallery: <strong>{galleryCount}/{VENDOR_GALLERY_LIMIT}</strong></p>
+                {item.condition && <p> Condition: {item.condition}</p>}
+                {item.notes && <p className="mt-1 rounded-lg border border-amber-200 bg-amber-50 px-2 py-1 text-xs text-amber-800"> Note: {item.notes}</p>}
               </div>
               <div className="mt-3 flex flex-wrap items-center gap-2">
                 <Button color="light" size="sm" onClick={() => void openGalleryModal(item)}>Manage Photos</Button>

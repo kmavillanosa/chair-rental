@@ -522,7 +522,7 @@ export default function BecomeVendor() {
     return (
         <CustomerLayout>
             <div className="max-w-4xl mx-auto px-4 py-8">
-                <h1 className="text-4xl font-bold text-gray-900">🏪 {t('becomeVendorPage.titleRegistration')}</h1>
+                <h1 className="text-4xl font-bold text-gray-900">{t('becomeVendorPage.titleRegistration')}</h1>
                 <p className="text-gray-600 mt-2 text-lg">
                     {t('becomeVendorPage.intro')}
                 </p>

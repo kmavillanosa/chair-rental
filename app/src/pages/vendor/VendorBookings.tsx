@@ -8,6 +8,7 @@ import { BookingStatusBadge } from '../../components/common/StatusBadge';
 import { formatCurrency, formatDate } from '../../utils/format';
 import LoadingSpinner from '../../components/common/LoadingSpinner';
 import { useTranslation } from 'react-i18next';
+import { HiCalendar, HiCheck, HiClipboardList, HiEye, HiX } from 'react-icons/hi';
 
 export default function VendorBookings() {
     const { t } = useTranslation();
@@ -58,7 +59,10 @@ export default function VendorBookings() {
 
     return (
         <VendorLayout>
-            <h1 className="text-4xl font-bold text-gray-900 mb-6">📅 {t('vendorBookings.title')}</h1>
+            <h1 className="mb-6 inline-flex items-center gap-2 text-4xl font-bold text-gray-900">
+                <HiCalendar className="h-9 w-9 text-slate-700" aria-hidden="true" />
+                {t('vendorBookings.title')}
+            </h1>
 
             <div className="space-y-3 md:hidden">
                 {bookings.map((booking) => (
@@ -84,15 +88,35 @@ export default function VendorBookings() {
                         </dl>
 
                         <div className="mt-4 grid grid-cols-2 gap-2">
-                            <Button size="sm" color="info" onClick={() => openBookingDetails(booking)}>👁️ {t('common.view')}</Button>
+                            <Button size="sm" color="info" onClick={() => openBookingDetails(booking)}>
+                                <span className="inline-flex items-center gap-1">
+                                    <HiEye className="h-4 w-4" aria-hidden="true" />
+                                    {t('common.view')}
+                                </span>
+                            </Button>
                             {booking.status === 'pending' ? (
                                 <>
-                                    <Button size="sm" color="success" onClick={() => confirm(booking.id)}>✅ {t('vendorBookings.confirm')}</Button>
-                                    <Button size="sm" color="failure" onClick={() => cancel(booking.id)}>❌ {t('vendorBookings.cancel')}</Button>
+                                    <Button size="sm" color="success" onClick={() => confirm(booking.id)}>
+                                        <span className="inline-flex items-center gap-1">
+                                            <HiCheck className="h-4 w-4" aria-hidden="true" />
+                                            {t('vendorBookings.confirm')}
+                                        </span>
+                                    </Button>
+                                    <Button size="sm" color="failure" onClick={() => cancel(booking.id)}>
+                                        <span className="inline-flex items-center gap-1">
+                                            <HiX className="h-4 w-4" aria-hidden="true" />
+                                            {t('vendorBookings.cancel')}
+                                        </span>
+                                    </Button>
                                 </>
                             ) : null}
                             {booking.status === 'confirmed' ? (
-                                <Button size="sm" color="indigo" onClick={() => complete(booking.id)}>🎉 {t('vendorBookings.complete')}</Button>
+                                <Button size="sm" color="indigo" onClick={() => complete(booking.id)}>
+                                    <span className="inline-flex items-center gap-1">
+                                        <HiCheck className="h-4 w-4" aria-hidden="true" />
+                                        {t('vendorBookings.complete')}
+                                    </span>
+                                </Button>
                             ) : null}
                         </div>
                     </article>
@@ -119,15 +143,35 @@ export default function VendorBookings() {
                                 <Table.Cell><BookingStatusBadge status={booking.status} /></Table.Cell>
                                 <Table.Cell>
                                     <div className="flex gap-2 flex-wrap">
-                                        <Button size="sm" color="info" onClick={() => openBookingDetails(booking)}>👁️ View</Button>
+                                        <Button size="sm" color="info" onClick={() => openBookingDetails(booking)}>
+                                            <span className="inline-flex items-center gap-1">
+                                                <HiEye className="h-4 w-4" aria-hidden="true" />
+                                                View
+                                            </span>
+                                        </Button>
                                         {booking.status === 'pending' ? (
                                             <>
-                                                <Button size="sm" color="success" onClick={() => confirm(booking.id)}>✅ {t('vendorBookings.confirm')}</Button>
-                                                <Button size="sm" color="failure" onClick={() => cancel(booking.id)}>❌ {t('vendorBookings.cancel')}</Button>
+                                                <Button size="sm" color="success" onClick={() => confirm(booking.id)}>
+                                                    <span className="inline-flex items-center gap-1">
+                                                        <HiCheck className="h-4 w-4" aria-hidden="true" />
+                                                        {t('vendorBookings.confirm')}
+                                                    </span>
+                                                </Button>
+                                                <Button size="sm" color="failure" onClick={() => cancel(booking.id)}>
+                                                    <span className="inline-flex items-center gap-1">
+                                                        <HiX className="h-4 w-4" aria-hidden="true" />
+                                                        {t('vendorBookings.cancel')}
+                                                    </span>
+                                                </Button>
                                             </>
                                         ) : null}
                                         {booking.status === 'confirmed' ? (
-                                            <Button size="sm" color="indigo" onClick={() => complete(booking.id)}>🎉 {t('vendorBookings.complete')}</Button>
+                                            <Button size="sm" color="indigo" onClick={() => complete(booking.id)}>
+                                                <span className="inline-flex items-center gap-1">
+                                                    <HiCheck className="h-4 w-4" aria-hidden="true" />
+                                                    {t('vendorBookings.complete')}
+                                                </span>
+                                            </Button>
                                         ) : null}
                                     </div>
                                 </Table.Cell>
@@ -139,7 +183,10 @@ export default function VendorBookings() {
 
             <Modal className="mobile-fullscreen-modal" show={showModal} onClose={() => setShowModal(false)} size="2xl">
                 <Modal.Header>
-                    <span>📋 Booking Details{selectedBooking ? ` - ${selectedBooking.customer?.name}` : ''}</span>
+                    <span className="inline-flex items-center gap-2">
+                        <HiClipboardList className="h-5 w-5" aria-hidden="true" />
+                        Booking Details{selectedBooking ? ` - ${selectedBooking.customer?.name}` : ''}
+                    </span>
                 </Modal.Header>
                 <Modal.Body>
                     {selectedBooking ? (
@@ -184,7 +231,10 @@ export default function VendorBookings() {
                             </div>
 
                             <div>
-                                <h3 className="text-xl font-bold mb-3">📦 Items Requested</h3>
+                                <h3 className="mb-3 inline-flex items-center gap-2 text-xl font-bold">
+                                    <HiClipboardList className="h-5 w-5" aria-hidden="true" />
+                                    Items Requested
+                                </h3>
                                 <div className="space-y-2">
                                     {selectedBooking.items?.length ? (
                                         selectedBooking.items.map((item) => (
@@ -238,7 +288,10 @@ export default function VendorBookings() {
 
                             {selectedBooking.notes ? (
                                 <div>
-                                    <h3 className="font-semibold mb-2">📝 Special Instructions</h3>
+                                    <h3 className="mb-2 inline-flex items-center gap-2 font-semibold">
+                                        <HiClipboardList className="h-4 w-4" aria-hidden="true" />
+                                        Special Instructions
+                                    </h3>
                                     <div className="bg-yellow-50 rounded-lg p-3 border border-yellow-200">
                                         <p className="text-gray-700">{selectedBooking.notes}</p>
                                     </div>

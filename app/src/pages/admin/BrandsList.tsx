@@ -6,6 +6,7 @@ import { getBrands, createBrand, deleteBrand, getItemTypes, updateBrand } from '
 import type { ProductBrand, ItemType } from '../../types';
 import LoadingSpinner from '../../components/common/LoadingSpinner';
 import { useTranslation } from 'react-i18next';
+import { HiTag } from 'react-icons/hi';
 
 export default function BrandsList() {
   const { t } = useTranslation();
@@ -46,7 +47,10 @@ export default function BrandsList() {
   return (
     <AdminLayout>
       <div className="flex justify-between items-center mb-6">
-        <h1 className="text-4xl font-bold text-gray-900">🏷️ {t('brandsList.title')}</h1>
+        <h1 className="inline-flex items-center gap-2 text-4xl font-bold text-gray-900">
+          <HiTag className="h-9 w-9 text-slate-700" aria-hidden="true" />
+          {t('brandsList.title')}
+        </h1>
         <Button
           size="xl"
           onClick={() => {

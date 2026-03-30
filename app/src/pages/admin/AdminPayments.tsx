@@ -9,6 +9,7 @@ import { PaymentStatusBadge } from '../../components/common/StatusBadge';
 import { formatCurrency, formatDate } from '../../utils/format';
 import LoadingSpinner from '../../components/common/LoadingSpinner';
 import { useTranslation } from 'react-i18next';
+import { HiCreditCard } from 'react-icons/hi';
 
 export default function AdminPayments() {
   const { t } = useTranslation();
@@ -61,7 +62,10 @@ export default function AdminPayments() {
   return (
     <AdminLayout>
       <div className="mb-6 flex items-center justify-between gap-3">
-        <h1 className="text-4xl font-bold text-gray-900">💰 {t('adminPayments.title')}</h1>
+        <h1 className="inline-flex items-center gap-2 text-4xl font-bold text-gray-900">
+          <HiCreditCard className="h-9 w-9 text-slate-700" aria-hidden="true" />
+          {t('adminPayments.title')}
+        </h1>
         <Button size="xl" onClick={() => setShowCreateModal(true)}>+ {t('adminPayments.addPayment')}</Button>
       </div>
 

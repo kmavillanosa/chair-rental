@@ -11,6 +11,12 @@ import { useAuthStore } from '../../store/authStore';
 import { useTranslation } from 'react-i18next';
 import { getCurrentAppPath, savePostLoginRedirect } from '../../utils/postLoginRedirect';
 import type { TFunction } from 'i18next';
+import {
+    HiDeviceMobile,
+    HiLocationMarker,
+    HiSearch,
+    HiSparkles,
+} from 'react-icons/hi';
 
 // Fix Leaflet default icon when bundled by Vite.
 delete (L.Icon.Default.prototype as any)._getIconUrl;
@@ -866,7 +872,7 @@ export default function CustomerHome() {
                 t('customerHome.installIosHint', {
                     defaultValue: 'On iPhone: tap Share, then choose Add to Home Screen.',
                 }),
-                { duration: 5000, icon: '📲' },
+                { duration: 5000, icon: <HiDeviceMobile className="h-4 w-4" /> },
             );
             return;
         }
@@ -920,7 +926,10 @@ export default function CustomerHome() {
                                 onClick={scrollToSearchHero}
                                 className="!rounded-xl !bg-white !px-8 !py-3 !text-base !font-bold !text-[#04162e] shadow-2xl shadow-white/20 transition hover:!bg-blue-50 hover:shadow-white/40 hover:-translate-y-1"
                             >
-                                🔍&nbsp;{t('customerHome.heroFindRentals', { defaultValue: 'Find Rentals' })}
+                                <span className="inline-flex items-center gap-2">
+                                    <HiSearch className="h-5 w-5" aria-hidden="true" />
+                                    {t('customerHome.heroFindRentals', { defaultValue: 'Find Rentals' })}
+                                </span>
                             </Button>
                             <Button
                                 size="lg"
@@ -940,7 +949,10 @@ export default function CustomerHome() {
                                     onClick={handleAddToHomeScreen}
                                     className="md:hidden !rounded-xl !border-white/40 !bg-white/10 !px-6 !py-3 !text-base !font-semibold !text-white backdrop-blur-md transition hover:!bg-white/20 hover:!border-white/60"
                                 >
-                                    📲 {t('customerHome.addToHomeScreen', { defaultValue: 'Add to home screen' })}
+                                    <span className="inline-flex items-center gap-2">
+                                        <HiDeviceMobile className="h-5 w-5" aria-hidden="true" />
+                                        {t('customerHome.addToHomeScreen', { defaultValue: 'Add to home screen' })}
+                                    </span>
                                 </Button>
                             )}
                         </div>
@@ -1095,7 +1107,7 @@ export default function CustomerHome() {
                                 title={t('customerHome.locationPinTitle')}
                                 aria-label={t('customerHome.locationPinTitle')}
                             >
-                                📍
+                                <HiLocationMarker className="h-6 w-6 text-slate-700" aria-hidden="true" />
                             </button>
                             <span className="relative mx-2 inline-block align-middle">
                                 <input
@@ -1233,7 +1245,10 @@ export default function CustomerHome() {
                                 onClick={searchFromPin}
                                 className="!rounded-xl !bg-gradient-to-r !from-blue-600 !to-blue-700 !px-10 !py-3 !text-base !font-bold !text-white shadow-lg hover:!from-blue-700 hover:!to-blue-800 hover:shadow-xl hover:-translate-y-1 transition"
                             >
-                                ✨ {t('customerHome.letsGo')}
+                                <span className="inline-flex items-center gap-2">
+                                    <HiSparkles className="h-5 w-5" aria-hidden="true" />
+                                    {t('customerHome.letsGo')}
+                                </span>
                             </Button>
                             <Button
                                 size="lg"
@@ -1241,7 +1256,10 @@ export default function CustomerHome() {
                                 onClick={findNearMe}
                                 className="!rounded-xl !border-2 !border-slate-300 !bg-white !px-10 !py-3 !text-base !font-semibold !text-slate-700 hover:!border-slate-400 hover:!bg-slate-50 transition"
                             >
-                                📍 {t('customerHome.useCurrentLocation')}
+                                <span className="inline-flex items-center gap-2">
+                                    <HiLocationMarker className="h-5 w-5" aria-hidden="true" />
+                                    {t('customerHome.useCurrentLocation')}
+                                </span>
                             </Button>
                         </div>
 
@@ -1325,10 +1343,12 @@ export default function CustomerHome() {
 
                             <div className="mt-6 flex flex-wrap gap-3">
                                 <span className="inline-flex items-center gap-2 rounded-xl border border-white/30 bg-white/15 px-4 py-2 text-sm font-semibold text-white backdrop-blur-sm">
-                                    🤖 {t('customerHome.appComingAndroid')}
+                                    <HiDeviceMobile className="h-4 w-4" aria-hidden="true" />
+                                    {t('customerHome.appComingAndroid')}
                                 </span>
                                 <span className="inline-flex items-center gap-2 rounded-xl border border-white/30 bg-white/15 px-4 py-2 text-sm font-semibold text-white backdrop-blur-sm">
-                                    🍎 {t('customerHome.appComingIos')}
+                                    <HiDeviceMobile className="h-4 w-4" aria-hidden="true" />
+                                    {t('customerHome.appComingIos')}
                                 </span>
                             </div>
                         </div>

@@ -6,6 +6,7 @@ import { getDeliveryRates, addDeliveryRate, updateDeliveryRate, deleteDeliveryRa
 import type { DeliveryRate } from '../../types';
 import LoadingSpinner from '../../components/common/LoadingSpinner';
 import { formatCurrency } from '../../utils/format';
+import { HiUsers } from 'react-icons/hi';
 
 export default function HelperPricing() {
     const [rates, setRates] = useState<DeliveryRate[]>([]);
@@ -58,7 +59,10 @@ export default function HelperPricing() {
 
     return (
         <VendorLayout>
-            <h1 className="text-4xl font-bold text-gray-900 mb-6">👥 Helper Pricing</h1>
+            <h1 className="mb-6 inline-flex items-center gap-2 text-4xl font-bold text-gray-900">
+                <HiUsers className="h-9 w-9 text-slate-700" aria-hidden="true" />
+                Helper Pricing
+            </h1>
             <p className="text-gray-600 mb-6">Set your charges for providing additional helpers during delivery. Customers can request helpers when booking.</p>
 
             <div className="bg-white rounded-2xl shadow p-6 mb-6">

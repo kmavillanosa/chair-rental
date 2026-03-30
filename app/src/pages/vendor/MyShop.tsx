@@ -8,6 +8,7 @@ import { getMyVendor, updateMyVendor } from '../../api/vendors';
 import type { Vendor } from '../../types';
 import LoadingSpinner from '../../components/common/LoadingSpinner';
 import { useTranslation } from 'react-i18next';
+import { HiLink, HiSave, HiShoppingBag } from 'react-icons/hi';
 
 type VendorForm = {
     businessName: string;
@@ -163,7 +164,10 @@ export default function MyShop() {
 
     return (
         <VendorLayout>
-            <h1 className="mb-4 text-2xl font-bold text-gray-900 sm:mb-6 sm:text-4xl">🏪 {t('myShopPage.title')}</h1>
+            <h1 className="mb-4 inline-flex items-center gap-2 text-2xl font-bold text-gray-900 sm:mb-6 sm:text-4xl">
+                <HiShoppingBag className="h-8 w-8 text-slate-700" aria-hidden="true" />
+                {t('myShopPage.title')}
+            </h1>
             <div className="mx-auto max-w-3xl space-y-5 rounded-2xl bg-white p-4 shadow sm:p-8">
                 <div>
                     <label className="block text-xl font-semibold mb-2">{t('common.businessName')}</label>
@@ -267,14 +271,20 @@ export default function MyShop() {
                 </div>
 
                 <div className="bg-blue-50 rounded-xl p-4">
-                    <p className="text-lg font-semibold text-blue-800">🔗 {t('myShopPage.shopUrl')}</p>
+                    <p className="inline-flex items-center gap-2 text-lg font-semibold text-blue-800">
+                        <HiLink className="h-5 w-5" aria-hidden="true" />
+                        {t('myShopPage.shopUrl')}
+                    </p>
                     <a href={`/shop/${vendor?.slug}`} target="_blank" rel="noopener noreferrer" className="break-all text-sm text-blue-600 hover:underline sm:text-xl">
                         {window.location.origin}/shop/{vendor?.slug}
                     </a>
                 </div>
 
                 <Button size="lg" onClick={handleSave} disabled={saving} isProcessing={saving} className="w-full sm:w-auto">
-                    💾 {t('myShopPage.saveChanges')}
+                    <span className="inline-flex items-center gap-2">
+                        <HiSave className="h-5 w-5" aria-hidden="true" />
+                        {t('myShopPage.saveChanges')}
+                    </span>
                 </Button>
             </div>
         </VendorLayout>

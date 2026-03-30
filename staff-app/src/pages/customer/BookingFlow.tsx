@@ -11,6 +11,7 @@ import type { Vendor, InventoryItem } from '../../types';
 import { formatCurrency, calcDays } from '../../utils/format';
 import LoadingSpinner from '../../components/common/LoadingSpinner';
 import { useAuthStore } from '../../store/authStore';
+import { HiCalendar, HiClipboardCheck, HiCollection, HiLocationMarker, HiArrowLeft, HiArrowRight } from 'react-icons/hi';
 
 const getTodayDateInputValue = () => {
   const now = new Date();
@@ -112,7 +113,7 @@ export default function BookingFlow() {
         notes,
         items: cartItems.map(i => ({ inventoryItemId: i.id, quantity: cart[i.id] })),
       });
-      toast.success('🎉 Booking submitted! Wait for rental partner confirmation.');
+      toast.success('Booking submitted! Wait for rental partner confirmation.');
       navigate('/my-bookings');
     } catch (e: any) {
       toast.error(e.response?.data?.message || 'Booking failed. Please try again.');
@@ -123,7 +124,7 @@ export default function BookingFlow() {
 
   if (loading) return <CustomerLayout><LoadingSpinner size="lg" /></CustomerLayout>;
 
-  const steps = ['📦 Items', '📅 Dates', '📍 Delivery', '✅ Confirm'];
+  const steps = ['Items', 'Dates', 'Delivery', 'Confirm'];
 
   return (
     <CustomerLayout>
@@ -142,7 +143,10 @@ export default function BookingFlow() {
         {/* Step 1: Select Items */}
         {step === 1 && (
           <div className="space-y-4">
-            <h2 className="text-2xl font-bold mb-4">Select Items & Quantities</h2>
+            <h2 className="mb-4 inline-flex items-center gap-2 text-2xl font-bold">
+              <HiCollection className="h-7 w-7 text-blue-600" />
+              Select Items & Quantities
+            </h2>
             {inventory.map(item => (
               <div key={item.id} className="bg-white rounded-2xl shadow p-5 flex items-center justify-between">
                 <div>
@@ -181,14 +185,22 @@ export default function BookingFlow() {
                 )}
               </div>
             ))}
-            <Button size="xl" className="w-full mt-4" disabled={cartItems.length === 0} onClick={() => setStep(2)}>Next: Select Dates →</Button>
+            <Button size="xl" className="w-full mt-4" disabled={cartItems.length === 0} onClick={() => setStep(2)}>
+              <span className="inline-flex items-center gap-2">
+                Next: Select Dates
+                <HiArrowRight className="h-5 w-5" />
+              </span>
+            </Button>
           </div>
         )}
 
         {/* Step 2: Dates */}
         {step === 2 && (
           <div className="space-y-4">
-            <h2 className="text-2xl font-bold mb-4">When do you need the items?</h2>
+            <h2 className="mb-4 inline-flex items-center gap-2 text-2xl font-bold">
+              <HiCalendar className="h-7 w-7 text-blue-600" />
+              When do you need the items?
+            </h2>
             <div>
               <label className="block text-xl font-semibold mb-2">Start Date</label>
               <input type="date" value={startDate} onChange={e => setStartDate(e.target.value)} min={new Date().toISOString().split('T')[0]} className="w-full text-xl p-4 border rounded-xl" />
@@ -197,10 +209,20 @@ export default function BookingFlow() {
               <label className="block text-xl font-semibold mb-2">End Date</label>
               <input type="date" value={endDate} onChange={e => setEndDate(e.target.value)} min={startDate} className="w-full text-xl p-4 border rounded-xl" />
             </div>
-            {startDate && endDate && <p className="text-xl text-blue-600 font-semibold">📅 {days} day(s) selected</p>}
+            {startDate && endDate && <p className="text-xl text-blue-600 font-semibold">{days} day(s) selected</p>}
             <div className="flex gap-4">
-              <Button color="gray" size="xl" className="flex-1" onClick={() => setStep(1)}>← Back</Button>
-              <Button size="xl" className="flex-1" disabled={!startDate || !endDate} onClick={() => setStep(3)}>Next: Delivery →</Button>
+              <Button color="gray" size="xl" className="flex-1" onClick={() => setStep(1)}>
+                <span className="inline-flex items-center gap-2">
+                  <HiArrowLeft className="h-5 w-5" />
+                  Back
+                </span>
+              </Button>
+              <Button size="xl" className="flex-1" disabled={!startDate || !endDate} onClick={() => setStep(3)}>
+                <span className="inline-flex items-center gap-2">
+                  Next: Delivery
+                  <HiArrowRight className="h-5 w-5" />
+                </span>
+              </Button>
             </div>
           </div>
         )}
@@ -208,7 +230,10 @@ export default function BookingFlow() {
         {/* Step 3: Delivery */}
         {step === 3 && (
           <div className="space-y-4">
-            <h2 className="text-2xl font-bold mb-4">Where should we deliver?</h2>
+            <h2 className="mb-4 inline-flex items-center gap-2 text-2xl font-bold">
+              <HiLocationMarker className="h-7 w-7 text-blue-600" />
+              Where should we deliver?
+            </h2>
             <div>
               <label className="block text-xl font-semibold mb-2">Delivery Address</label>
               <TextInput value={deliveryAddress} onChange={e => setDeliveryAddress(e.target.value)} placeholder="House #, Street, Barangay, City" sizing="lg" />
@@ -218,8 +243,18 @@ export default function BookingFlow() {
               <textarea value={notes} onChange={e => setNotes(e.target.value)} placeholder="e.g. Call before delivery, gate code: 1234" className="w-full text-xl p-4 border rounded-xl" rows={3} />
             </div>
             <div className="flex gap-4">
-              <Button color="gray" size="xl" className="flex-1" onClick={() => setStep(2)}>← Back</Button>
-              <Button size="xl" className="flex-1" disabled={!deliveryAddress} onClick={() => setStep(4)}>Next: Review →</Button>
+              <Button color="gray" size="xl" className="flex-1" onClick={() => setStep(2)}>
+                <span className="inline-flex items-center gap-2">
+                  <HiArrowLeft className="h-5 w-5" />
+                  Back
+                </span>
+              </Button>
+              <Button size="xl" className="flex-1" disabled={!deliveryAddress} onClick={() => setStep(4)}>
+                <span className="inline-flex items-center gap-2">
+                  Next: Review
+                  <HiArrowRight className="h-5 w-5" />
+                </span>
+              </Button>
             </div>
           </div>
         )}
@@ -227,9 +262,12 @@ export default function BookingFlow() {
         {/* Step 4: Confirm */}
         {step === 4 && (
           <div className="space-y-4">
-            <h2 className="text-2xl font-bold mb-4">Review Your Booking</h2>
+            <h2 className="mb-4 inline-flex items-center gap-2 text-2xl font-bold">
+              <HiClipboardCheck className="h-7 w-7 text-blue-600" />
+              Review Your Booking
+            </h2>
             <div className="bg-white rounded-2xl shadow p-6 space-y-3">
-              <h3 className="text-xl font-bold text-gray-700">📦 Items</h3>
+              <h3 className="text-xl font-bold text-gray-700">Items</h3>
               {cartItems.map(i => (
                 <div key={i.id} className="flex justify-between text-xl">
                   <span>{i.itemType?.name} × {cart[i.id]}</span>
@@ -237,16 +275,21 @@ export default function BookingFlow() {
                 </div>
               ))}
               <hr />
-              <div className="flex justify-between text-xl"><span>📅 Days:</span><span>{days}</span></div>
-              <div className="flex justify-between text-xl"><span>📍 Delivery to:</span><span className="text-right max-w-xs">{deliveryAddress}</span></div>
+              <div className="flex justify-between text-xl"><span>Days:</span><span>{days}</span></div>
+              <div className="flex justify-between text-xl"><span>Delivery to:</span><span className="text-right max-w-xs">{deliveryAddress}</span></div>
               <hr />
-              <div className="flex justify-between text-2xl font-bold"><span>💵 Total:</span><span>{formatCurrency(total)}</span></div>
+              <div className="flex justify-between text-2xl font-bold"><span>Total:</span><span>{formatCurrency(total)}</span></div>
               <p className="text-gray-400 text-sm">Platform fee ({formatCurrency(platformFee)}) included in rental partner settlement.</p>
             </div>
             <div className="flex gap-4">
-              <Button color="gray" size="xl" className="flex-1" onClick={() => setStep(3)}>← Back</Button>
+              <Button color="gray" size="xl" className="flex-1" onClick={() => setStep(3)}>
+                <span className="inline-flex items-center gap-2">
+                  <HiArrowLeft className="h-5 w-5" />
+                  Back
+                </span>
+              </Button>
               <Button size="xl" className="flex-1 bg-green-500 hover:bg-green-600" onClick={handleBook} disabled={submitting} isProcessing={submitting}>
-                🎉 Confirm Booking!
+                Confirm Booking
               </Button>
             </div>
           </div>
