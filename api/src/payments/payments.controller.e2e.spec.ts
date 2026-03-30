@@ -1,5 +1,6 @@
 import 'reflect-metadata';
 import { INestApplication, ValidationPipe } from '@nestjs/common';
+import { GUARDS_METADATA } from '@nestjs/common/constants';
 import { Test } from '@nestjs/testing';
 import request from 'supertest';
 import { afterEach, beforeAll, beforeEach, describe, expect, it, vi } from 'vitest';
@@ -265,6 +266,15 @@ describe('PaymentsController (e2e)', () => {
 
     expect(response.status).toBe(200);
     expect(paymentsServiceMock.getDeliveryRates).toHaveBeenCalledWith('vendor-99');
+  });
+
+  it('does not attach auth guards to the public vendor delivery rates route', () => {
+    const guards = Reflect.getMetadata(
+      GUARDS_METADATA,
+      PaymentsController.prototype.getVendorDeliveryRates,
+    );
+
+    expect(guards).toBeUndefined();
   });
 
   it('updates delivery rate for current vendor', async () => {

@@ -111,8 +111,6 @@ export class PaymentsController {
     return this.service.getDeliveryRates(vendor.id);
   }
 
-  @UseGuards(JwtAuthGuard)
-  @ApiBearerAuth()
   @Get('delivery-rates/vendor/:vendorId')
   getVendorDeliveryRates(@Param('vendorId') vendorId: string) {
     return this.service.getDeliveryRates(vendorId);
