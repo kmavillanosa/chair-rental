@@ -57,6 +57,51 @@ const ADMIN_PACKAGE_SEED_DEFINITIONS: AdminPackageSeedDefinition[] = [
     ],
   },
   {
+    code: 'tables_bulk_bonus_10_plus_1',
+    name: 'Table Bulk Bonus (Rent 10 + 1 Free)',
+    description:
+      'Single-item promo package for folding tables with one bonus unit included in the reserved inventory.',
+    items: [
+      { itemTypeName: 'Folding tables', requiredQty: 11, suggestedUnitPrice: 272.73 },
+    ],
+  },
+  {
+    code: 'tent_bulk_bonus_2_plus_1',
+    name: 'Tent Bulk Bonus (Rent 2 + 1 Free)',
+    description:
+      'Single-item promo package for open tents where all delivered units are included in stock checks.',
+    items: [
+      { itemTypeName: 'Open tent', requiredQty: 3, suggestedUnitPrice: 6666.67 },
+    ],
+  },
+  {
+    code: 'lights_bulk_bonus_8_plus_2',
+    name: 'PAR Lights Bulk Bonus (Rent 8 + 2 Free)',
+    description:
+      'Single-item promo package for PAR lights with bonus units reflected directly in required quantity.',
+    items: [
+      { itemTypeName: 'PAR lights', requiredQty: 10, suggestedUnitPrice: 480 },
+    ],
+  },
+  {
+    code: 'speakers_bulk_bonus_4_plus_1',
+    name: 'PA Speakers Bulk Bonus (Rent 4 + 1 Free)',
+    description:
+      'Single-item promo package for PA speakers suitable for medium programs and barangay events.',
+    items: [
+      { itemTypeName: 'PA speakers', requiredQty: 5, suggestedUnitPrice: 2080 },
+    ],
+  },
+  {
+    code: 'backdrop_bulk_bonus_2_plus_1',
+    name: 'Backdrop Frames Bonus (Rent 2 + 1 Free)',
+    description:
+      'Single-item promo package for backdrop frames used in birthdays, debuts, and weddings.',
+    items: [
+      { itemTypeName: 'Backdrop frames', requiredQty: 3, suggestedUnitPrice: 3000 },
+    ],
+  },
+  {
     code: 'wedding_standard_150pax',
     name: 'Wedding Standard (150 pax)',
     description:
