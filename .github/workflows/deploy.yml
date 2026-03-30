@@ -44,6 +44,7 @@ jobs:
         env:
           VITE_VENDOR_DOMAIN: ${{ secrets.VENDOR_DOMAIN }}
           VITE_API_URL: ${{ secrets.VITE_API_URL }}
+          VITE_DOCS_URL: ${{ secrets.VITE_DOCS_URL }}
           VITE_VENDOR_LOGIN_URL: ${{ secrets.VITE_VENDOR_LOGIN_URL }}
           VITE_STAFF_APP_URL: ${{ secrets.VITE_STAFF_APP_URL }}
           VITE_CUSTOMER_APP_URL: ${{ secrets.VITE_CUSTOMER_APP_URL }}
@@ -51,7 +52,7 @@ jobs:
           set -euo pipefail
 
           npm run build --prefix api
-          VITE_VENDOR_DOMAIN="${VITE_VENDOR_DOMAIN}" VITE_API_URL="${VITE_API_URL}" VITE_VENDOR_LOGIN_URL="${VITE_VENDOR_LOGIN_URL}" VITE_STAFF_APP_URL="${VITE_STAFF_APP_URL}" npm run build --prefix app
+          VITE_VENDOR_DOMAIN="${VITE_VENDOR_DOMAIN}" VITE_API_URL="${VITE_API_URL}" VITE_DOCS_URL="${VITE_DOCS_URL}" VITE_VENDOR_LOGIN_URL="${VITE_VENDOR_LOGIN_URL}" VITE_STAFF_APP_URL="${VITE_STAFF_APP_URL}" npm run build --prefix app
           VITE_VENDOR_DOMAIN="${VITE_VENDOR_DOMAIN}" VITE_API_URL="${VITE_API_URL}" VITE_CUSTOMER_APP_URL="${VITE_CUSTOMER_APP_URL}" npm run build --prefix staff-app
 
           BUILD_TIMESTAMP="$(date -u +"%Y-%m-%dT%H:%M:%SZ")"

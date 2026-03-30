@@ -1,4 +1,5 @@
 import { Link, useLocation } from 'react-router-dom';
+import { resolveSafeDocsUrl } from '../../utils/envUrl';
 
 const legalLinks = [
     { to: '/legal/terms-of-service', label: 'Terms of Service' },
@@ -15,6 +16,7 @@ type LegalFooterProps = {
 export default function LegalFooter({ variant = 'light', className = '' }: LegalFooterProps) {
     const location = useLocation();
     const isDark = variant === 'dark';
+    const docsUrl = resolveSafeDocsUrl();
 
     return (
         <footer
@@ -33,6 +35,19 @@ export default function LegalFooter({ variant = 'light', className = '' }: Legal
                 </div>
 
                 <nav aria-label="Legal documents" className="flex flex-wrap gap-2">
+                    {docsUrl ? (
+                        <a
+                            href={docsUrl}
+                            target="_blank"
+                            rel="noreferrer"
+                            className={`rounded-full border px-3 py-1.5 text-sm font-medium transition ${isDark
+                                ? 'border-sky-300/40 text-sky-100 hover:border-sky-200/70 hover:bg-sky-300/10 hover:text-white'
+                                : 'border-sky-200 text-sky-700 hover:border-sky-300 hover:bg-sky-50 hover:text-sky-900'}`}
+                        >
+                            Documentation
+                        </a>
+                    ) : null}
+
                     {legalLinks.map((link) => {
                         const isActive = location.pathname === link.to;
 

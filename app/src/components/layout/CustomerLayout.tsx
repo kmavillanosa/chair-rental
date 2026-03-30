@@ -6,6 +6,7 @@ import { useTranslation } from 'react-i18next';
 import LanguageSwitcher from '../common/LanguageSwitcher';
 import LegalFooter from '../common/LegalFooter';
 import { clearPostLoginRedirect, getCurrentAppPath, savePostLoginRedirect } from '../../utils/postLoginRedirect';
+import { resolveSafeDocsUrl } from '../../utils/envUrl';
 
 interface CustomerLayoutProps {
   children?: React.ReactNode;
@@ -18,6 +19,7 @@ export default function CustomerLayout({ children, hideHeaderBackground = false 
   const { setIsOpen, setCurrentStep } = useTour();
   const location = useLocation();
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+  const docsUrl = resolveSafeDocsUrl();
 
   const isHomePage = location.pathname === '/';
   const showHeader = Boolean(user) || isHomePage;
@@ -105,6 +107,16 @@ export default function CustomerLayout({ children, hideHeaderBackground = false 
                 </button>
 
                 <div className="hidden items-center gap-2 md:flex">
+                  {docsUrl ? (
+                    <a
+                      href={docsUrl}
+                      target="_blank"
+                      rel="noreferrer"
+                      className={secondaryActionClass}
+                    >
+                      Documentation
+                    </a>
+                  ) : null}
                   {user ? (
                     <button onClick={handleSignOut} className={secondaryActionClass}>
                       {t('common.signOut')}
@@ -156,6 +168,17 @@ export default function CustomerLayout({ children, hideHeaderBackground = false 
 
                 {/* Auth action — full-width, easy tap target */}
                 <div className="border-t border-white/10 pt-3">
+                  {docsUrl ? (
+                    <a
+                      href={docsUrl}
+                      target="_blank"
+                      rel="noreferrer"
+                      className="mb-2 flex w-full items-center justify-center rounded-lg border border-white/20 px-4 py-3 text-sm font-semibold text-slate-200 transition hover:bg-white/10"
+                    >
+                      Documentation
+                    </a>
+                  ) : null}
+
                   {user ? (
                     <button
                       onClick={handleSignOut}

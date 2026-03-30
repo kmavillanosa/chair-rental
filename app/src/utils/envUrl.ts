@@ -25,6 +25,25 @@ export function resolveSafeUrl(configuredValue: string | undefined, fallbackValu
   }
 }
 
+export function resolveOptionalSafeUrl(configuredValue: string | undefined) {
+  const configured = String(configuredValue || '').trim();
+  if (!configured) return null;
+
+  try {
+    const parsed = new URL(configured);
+    if (isRunningOnPublicHost() && isLocalHostname(parsed.hostname)) {
+      return null;
+    }
+    return parsed.toString();
+  } catch {
+    return null;
+  }
+}
+
 export function resolveSafeApiBaseUrl() {
   return resolveSafeUrl(import.meta.env.VITE_API_URL, 'http://api.rentalbasic.com').replace(/\/+$/, '');
+}
+
+export function resolveSafeDocsUrl() {
+  return resolveOptionalSafeUrl(import.meta.env.VITE_DOCS_URL);
 }
