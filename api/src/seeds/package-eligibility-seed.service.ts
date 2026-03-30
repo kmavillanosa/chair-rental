@@ -46,6 +46,17 @@ const ADMIN_PACKAGE_SEED_DEFINITIONS: AdminPackageSeedDefinition[] = [
     ],
   },
   {
+    code: 'chairs_bulk_bonus_50_plus_5',
+    name: 'Chair Bulk Bonus (Rent 50 + 5 Free)',
+    description:
+      'Single-item promo package: customer gets 55 monoblock chairs while inventory reserves all 55 units.',
+    items: [
+      // Use 55 required qty so stock checks reserve all delivered units.
+      // Suggested unit price is set to an effective promo rate equivalent to paying for ~50 chairs.
+      { itemTypeName: 'Monoblock chairs', requiredQty: 55, suggestedUnitPrice: 25.45 },
+    ],
+  },
+  {
     code: 'wedding_standard_150pax',
     name: 'Wedding Standard (150 pax)',
     description:
