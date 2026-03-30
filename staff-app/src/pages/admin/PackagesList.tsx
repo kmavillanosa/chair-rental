@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from 'react';
-import { Button, Modal, Select, Table, TextInput, Textarea } from 'flowbite-react';
+import { Button, Modal, Table, TextInput, Textarea } from 'flowbite-react';
 import toast from 'react-hot-toast';
 import AdminLayout from '../../components/layout/AdminLayout';
 import LoadingSpinner from '../../components/common/LoadingSpinner';
@@ -15,6 +15,7 @@ import type { AdminPackageTemplate, ItemType } from '../../types';
 
 type PackageItemFormRow = {
     itemTypeId: string;
+    itemTypeSearch: string;
     requiredQty: string;
     suggestedUnitPrice: string;
 };
@@ -32,7 +33,7 @@ const EMPTY_FORM: PackageFormState = {
     name: '',
     description: '',
     isActive: true,
-    items: [{ itemTypeId: '', requiredQty: '1', suggestedUnitPrice: '' }],
+    items: [{ itemTypeId: '', itemTypeSearch: '', requiredQty: '1', suggestedUnitPrice: '' }],
 };
 
 export default function PackagesList() {
@@ -53,7 +54,7 @@ export default function PackagesList() {
         Promise.all([getAdminPackageTemplates(true), getAdminItemTypes()])
             .then(([packageTemplates, adminItemTypes]) => {
                 setTemplates(packageTemplates);
-                setItemTypes(adminItemTypes.filter((itemType) => itemType.isActive));
+                setItemTypes(adminItemTypes);
             })
             .finally(() => setLoading(false));
 
@@ -77,11 +78,12 @@ export default function PackagesList() {
             items: template.items.length
                 ? template.items.map((item) => ({
                     itemTypeId: item.itemTypeId,
+                    itemTypeSearch: item.itemType?.name || itemTypeById.get(item.itemTypeId) || '',
                     requiredQty: String(item.requiredQty),
                     suggestedUnitPrice:
                         item.suggestedUnitPrice == null ? '' : String(item.suggestedUnitPrice),
                 }))
-                : [{ itemTypeId: '', requiredQty: '1', suggestedUnitPrice: '' }],
+                : [{ itemTypeId: '', itemTypeSearch: '', requiredQty: '1', suggestedUnitPrice: '' }],
         });
         setShowModal(true);
     };
@@ -101,8 +103,26 @@ export default function PackagesList() {
     const addItemRow = () => {
         setForm((current) => ({
             ...current,
-            items: [...current.items, { itemTypeId: '', requiredQty: '1', suggestedUnitPrice: '' }],
+            items: [...current.items, { itemTypeId: '', itemTypeSearch: '', requiredQty: '1', suggestedUnitPrice: '' }],
         }));
+    };
+
+    const updateItemTypeSearch = (rowIndex: number, value: string) => {
+        const normalizedValue = value.trim().toLowerCase();
+        const matchedItemType = itemTypes.find(
+            (itemType) => itemType.name.trim().toLowerCase() === normalizedValue,
+        );
+
+        setForm((current) => {
+            const nextRows = [...current.items];
+            const row = nextRows[rowIndex];
+            nextRows[rowIndex] = {
+                ...row,
+                itemTypeSearch: value,
+                itemTypeId: matchedItemType ? matchedItemType.id : '',
+            };
+            return { ...current, items: nextRows };
+        });
     };
 
     const removeItemRow = (rowIndex: number) => {
@@ -303,9 +323,15 @@ export default function PackagesList() {
                 </Table>
             </div>
 
-            <Modal className="mobile-fullscreen-modal" show={showModal} onClose={() => setShowModal(false)} size="4xl">
+            <Modal className="fullscreen-modal" show={showModal} onClose={() => setShowModal(false)}>
                 <Modal.Header>{editingTemplate ? 'Edit Package' : 'Add Package'}</Modal.Header>
-                <Modal.Body className="space-y-4">
+                <Modal.Body className="space-y-4 overflow-y-auto">
+                    <datalist id="package-item-type-options">
+                        {itemTypes.map((itemType) => (
+                            <option key={itemType.id} value={itemType.name} />
+                        ))}
+                    </datalist>
+
                     <div className="grid gap-3 md:grid-cols-2">
                         <TextInput
                             placeholder="Code (e.g. wedding_standard)"
@@ -348,17 +374,17 @@ export default function PackagesList() {
                             {form.items.map((item, index) => (
                                 <div key={`row-${index}`} className="grid gap-2 md:grid-cols-12">
                                     <div className="md:col-span-6">
-                                        <Select
-                                            value={item.itemTypeId}
-                                            onChange={(event) => updateItemRow(index, 'itemTypeId', event.target.value)}
-                                        >
-                                            <option value="">Select item type</option>
-                                            {itemTypes.map((itemType) => (
-                                                <option key={itemType.id} value={itemType.id}>
-                                                    {itemType.name}
-                                                </option>
-                                            ))}
-                                        </Select>
+                                        <TextInput
+                                            list="package-item-type-options"
+                                            value={item.itemTypeSearch}
+                                            onChange={(event) => updateItemTypeSearch(index, event.target.value)}
+                                            placeholder="Search item type"
+                                        />
+                                        {item.itemTypeSearch.trim() !== '' && !item.itemTypeId ? (
+                                            <p className="mt-1 text-xs text-amber-700">
+                                                Select a matching item type from suggestions.
+                                            </p>
+                                        ) : null}
                                     </div>
                                     <div className="md:col-span-2">
                                         <TextInput
