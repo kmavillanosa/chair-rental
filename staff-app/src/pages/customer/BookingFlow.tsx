@@ -12,6 +12,7 @@ import { formatCurrency, calcDays } from '../../utils/format';
 import LoadingSpinner from '../../components/common/LoadingSpinner';
 import { useAuthStore } from '../../store/authStore';
 import { HiCalendar, HiClipboardCheck, HiCollection, HiLocationMarker, HiArrowLeft, HiArrowRight } from 'react-icons/hi';
+import { savePostLoginRedirect } from '../../utils/postLoginRedirect';
 
 const getTodayDateInputValue = () => {
   const now = new Date();
@@ -56,7 +57,11 @@ export default function BookingFlow() {
   };
 
   useEffect(() => {
-    if (!token) { navigate('/login'); return; }
+    if (!token) {
+      savePostLoginRedirect(`${window.location.pathname}${window.location.search}${window.location.hash}`);
+      navigate('/login');
+      return;
+    }
     if (!slug) return;
     getVendorBySlug(slug).then(v => { setVendor(v); return getInventory(v.id); }).then(setInventory).finally(() => setLoading(false));
   }, [slug]);

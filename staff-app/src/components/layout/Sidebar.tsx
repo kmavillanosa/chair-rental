@@ -1,6 +1,7 @@
 import { Link, useLocation } from 'react-router-dom';
 import { useEffect, useState } from 'react';
 import { useAuthStore } from '../../store/authStore';
+import { clearPostLoginRedirect } from '../../utils/postLoginRedirect';
 import {
   HiAdjustments,
   HiCalendar,
@@ -260,7 +261,7 @@ export default function Sidebar({ role, className = '', onNavigate, dataTour }: 
             onClick={() => {
               onNavigate?.();
               stopImpersonation();
-              window.location.href = '/admin';
+              window.location.href = user?.role === 'vendor' ? '/admin/vendors' : '/admin/customers';
             }}
             className="mb-3 w-full rounded-lg border border-[#b7e92f]/70 bg-[#b7e92f] px-4 py-2 text-left text-sm font-semibold text-[#1f2944] transition hover:brightness-95"
           >
@@ -278,6 +279,7 @@ export default function Sidebar({ role, className = '', onNavigate, dataTour }: 
           onClick={() => {
             onNavigate?.();
             logout();
+            clearPostLoginRedirect();
             window.location.href = '/login';
           }}
           className="w-full rounded-lg px-4 py-2 text-left text-base text-slate-100 transition-colors hover:bg-[#2d3f63]"

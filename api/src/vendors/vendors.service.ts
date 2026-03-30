@@ -198,6 +198,43 @@ export class VendorsService {
     return this.withVerificationBadge(vendor);
   }
 
+  async listPublicDirectory() {
+    let includeTestVendors = false;
+
+    try {
+      const flags = await this.settingsService.getFeatureFlagsSettings();
+      includeTestVendors = Boolean(flags.showTestVendorsOnCustomerMap);
+    } catch {
+      includeTestVendors = false;
+    }
+
+    const visibilityFilter = {
+      isActive: true,
+      isVerified: true,
+      ...(includeTestVendors ? {} : { isTestAccount: false }),
+    };
+
+    const vendors = await this.vendorsRepo.find({
+      where: [
+        {
+          ...visibilityFilter,
+          verificationStatus: In([
+            VendorVerificationStatus.VERIFIED_BUSINESS,
+            VendorVerificationStatus.VERIFIED_OWNER,
+          ]),
+        },
+        {
+          ...visibilityFilter,
+          registrationStatus: VendorRegistrationStatus.APPROVED,
+        },
+      ],
+      relations: ['user'],
+      order: { businessName: 'ASC' },
+    });
+
+    return vendors.map((vendor) => this.withVerificationBadge(vendor));
+  }
+
   async isSlugAvailable(slug: string, excludeId?: string) {
     const normalized = this.normalizeSlug(String(slug || ''));
     if (!normalized) return { available: false, slug: normalized };

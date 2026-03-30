@@ -1,153 +1,153 @@
-@tailwind base;
-@tailwind components;
-@tailwind utilities;
+  @tailwind base;
+  @tailwind components;
+  @tailwind utilities;
 
-:root {
-  --rb-navy-950: #1f2944;
-  --rb-navy-900: #243153;
-  --rb-navy-800: #2d3f63;
-  --rb-blue-700: #0d4ea8;
-  --rb-blue-600: #1561bf;
-  --rb-cyan-500: #2ab6e8;
-  --rb-lime-400: #b7e92f;
-  --rb-lime-500: #9fcd23;
-  --rb-surface-50: #f3f5f8;
-  --rb-text-900: #1f2d47;
-}
+  :root {
+    --rb-navy-950: #1f2944;
+    --rb-navy-900: #243153;
+    --rb-navy-800: #2d3f63;
+    --rb-blue-700: #0d4ea8;
+    --rb-blue-600: #1561bf;
+    --rb-cyan-500: #2ab6e8;
+    --rb-lime-400: #b7e92f;
+    --rb-lime-500: #9fcd23;
+    --rb-surface-50: #f3f5f8;
+    --rb-text-900: #1f2d47;
+  }
 
-body {
-  font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Text', 'SF Pro Display', 'Helvetica Neue', 'Segoe UI', Helvetica, Arial, sans-serif;
-  background-color: var(--rb-surface-50);
-  color: var(--rb-text-900);
-}
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Text', 'SF Pro Display', 'Helvetica Neue', 'Segoe UI', Helvetica, Arial, sans-serif;
+    background-color: var(--rb-surface-50);
+    color: var(--rb-text-900);
+  }
 
-h1,
-h2,
-h3,
-h4,
-h5,
-h6 {
-  font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Text', 'SF Pro Display', 'Helvetica Neue', 'Segoe UI', Helvetica, Arial, sans-serif;
-  letter-spacing: -0.01em;
-}
+  h1,
+  h2,
+  h3,
+  h4,
+  h5,
+  h6 {
+    font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Text', 'SF Pro Display', 'Helvetica Neue', 'Segoe UI', Helvetica, Arial, sans-serif;
+    letter-spacing: -0.01em;
+  }
 
-.font-display {
-  font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Text', 'SF Pro Display', 'Helvetica Neue', 'Segoe UI', Helvetica, Arial, sans-serif;
-}
+  .font-display {
+    font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Text', 'SF Pro Display', 'Helvetica Neue', 'Segoe UI', Helvetica, Arial, sans-serif;
+  }
 
-.leaflet-container {
-  width: 100%;
-  height: 100%;
-  border-radius: 0.5rem;
-}
-
-.vendor-result-popup .leaflet-popup-content-wrapper {
-  border-radius: 0.75rem;
-}
-
-.vendor-result-popup .leaflet-popup-content {
-  margin: 0.5rem 0.625rem;
-  line-height: 1.2;
-}
-
-.vendor-result-popup .leaflet-popup-content p {
-  margin: 0;
-}
-
-@media (max-width: 768px) {
-  .mobile-friendly-table {
+  .leaflet-container {
     width: 100%;
-    border-collapse: separate;
-    border-spacing: 0 0.6rem;
-    table-layout: fixed;
+    height: 100%;
+    border-radius: 0.5rem;
   }
 
-  .mobile-friendly-table thead {
-    display: none;
+  .vendor-result-popup .leaflet-popup-content-wrapper {
+    border-radius: 0.75rem;
   }
 
-  .mobile-friendly-table tbody,
-  .mobile-friendly-table tr,
-  .mobile-friendly-table td {
-    display: block;
-    width: 100%;
+  .vendor-result-popup .leaflet-popup-content {
+    margin: 0.5rem 0.625rem;
+    line-height: 1.2;
   }
 
-  .mobile-friendly-table tbody tr {
-    border: 1px solid #dbe4ef;
-    border-radius: 0.8rem;
-    background: #ffffff;
-    padding: 0.2rem 0.75rem;
-    box-shadow: 0 8px 22px rgba(15, 23, 42, 0.06);
-    transition: transform 140ms ease, box-shadow 140ms ease, border-color 140ms ease;
-    touch-action: pan-y;
+  .vendor-result-popup .leaflet-popup-content p {
+    margin: 0;
   }
 
-  .mobile-friendly-table tbody tr.mobile-swipe-left {
-    transform: translateX(-4px);
-    border-color: #bfdbfe;
-    box-shadow: 0 12px 28px rgba(37, 99, 235, 0.16);
-  }
+  @media (max-width: 768px) {
+    .mobile-friendly-table {
+      width: 100%;
+      border-collapse: separate;
+      border-spacing: 0 0.6rem;
+      table-layout: fixed;
+    }
 
-  .mobile-friendly-table tbody tr.mobile-swipe-right {
-    transform: translateX(4px);
-    border-color: #bae6fd;
-    box-shadow: 0 12px 28px rgba(14, 116, 144, 0.14);
-  }
+    .mobile-friendly-table thead {
+      display: none;
+    }
 
-  .mobile-friendly-table tbody td {
-    display: flex;
-    align-items: flex-start;
-    justify-content: space-between;
-    gap: 0.75rem;
-    border-bottom: 1px dashed #e2e8f0;
-    padding: 0.5rem 0;
-    white-space: normal;
-    word-break: break-word;
-    overflow-wrap: anywhere;
-    font-size: 0.82rem;
-    line-height: 1.3;
-  }
+    .mobile-friendly-table tbody,
+    .mobile-friendly-table tr,
+    .mobile-friendly-table td {
+      display: block;
+      width: 100%;
+    }
 
-  .mobile-friendly-table tbody td:last-child {
-    border-bottom: 0;
-  }
+    .mobile-friendly-table tbody tr {
+      border: 1px solid #dbe4ef;
+      border-radius: 0.8rem;
+      background: #ffffff;
+      padding: 0.2rem 0.75rem;
+      box-shadow: 0 8px 22px rgba(15, 23, 42, 0.06);
+      transition: transform 140ms ease, box-shadow 140ms ease, border-color 140ms ease;
+      touch-action: pan-y;
+    }
 
-  .mobile-friendly-table tbody td::before {
-    content: attr(data-label);
-    flex: 0 0 42%;
-    max-width: 42%;
-    color: #64748b;
-    font-size: 0.66rem;
-    font-weight: 700;
-    letter-spacing: 0.03em;
-    text-transform: uppercase;
-  }
+    .mobile-friendly-table tbody tr.mobile-swipe-left {
+      transform: translateX(-4px);
+      border-color: #bfdbfe;
+      box-shadow: 0 12px 28px rgba(37, 99, 235, 0.16);
+    }
 
-  .mobile-friendly-table td button,
-  .mobile-friendly-table td a {
-    max-width: 100%;
-    white-space: normal;
-  }
+    .mobile-friendly-table tbody tr.mobile-swipe-right {
+      transform: translateX(4px);
+      border-color: #bae6fd;
+      box-shadow: 0 12px 28px rgba(14, 116, 144, 0.14);
+    }
 
-  .mobile-friendly-table td > * {
-    margin-left: auto;
-  }
+    .mobile-friendly-table tbody td {
+      display: flex;
+      align-items: flex-start;
+      justify-content: space-between;
+      gap: 0.75rem;
+      border-bottom: 1px dashed #e2e8f0;
+      padding: 0.5rem 0;
+      white-space: normal;
+      word-break: break-word;
+      overflow-wrap: anywhere;
+      font-size: 0.82rem;
+      line-height: 1.3;
+    }
 
-  .mobile-fullscreen-modal {
-    padding: 0 !important;
-  }
+    .mobile-friendly-table tbody td:last-child {
+      border-bottom: 0;
+    }
 
-  .mobile-fullscreen-modal > div {
-    width: 100vw !important;
-    max-width: 100vw !important;
-    min-height: 100dvh !important;
-    margin: 0 !important;
-    padding: 0 !important;
-  }
+    .mobile-friendly-table tbody td::before {
+      content: attr(data-label);
+      flex: 0 0 42%;
+      max-width: 42%;
+      color: #64748b;
+      font-size: 0.66rem;
+      font-weight: 700;
+      letter-spacing: 0.03em;
+      text-transform: uppercase;
+    }
 
-  .mobile-fullscreen-modal > div > div {
-    min-height: 100dvh !important;
-    border-radius: 0 !important;
+    .mobile-friendly-table td button,
+    .mobile-friendly-table td a {
+      max-width: 100%;
+      white-space: normal;
+    }
+
+    .mobile-friendly-table td > * {
+      margin-left: auto;
+    }
+
+    .mobile-fullscreen-modal {
+      padding: 0 !important;
+    }
+
+    .mobile-fullscreen-modal > div {
+      width: 100vw !important;
+      max-width: 100vw !important;
+      min-height: 100dvh !important;
+      margin: 0 !important;
+      padding: 0 !important;
+    }
+
+    .mobile-fullscreen-modal > div > div {
+      min-height: 100dvh !important;
+      border-radius: 0 !important;
+    }
   }
-}

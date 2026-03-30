@@ -1,101 +1,39 @@
 import { loginWithGoogle } from '../api/auth';
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useMemo } from 'react';
 import { Link, useSearchParams } from 'react-router-dom';
-import toast from 'react-hot-toast';
-import { HiDeviceMobile } from 'react-icons/hi';
+import { motion } from 'framer-motion';
 
-interface BeforeInstallPromptEvent extends Event {
-  prompt: () => Promise<void>;
-  userChoice: Promise<{ outcome: 'accepted' | 'dismissed'; platform: string }>;
+const LOCAL_HOSTNAMES = new Set(['localhost', '127.0.0.1', '0.0.0.0', '::1']);
+
+function resolveSafeUrl(configuredValue: string | undefined, fallbackValue: string) {
+  const fallback = String(fallbackValue || '').trim();
+  const configured = String(configuredValue || '').trim();
+  if (!configured) return fallback;
+
+  try {
+    const parsed = new URL(configured);
+    const runningOnPublicHost =
+      typeof window === 'undefined' || !LOCAL_HOSTNAMES.has(window.location.hostname.toLowerCase());
+    if (runningOnPublicHost && LOCAL_HOSTNAMES.has(parsed.hostname.toLowerCase())) {
+      return fallback;
+    }
+    return parsed.toString();
+  } catch {
+    return fallback;
+  }
 }
 
 export default function Login() {
   const [searchParams] = useSearchParams();
   const authError = useMemo(() => searchParams.get('error')?.trim() || '', [searchParams]);
-  const [deferredInstallPrompt, setDeferredInstallPrompt] = useState<BeforeInstallPromptEvent | null>(null);
-  const [showInstallButton, setShowInstallButton] = useState(false);
-  const [isIosDevice, setIsIosDevice] = useState(false);
-  const [isIosSafari, setIsIosSafari] = useState(false);
-  const [isIosInstallHint, setIsIosInstallHint] = useState(false);
+  const customerAppUrl = useMemo(() => {
+    const fallback =
+      typeof window === 'undefined'
+        ? 'http://localhost:5173/app'
+        : new URL('/app', window.location.origin).toString();
 
-  useEffect(() => {
-    const handleBeforeInstallPrompt = (event: Event) => {
-      const installEvent = event as BeforeInstallPromptEvent;
-      installEvent.preventDefault();
-      setDeferredInstallPrompt(installEvent);
-    };
-
-    const handleAppInstalled = () => {
-      setDeferredInstallPrompt(null);
-    };
-
-    window.addEventListener('beforeinstallprompt', handleBeforeInstallPrompt as EventListener);
-    window.addEventListener('appinstalled', handleAppInstalled);
-
-    return () => {
-      window.removeEventListener('beforeinstallprompt', handleBeforeInstallPrompt as EventListener);
-      window.removeEventListener('appinstalled', handleAppInstalled);
-    };
+    return resolveSafeUrl(import.meta.env.VITE_CUSTOMER_APP_URL, fallback);
   }, []);
-
-  useEffect(() => {
-    const updateInstallAvailability = () => {
-      const isMobileViewport = window.matchMedia('(max-width: 768px)').matches;
-      const isStandalone =
-        window.matchMedia('(display-mode: standalone)').matches ||
-        Boolean((window.navigator as Navigator & { standalone?: boolean }).standalone);
-
-      const userAgent = window.navigator.userAgent;
-      const nextIsIosDevice =
-        /iPad|iPhone|iPod/i.test(userAgent) ||
-        (userAgent.includes('Macintosh') && 'ontouchend' in document);
-      const nextIsIosSafari = nextIsIosDevice && /Safari/i.test(userAgent) && !/CriOS|FxiOS|EdgiOS/i.test(userAgent);
-
-      setIsIosDevice(nextIsIosDevice);
-      setIsIosSafari(nextIsIosSafari);
-      setIsIosInstallHint(isMobileViewport && nextIsIosSafari && !isStandalone);
-      setShowInstallButton(!isStandalone && (Boolean(deferredInstallPrompt) || nextIsIosDevice));
-    };
-
-    updateInstallAvailability();
-    window.addEventListener('resize', updateInstallAvailability);
-
-    return () => {
-      window.removeEventListener('resize', updateInstallAvailability);
-    };
-  }, [deferredInstallPrompt]);
-
-  const handleAddToHomeScreen = useCallback(async () => {
-    if (deferredInstallPrompt) {
-      await deferredInstallPrompt.prompt();
-      const choiceResult = await deferredInstallPrompt.userChoice;
-
-      if (choiceResult.outcome === 'accepted') {
-        toast.success('Great! RentalBasic staff app has been added to your home screen.');
-      }
-
-      setDeferredInstallPrompt(null);
-      return;
-    }
-
-    if (isIosInstallHint) {
-      toast('iPhone requires Add to Home Screen in Safari. Tap Share then Add to Home Screen.', {
-        duration: 5000,
-        icon: <HiDeviceMobile className="h-4 w-4" />,
-      });
-      return;
-    }
-
-    if (isIosDevice && !isIosSafari) {
-      toast('iPhone install is only supported in Safari. Open this page in Safari, then Add to Home Screen.', {
-        duration: 5500,
-        icon: <HiDeviceMobile className="h-4 w-4" />,
-      });
-      return;
-    }
-
-    toast('Install is not available right now. Open your browser menu and tap Add to Home Screen.');
-  }, [deferredInstallPrompt, isIosDevice, isIosInstallHint, isIosSafari]);
 
   const workflowCards = [
     {
@@ -119,14 +57,24 @@ export default function Login() {
   ];
 
   return (
-    <div className="relative min-h-screen overflow-hidden bg-[#edf2f6] text-slate-900">
+    <motion.div
+      className="relative min-h-screen overflow-hidden bg-[#edf2f6] text-slate-900"
+      initial={{ opacity: 0 }}
+      animate={{ opacity: 1 }}
+      transition={{ duration: 0.25, ease: 'easeOut' }}
+    >
       <div className="absolute inset-0 bg-[radial-gradient(circle_at_16%_22%,rgba(13,79,168,0.22),transparent_32%),radial-gradient(circle_at_84%_78%,rgba(42,182,232,0.14),transparent_28%)]" />
       <div className="absolute -left-16 top-12 h-72 w-72 rounded-full bg-[#1f2944]/10 blur-3xl" />
       <div className="absolute -right-20 bottom-0 h-80 w-80 rounded-full bg-[#b7e92f]/10 blur-3xl" />
 
       <div className="relative mx-auto flex min-h-screen max-w-7xl items-center px-4 py-8 sm:px-6 lg:px-8">
         <div className="grid w-full gap-6 lg:grid-cols-[1.25fr_0.75fr]">
-          <section className="order-2 hidden overflow-hidden rounded-[2rem] bg-[#1f2944] px-6 py-8 text-white shadow-[0_34px_90px_rgba(31,41,68,0.28)] lg:block sm:px-8 sm:py-10 lg:order-1 lg:px-10 lg:py-12">
+          <motion.section
+            className="order-2 hidden overflow-hidden rounded-[2rem] bg-[#1f2944] px-6 py-8 text-white shadow-[0_34px_90px_rgba(31,41,68,0.28)] lg:block sm:px-8 sm:py-10 lg:order-1 lg:px-10 lg:py-12"
+            initial={{ opacity: 0, x: -18 }}
+            animate={{ opacity: 1, x: 0 }}
+            transition={{ duration: 0.28, delay: 0.08, ease: 'easeOut' }}
+          >
             <div className="relative">
               <img src="/dark_logo.svg" alt="RentalBasic" className="h-14 w-auto sm:h-16" />
 
@@ -142,16 +90,20 @@ export default function Login() {
 
               <div className="mt-8 grid gap-3 sm:grid-cols-3">
                 {workflowCards.map((card) => (
-                  <article
+                  <motion.article
                     key={card.title}
                     className="rounded-2xl border border-white/12 bg-white/8 p-4 backdrop-blur-sm"
+                    initial={{ opacity: 0, y: 12 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    transition={{ duration: 0.22 }}
+                    whileHover={{ y: -2 }}
                   >
                     <p className="text-xs font-semibold uppercase tracking-[0.16em] text-[#b7e92f]">
                       {card.subtitle}
                     </p>
                     <p className="mt-2 text-lg font-semibold text-white">{card.title}</p>
                     <p className="mt-1 text-sm leading-5 text-slate-200/85">{card.description}</p>
-                  </article>
+                  </motion.article>
                 ))}
               </div>
 
@@ -162,9 +114,14 @@ export default function Login() {
                 <span className="rounded-full border border-white/20 bg-white/10 px-3 py-1.5">Actionable operations view</span>
               </div>
             </div>
-          </section>
+          </motion.section>
 
-          <section className="order-1 rounded-[2rem] border border-slate-200/80 bg-white/92 p-6 shadow-[0_26px_70px_rgba(15,23,42,0.14)] backdrop-blur sm:p-8 lg:order-2 lg:p-10">
+          <motion.section
+            className="order-1 rounded-[2rem] border border-slate-200/80 bg-white/92 p-6 shadow-[0_26px_70px_rgba(15,23,42,0.14)] backdrop-blur sm:p-8 lg:order-2 lg:p-10"
+            initial={{ opacity: 0, y: 20, scale: 0.99 }}
+            animate={{ opacity: 1, y: 0, scale: 1 }}
+            transition={{ duration: 0.28, delay: 0.12, ease: 'easeOut' }}
+          >
             <div className="flex h-full flex-col justify-between">
               <div>
                 <div className="mb-6 flex items-center justify-between gap-3">
@@ -179,7 +136,7 @@ export default function Login() {
                     </Link>
 
                     <a
-                      href="https://rentalbasic.com"
+                      href={customerAppUrl}
                       className="inline-flex items-center gap-2 rounded-xl border border-slate-300 bg-white px-4 py-2 text-xs font-semibold text-slate-700 shadow-sm transition hover:-translate-y-0.5 hover:bg-slate-50"
                     >
                       <svg className="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
@@ -208,10 +165,15 @@ export default function Login() {
                   </div>
                 )}
 
-                <button
+                <motion.button
                   type="button"
                   onClick={loginWithGoogle}
                   className="mt-8 flex w-full items-center justify-center gap-3 rounded-2xl border border-[#1f2944]/15 bg-[#1f2944] px-5 py-4 text-sm font-semibold text-white shadow-[0_16px_36px_rgba(31,41,68,0.22)] transition hover:-translate-y-0.5 hover:bg-[#243153]"
+                  whileHover={{ y: -2, scale: 1.01 }}
+                  whileTap={{ scale: 0.985 }}
+                  initial={{ opacity: 0, y: 8 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ duration: 0.2, delay: 0.18 }}
                 >
                   <svg className="h-5 w-5 shrink-0 rounded-full bg-white p-0.5" viewBox="0 0 24 24" aria-hidden="true">
                     <path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z" />
@@ -220,18 +182,7 @@ export default function Login() {
                     <path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z" />
                   </svg>
                   Continue with Google
-                </button>
-
-                {showInstallButton && (
-                  <button
-                    type="button"
-                    onClick={handleAddToHomeScreen}
-                    className="mt-3 flex w-full items-center justify-center gap-2 rounded-2xl border border-slate-300 bg-white px-5 py-3 text-sm font-semibold text-slate-700 transition hover:-translate-y-0.5 hover:bg-slate-50 lg:hidden"
-                  >
-                    <HiDeviceMobile className="h-5 w-5" aria-hidden="true" />
-                    Install
-                  </button>
-                )}
+                </motion.button>
 
                 <div className="mt-6 rounded-2xl border border-slate-200 bg-slate-50 px-4 py-4 text-sm text-slate-600">
                   <p className="font-semibold text-slate-800">Access notes</p>
@@ -247,9 +198,9 @@ export default function Login() {
                 Protected workspace with role-based routing and centralized operations access.
               </div>
             </div>
-          </section>
+          </motion.section>
         </div>
       </div>
-    </div>
+    </motion.div>
   );
 }

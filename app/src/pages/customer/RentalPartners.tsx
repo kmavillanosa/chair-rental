@@ -8,13 +8,13 @@ import {
     addFavoriteVendor,
     getMyFavoriteVendorIds,
     getNearbyVendors,
+    getPublicVendorDirectory,
     removeFavoriteVendor,
 } from '../../api/vendors';
 import type { Vendor } from '../../types';
 import { useAuthStore } from '../../store/authStore';
 import { getCurrentAppPath, savePostLoginRedirect } from '../../utils/postLoginRedirect';
 
-const DIRECTORY_CENTER: [number, number] = [12.8797, 121.774];
 const DIRECTORY_RADIUS_KM = 20000;
 
 function formatDistance(distanceKm?: number) {
@@ -34,31 +34,85 @@ export default function RentalPartners() {
     const [favoritesLoading, setFavoritesLoading] = useState(false);
     const [activeFavoriteVendorId, setActiveFavoriteVendorId] = useState<string | null>(null);
     const [showOnlyFavorites, setShowOnlyFavorites] = useState(false);
+    const [hasRealDistanceOrigin, setHasRealDistanceOrigin] = useState(false);
 
     const canManageFavorites = Boolean(token) && user?.role === 'customer';
 
     useEffect(() => {
+        let cancelled = false;
+
         setLoading(true);
         setError(null);
 
-        getNearbyVendors(DIRECTORY_CENTER[0], DIRECTORY_CENTER[1], {
-            radius: DIRECTORY_RADIUS_KM,
-            helpersNeeded: 0,
-        })
-            .then((vendors) => {
-                const normalized = [...vendors].sort((a, b) =>
-                    a.businessName.localeCompare(b.businessName),
-                );
-                setPartners(normalized);
-            })
-            .catch((requestError: any) => {
-                const message =
-                    requestError?.response?.data?.message ||
-                    'Unable to load rental partners right now.';
-                setError(message);
-                setPartners([]);
-            })
-            .finally(() => setLoading(false));
+        const applyDirectory = (vendors: Vendor[], withDistanceOrigin: boolean) => {
+            if (cancelled) return;
+
+            const normalized = [...vendors].sort((a, b) =>
+                a.businessName.localeCompare(b.businessName),
+            );
+            setHasRealDistanceOrigin(withDistanceOrigin);
+            setPartners(normalized);
+            setLoading(false);
+        };
+
+        const loadPublicDirectory = async () => {
+            const vendors = await getPublicVendorDirectory();
+            applyDirectory(vendors, false);
+        };
+
+        const loadNearbyFromCurrentLocation = async (latitude: number, longitude: number) => {
+            const vendors = await getNearbyVendors(latitude, longitude, {
+                radius: DIRECTORY_RADIUS_KM,
+                helpersNeeded: 0,
+            });
+            applyDirectory(vendors, true);
+        };
+
+        const handleLoadFailure = (requestError: any) => {
+            if (cancelled) return;
+
+            const message =
+                requestError?.response?.data?.message ||
+                'Unable to load rental partners right now.';
+            setError(message);
+            setPartners([]);
+            setHasRealDistanceOrigin(false);
+            setLoading(false);
+        };
+
+        if (!navigator.geolocation) {
+            loadPublicDirectory().catch(handleLoadFailure);
+            return () => {
+                cancelled = true;
+            };
+        }
+
+        navigator.geolocation.getCurrentPosition(
+            (position) => {
+                void loadNearbyFromCurrentLocation(
+                    position.coords.latitude,
+                    position.coords.longitude,
+                ).catch(async () => {
+                    try {
+                        await loadPublicDirectory();
+                    } catch (requestError: any) {
+                        handleLoadFailure(requestError);
+                    }
+                });
+            },
+            () => {
+                void loadPublicDirectory().catch(handleLoadFailure);
+            },
+            {
+                enableHighAccuracy: true,
+                timeout: 8000,
+                maximumAge: 300000,
+            },
+        );
+
+        return () => {
+            cancelled = true;
+        };
     }, []);
 
     useEffect(() => {
@@ -168,6 +222,11 @@ export default function RentalPartners() {
                         Search your trusted suki partners, compare profiles, and open their shop page even without signing in.
                         You will only be asked to sign in when you proceed to booking.
                     </p>
+                    {!hasRealDistanceOrigin ? (
+                        <p className="mt-3 text-sm font-medium text-sky-700">
+                            Enable location to see distance from you.
+                        </p>
+                    ) : null}
 
                     <div className="mt-6 flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
                         <div className="max-w-xl flex-1">
@@ -247,7 +306,9 @@ export default function RentalPartners() {
                                 </p>
 
                                 <div className="mt-4 space-y-1 text-sm text-slate-600">
-                                    <p>{formatDistance(partner.distanceKm)}</p>
+                                    {hasRealDistanceOrigin && Number.isFinite(partner.distanceKm) ? (
+                                        <p>{formatDistance(partner.distanceKm)}</p>
+                                    ) : null}
                                     {partner.address ? <p className="line-clamp-1">{partner.address}</p> : null}
                                 </div>
 

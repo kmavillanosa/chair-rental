@@ -358,6 +358,11 @@ export class VendorsController {
     return this.vendorsService.findBySlug(slug);
   }
 
+  @Get('directory')
+  listPublicDirectory() {
+    return this.vendorsService.listPublicDirectory();
+  }
+
   @Get(':id/reviews')
   listVendorReviews(@Param('id') id: string) {
     return this.vendorsService.listVendorReviews(id);

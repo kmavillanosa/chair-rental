@@ -6,6 +6,7 @@ import LoadingSpinner from '../../components/common/LoadingSpinner';
 import { getCustomers, setCustomerActive } from '../../api/users';
 import { impersonateUser } from '../../api/auth';
 import { useAuthStore } from '../../store/authStore';
+import { clearPostLoginRedirect } from '../../utils/postLoginRedirect';
 import type { User } from '../../types';
 
 export default function CustomersList() {
@@ -59,6 +60,7 @@ export default function CustomersList() {
         try {
             const result = await impersonateUser(customer.id);
             startImpersonation(result.access_token, result.user);
+            clearPostLoginRedirect();
             toast.success(`Now impersonating ${customer.name}.`);
             window.location.href = '/customer';
         } catch (error: any) {

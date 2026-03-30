@@ -42,6 +42,9 @@ export const getNearbyVendors = (
 export const getVendorBySlug = (slug: string) =>
   api.get<Vendor>(`/vendors/slug/${slug}`).then(r => r.data);
 
+export const getPublicVendorDirectory = () =>
+  api.get<Vendor[]>('/vendors/directory').then((r) => r.data);
+
 export const getVendorReviews = (vendorId: string) =>
   api.get<VendorReview[]>(`/vendors/${vendorId}/reviews`).then((r) => r.data);
 

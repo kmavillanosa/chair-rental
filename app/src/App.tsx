@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 import { BrowserRouter, Routes, Route, Navigate, useLocation } from 'react-router-dom'
 import { TourProvider } from '@reactour/tour'
+import { AnimatePresence, motion } from 'framer-motion'
 import { useAuthStore } from './store/authStore'
 import { getFeatureFlagsSettings } from './api/settings'
 import Login from './pages/Login'
@@ -96,40 +97,50 @@ function AppRoutes({
   }
 
   return (
-    <Routes>
-      <Route path="/legal/:documentSlug" element={<LegalDocumentPage />} />
-      <Route path="/faq" element={<FaqPage />} />
-      <Route path="/login" element={<Login />} />
-      <Route path="/auth/callback" element={<AuthCallback />} />
-      <Route
-        path="/shop/:slug"
-        element={vendorSlug ? <Navigate to="/" replace /> : <VendorLanding />}
-      />
-      {!vendorSlug && <Route path="/admin" element={<ProtectedRoute role="admin"><AdminDashboard /></ProtectedRoute>} />}
-      {!vendorSlug && <Route path="/admin/vendors" element={<ProtectedRoute role="admin"><VendorsList /></ProtectedRoute>} />}
-      {!vendorSlug && <Route path="/admin/item-types" element={<ProtectedRoute role="admin"><ItemTypesList /></ProtectedRoute>} />}
-      {!vendorSlug && <Route path="/admin/brands" element={<ProtectedRoute role="admin"><BrandsList /></ProtectedRoute>} />}
-      {!vendorSlug && <Route path="/admin/payments" element={<ProtectedRoute role="admin"><AdminPayments /></ProtectedRoute>} />}
-      {!vendorSlug && <Route path="/vendor" element={<ProtectedRoute role="vendor"><VendorDashboard /></ProtectedRoute>} />}
-      {!vendorSlug && <Route path="/vendor/inventory" element={<ProtectedRoute role="vendor"><Inventory /></ProtectedRoute>} />}
-      {!vendorSlug && <Route path="/vendor/bookings" element={<ProtectedRoute role="vendor"><VendorBookings /></ProtectedRoute>} />}
-      {!vendorSlug && <Route path="/vendor/pricing" element={<ProtectedRoute role="vendor"><Pricing /></ProtectedRoute>} />}
-      {!vendorSlug && <Route path="/vendor/shop" element={<ProtectedRoute role="vendor"><MyShop /></ProtectedRoute>} />}
-      {!vendorSlug && <Route path="/vendor/payments" element={<ProtectedRoute role="vendor"><VendorPayments /></ProtectedRoute>} />}
-      <Route path="/" element={vendorSlug ? <VendorLanding slugOverride={vendorSlug} /> : <CustomerHome />} />
-      <Route path="/rental-partners" element={<RentalPartners />} />
-      <Route path="/results" element={<CustomerResults />} />
-      <Route path="/book/:slug" element={<BookingFlow />} />
-      <Route path="/my-bookings" element={<ProtectedRoute><MyBookings /></ProtectedRoute>} />
-      <Route path="/my-bookings/:bookingId" element={<ProtectedRoute><MyBookingDetails /></ProtectedRoute>} />
-      <Route path="/become-vendor" element={<ProtectedRoute role="customer"><BecomeVendor /></ProtectedRoute>} />
-      <Route path="*" element={
-        vendorSlug ? <Navigate to="/" replace /> :
-          userRole === 'admin' ? <Navigate to="/admin" replace /> :
-            userRole === 'vendor' ? <Navigate to="/vendor" replace /> :
-              <Navigate to="/" replace />
-      } />
-    </Routes>
+    <AnimatePresence mode="wait" initial={false}>
+      <motion.div
+        key={location.pathname}
+        initial={{ opacity: 0, y: 10 }}
+        animate={{ opacity: 1, y: 0 }}
+        exit={{ opacity: 0, y: -8 }}
+        transition={{ duration: 0.2, ease: 'easeOut' }}
+      >
+        <Routes>
+          <Route path="/legal/:documentSlug" element={<LegalDocumentPage />} />
+          <Route path="/faq" element={<FaqPage />} />
+          <Route path="/login" element={<Login />} />
+          <Route path="/auth/callback" element={<AuthCallback />} />
+          <Route
+            path="/shop/:slug"
+            element={vendorSlug ? <Navigate to="/" replace /> : <VendorLanding />}
+          />
+          {!vendorSlug && <Route path="/admin" element={<ProtectedRoute role="admin"><AdminDashboard /></ProtectedRoute>} />}
+          {!vendorSlug && <Route path="/admin/vendors" element={<ProtectedRoute role="admin"><VendorsList /></ProtectedRoute>} />}
+          {!vendorSlug && <Route path="/admin/item-types" element={<ProtectedRoute role="admin"><ItemTypesList /></ProtectedRoute>} />}
+          {!vendorSlug && <Route path="/admin/brands" element={<ProtectedRoute role="admin"><BrandsList /></ProtectedRoute>} />}
+          {!vendorSlug && <Route path="/admin/payments" element={<ProtectedRoute role="admin"><AdminPayments /></ProtectedRoute>} />}
+          {!vendorSlug && <Route path="/vendor" element={<ProtectedRoute role="vendor"><VendorDashboard /></ProtectedRoute>} />}
+          {!vendorSlug && <Route path="/vendor/inventory" element={<ProtectedRoute role="vendor"><Inventory /></ProtectedRoute>} />}
+          {!vendorSlug && <Route path="/vendor/bookings" element={<ProtectedRoute role="vendor"><VendorBookings /></ProtectedRoute>} />}
+          {!vendorSlug && <Route path="/vendor/pricing" element={<ProtectedRoute role="vendor"><Pricing /></ProtectedRoute>} />}
+          {!vendorSlug && <Route path="/vendor/shop" element={<ProtectedRoute role="vendor"><MyShop /></ProtectedRoute>} />}
+          {!vendorSlug && <Route path="/vendor/payments" element={<ProtectedRoute role="vendor"><VendorPayments /></ProtectedRoute>} />}
+          <Route path="/" element={vendorSlug ? <VendorLanding slugOverride={vendorSlug} /> : <CustomerHome />} />
+          <Route path="/rental-partners" element={<RentalPartners />} />
+          <Route path="/results" element={<CustomerResults />} />
+          <Route path="/book/:slug" element={<BookingFlow />} />
+          <Route path="/my-bookings" element={<ProtectedRoute><MyBookings /></ProtectedRoute>} />
+          <Route path="/my-bookings/:bookingId" element={<ProtectedRoute><MyBookingDetails /></ProtectedRoute>} />
+          <Route path="/become-vendor" element={<ProtectedRoute role="customer"><BecomeVendor /></ProtectedRoute>} />
+          <Route path="*" element={
+            vendorSlug ? <Navigate to="/" replace /> :
+              userRole === 'admin' ? <Navigate to="/admin" replace /> :
+                userRole === 'vendor' ? <Navigate to="/vendor" replace /> :
+                  <Navigate to="/" replace />
+          } />
+        </Routes>
+      </motion.div>
+    </AnimatePresence>
   )
 }
 

@@ -655,6 +655,7 @@ export default function VendorLanding({ slugOverride }: { slugOverride?: string 
                 onChange={(event) => setReviewComment(event.target.value)}
                 rows={4}
                 placeholder="Share what customers should know about this rental partner."
+                disabled={!token || user?.role !== 'customer' || submittingReview}
                 className="mt-3 w-full rounded-xl border border-slate-300 px-3 py-2 text-sm text-slate-800 focus:border-blue-600 focus:outline-none"
               />
               <div className="mt-3 flex items-center justify-between gap-3">
@@ -665,8 +666,16 @@ export default function VendorLanding({ slugOverride }: { slugOverride?: string 
                 ) : (
                   <p className="text-xs text-slate-500">One review per customer account. You can update it anytime.</p>
                 )}
-                <Button onClick={() => void handleSubmitReview()} isProcessing={submittingReview}>
-                  {customerExistingReview ? 'Update Review' : 'Post Review'}
+                <Button
+                  onClick={() => void handleSubmitReview()}
+                  isProcessing={submittingReview}
+                  disabled={Boolean(token) && user?.role !== 'customer'}
+                >
+                  {!token
+                    ? 'Sign In to Review'
+                    : customerExistingReview
+                      ? 'Update Review'
+                      : 'Post Review'}
                 </Button>
               </div>
             </div>

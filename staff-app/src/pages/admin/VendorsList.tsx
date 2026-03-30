@@ -5,6 +5,7 @@ import { useNavigate } from 'react-router-dom';
 import AdminLayout from '../../components/layout/AdminLayout';
 import { impersonateUser } from '../../api/auth';
 import { useAuthStore } from '../../store/authStore';
+import { clearPostLoginRedirect } from '../../utils/postLoginRedirect';
 import {
   clearVendorWarnings,
   createVendor,
@@ -285,6 +286,7 @@ export default function VendorsList() {
     try {
       const result = await impersonateUser(vendorUserId);
       startImpersonation(result.access_token, result.user);
+      clearPostLoginRedirect();
       toast.success(`Now impersonating ${vendor.businessName}.`);
       window.location.href = '/vendor';
     } catch (error: any) {

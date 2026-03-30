@@ -5,11 +5,15 @@ import LegalFooter from '../components/common/LegalFooter';
 import { Link, useSearchParams } from 'react-router-dom';
 import { HiArrowLeft, HiArrowRight } from 'react-icons/hi';
 import { resolveSafeUrl } from '../utils/envUrl';
+import { motion } from 'framer-motion';
 
 export default function Login() {
   const { t } = useTranslation();
   const [searchParams] = useSearchParams();
+  const staffAppCandidate = import.meta.env.VITE_STAFF_APP_URL?.trim();
+  const staffLoginCandidate = staffAppCandidate ? `${staffAppCandidate.replace(/\/+$/, '')}/login` : '';
   const vendorLoginCandidate = (
+    staffLoginCandidate ||
     import.meta.env.VITE_VENDOR_LOGIN_URL ||
     'https://vendor.rentalbasic.com/login'
   ).trim();
@@ -21,32 +25,54 @@ export default function Login() {
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-[#1f2944] via-[#243153] to-[#0d4ea8] px-4 py-8 sm:px-6 sm:py-10">
-      <Link
-        to="/"
-        aria-label={t('login.backToHome')}
-        className="group absolute top-6 left-6 inline-flex h-12 w-12 items-center justify-center rounded-full border border-white/35 bg-white/15 text-white backdrop-blur-sm transition-colors hover:bg-white/25"
-      >
-        <HiArrowLeft className="h-5 w-5 transition-transform group-hover:-translate-x-0.5" aria-hidden="true" />
-      </Link>
+    <motion.div
+      className="min-h-screen bg-gradient-to-br from-[#1f2944] via-[#243153] to-[#0d4ea8] px-4 py-8 sm:px-6 sm:py-10"
+      initial={{ opacity: 0 }}
+      animate={{ opacity: 1 }}
+      transition={{ duration: 0.25, ease: 'easeOut' }}
+    >
+      <motion.div initial={{ opacity: 0, x: -12 }} animate={{ opacity: 1, x: 0 }} transition={{ duration: 0.25, delay: 0.05 }}>
+        <Link
+          to="/"
+          aria-label={t('login.backToHome')}
+          className="group absolute top-6 left-6 inline-flex h-12 w-12 items-center justify-center rounded-full border border-white/35 bg-white/15 text-white backdrop-blur-sm transition-colors hover:bg-white/25"
+        >
+          <HiArrowLeft className="h-5 w-5 transition-transform group-hover:-translate-x-0.5" aria-hidden="true" />
+        </Link>
+      </motion.div>
       <div className="mx-auto flex min-h-[calc(100vh-5rem)] w-full max-w-md flex-col justify-center">
-        <div className="w-full rounded-3xl border border-[#dce3ef] bg-white p-6 text-center shadow-2xl sm:p-10">
-          <div className="mb-3 flex justify-end">
+        <motion.div
+          className="w-full rounded-3xl border border-[#dce3ef] bg-white p-6 text-center shadow-2xl sm:p-10"
+          initial={{ opacity: 0, y: 20, scale: 0.98 }}
+          animate={{ opacity: 1, y: 0, scale: 1 }}
+          transition={{ duration: 0.28, delay: 0.1, ease: 'easeOut' }}
+        >
+          <motion.div className="mb-3 flex justify-end" initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.2, delay: 0.18 }}>
             <LanguageSwitcher compact />
-          </div>
-          <div className="mb-3 flex justify-center">
+          </motion.div>
+          <motion.div className="mb-3 flex justify-center" initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.2, delay: 0.2 }}>
             <img src="/light_logo.svg" alt={t('common.appName')} className="h-14 w-auto sm:h-16" />
-          </div>
-          <p className="mb-1 text-lg text-gray-500 sm:text-xl">{t('login.tagline')}</p>
-          <p className="mb-6 text-base text-gray-400 sm:mb-7 sm:text-lg">{t('login.subtitle')}</p>
+          </motion.div>
+          <motion.p className="mb-1 text-lg text-gray-500 sm:text-xl" initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.2, delay: 0.22 }}>{t('login.tagline')}</motion.p>
+          <motion.p className="mb-6 text-base text-gray-400 sm:mb-7 sm:text-lg" initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.2, delay: 0.24 }}>{t('login.subtitle')}</motion.p>
           {authError && (
-            <div className="mb-4 rounded-2xl border border-rose-200 bg-rose-50 px-4 py-3 text-left text-sm font-medium text-rose-700">
+            <motion.div
+              className="mb-4 rounded-2xl border border-rose-200 bg-rose-50 px-4 py-3 text-left text-sm font-medium text-rose-700"
+              initial={{ opacity: 0, y: -6 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.18 }}
+            >
               {authError}
-            </div>
+            </motion.div>
           )}
-          <button
+          <motion.button
             onClick={loginWithGoogle}
             className="w-full rounded-2xl border-2 border-gray-300 bg-white px-6 py-4 text-xl font-semibold text-gray-700 shadow-md transition-all hover:border-[#1561bf] hover:bg-gray-50 hover:shadow-lg sm:text-2xl"
+            whileHover={{ y: -2, scale: 1.01 }}
+            whileTap={{ scale: 0.985 }}
+            initial={{ opacity: 0, y: 8 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.2, delay: 0.28 }}
           >
             <span className="flex items-center justify-center gap-4">
               <svg className="h-8 w-8" viewBox="0 0 24 24">
@@ -57,18 +83,23 @@ export default function Login() {
               </svg>
               {t('login.googleButton')}
             </span>
-          </button>
+          </motion.button>
 
-          <div className="my-4 flex items-center gap-3 text-sm font-semibold uppercase tracking-wider text-gray-400 sm:my-5">
+          <motion.div className="my-4 flex items-center gap-3 text-sm font-semibold uppercase tracking-wider text-gray-400 sm:my-5" initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ duration: 0.2, delay: 0.32 }}>
             <span className="h-px flex-1 bg-gray-200" />
             {t('login.orSeparator')}
             <span className="h-px flex-1 bg-gray-200" />
-          </div>
+          </motion.div>
 
-          <button
+          <motion.button
             type="button"
             onClick={handleVendorLoginRedirect}
             className="group w-full rounded-2xl border border-[#2d3f63] bg-gradient-to-r from-[#1f2944] via-[#243153] to-[#0d4ea8] px-6 py-3.5 text-left text-white shadow-lg transition-all hover:-translate-y-0.5 hover:shadow-xl"
+            whileHover={{ y: -2, scale: 1.01 }}
+            whileTap={{ scale: 0.985 }}
+            initial={{ opacity: 0, y: 8 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.2, delay: 0.36 }}
           >
             <span className="flex items-center justify-between gap-4">
               <span className="block text-xl font-semibold leading-tight">{t('login.vendorPortalButton')}</span>
@@ -76,12 +107,14 @@ export default function Login() {
                 <HiArrowRight className="h-5 w-5" aria-hidden="true" />
               </span>
             </span>
-          </button>
+          </motion.button>
 
-          <p className="mt-5 text-base text-gray-400 sm:text-lg">{t('login.footer')}</p>
-        </div>
-        <LegalFooter variant="dark" className="mt-4" />
+          <motion.p className="mt-5 text-base text-gray-400 sm:text-lg" initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ duration: 0.2, delay: 0.4 }}>{t('login.footer')}</motion.p>
+        </motion.div>
+        <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ duration: 0.2, delay: 0.45 }}>
+          <LegalFooter variant="dark" className="mt-4" />
+        </motion.div>
       </div>
-    </div>
+    </motion.div>
   );
 }

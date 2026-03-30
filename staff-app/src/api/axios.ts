@@ -1,5 +1,6 @@
 import axios from 'axios';
 import { useAuthStore } from '../store/authStore';
+import { getCurrentAppPath, savePostLoginRedirect } from '../utils/postLoginRedirect';
 
 const api = axios.create({
   baseURL: import.meta.env.VITE_API_URL || 'http://api.rentalbasic.com',
@@ -15,6 +16,7 @@ api.interceptors.response.use(
   (res) => res,
   (err) => {
     if (err.response?.status === 401) {
+      savePostLoginRedirect(getCurrentAppPath());
       useAuthStore.getState().logout();
       window.location.href = '/login';
     }

@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
-import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom'
+import { BrowserRouter, Routes, Route, Navigate, useLocation } from 'react-router-dom'
 import { TourProvider } from '@reactour/tour'
+import { AnimatePresence, motion } from 'framer-motion'
 import { useAuthStore } from './store/authStore'
 import { getFeatureFlagsSettings, type FeatureFlagsSettings } from './api/settings'
 import Login from './pages/Login'
@@ -32,11 +33,16 @@ import LegalDocumentPage from './pages/LegalDocumentPage'
 import FaqPage from './pages/FaqPage'
 import { getStaffTourSteps } from './tour/staffTour'
 import { enableMobileTableEnhancer } from './utils/mobileTableEnhancer'
+import { savePostLoginRedirect } from './utils/postLoginRedirect'
 
 function ProtectedRoute({ children, role }: { children: React.ReactNode; role?: string }) {
+  const location = useLocation()
   const { token, user } = useAuthStore()
-  if (!token) return <Navigate to="/login" replace />
-  if (role && user?.role !== role) return <Navigate to="/login" replace />
+  if (!token) {
+    savePostLoginRedirect(`${location.pathname}${location.search}${location.hash}`)
+    return <Navigate to="/login" replace />
+  }
+  if (role && user?.role !== role) return <Navigate to="/" replace />
   return <>{children}</>
 }
 
@@ -116,6 +122,24 @@ export default function App() {
             Maintenance Mode
           </div>
         )}
+        <AnimatedRoutes />
+      </BrowserRouter>
+    </TourProvider>
+  )
+}
+
+function AnimatedRoutes() {
+  const location = useLocation()
+
+  return (
+    <AnimatePresence mode="wait" initial={false}>
+      <motion.div
+        key={location.pathname}
+        initial={{ opacity: 0, y: 10 }}
+        animate={{ opacity: 1, y: 0 }}
+        exit={{ opacity: 0, y: -8 }}
+        transition={{ duration: 0.2, ease: 'easeOut' }}
+      >
         <Routes>
           <Route path="/legal/:documentSlug" element={<LegalDocumentPage />} />
           <Route path="/faq" element={<FaqPage />} />
@@ -151,7 +175,7 @@ export default function App() {
           <Route path="/" element={<ProtectedRoute><StaffHome /></ProtectedRoute>} />
           <Route path="*" element={<Navigate to="/" replace />} />
         </Routes>
-      </BrowserRouter>
-    </TourProvider>
+      </motion.div>
+    </AnimatePresence>
   )
 }
