@@ -132,40 +132,40 @@ export default function App() {
 function AnimatedRoutes() {
   return (
     <Routes>
-          <Route path="/legal/:documentSlug" element={<LegalDocumentPage />} />
-          <Route path="/faq" element={<FaqPage />} />
-          <Route path="/login" element={<Login />} />
-          <Route path="/auth/callback" element={<AuthCallback />} />
-          <Route path="/admin" element={<ProtectedRoute role="admin"><AdminDashboard /></ProtectedRoute>} />
-          <Route path="/admin/customers" element={<ProtectedRoute role="admin"><CustomersList /></ProtectedRoute>} />
-          <Route path="/admin/vendors" element={<ProtectedRoute role="admin"><VendorsList /></ProtectedRoute>} />
-          <Route path="/admin/vendors/applicants" element={<ProtectedRoute role="admin"><VendorApplicantsList /></ProtectedRoute>} />
-          <Route path="/admin/vendors/applicants/:vendorId" element={<ProtectedRoute role="admin"><VendorApplicantReview /></ProtectedRoute>} />
-          <Route path="/admin/item-types" element={<ProtectedRoute role="admin"><ItemTypesList /></ProtectedRoute>} />
-          <Route path="/admin/brands" element={<ProtectedRoute role="admin"><BrandsList /></ProtectedRoute>} />
-          <Route path="/admin/packages" element={<ProtectedRoute role="admin"><PackagesList /></ProtectedRoute>} />
-          <Route path="/admin/payments/*" element={<ProtectedRoute role="admin"><AdminPayments /></ProtectedRoute>} />
-          <Route path="/admin/fraud-alerts" element={<ProtectedRoute role="admin"><FraudAlertsPage /></ProtectedRoute>} />
-          <Route path="/admin/disputes" element={<ProtectedRoute role="admin"><DisputesPage /></ProtectedRoute>} />
-          <Route path="/admin/settings" element={<Navigate to="/admin/settings/feature-flags" replace />} />
-          <Route path="/admin/settings/feature-flags" element={<ProtectedRoute role="admin"><KycSettingsPage /></ProtectedRoute>} />
-          <Route path="/admin/settings/cancellation" element={<ProtectedRoute role="admin"><KycSettingsPage /></ProtectedRoute>} />
-          <Route path="/admin/settings/kyc" element={<ProtectedRoute role="admin"><KycSettingsPage /></ProtectedRoute>} />
-          <Route path="/vendor" element={<ProtectedRoute role="vendor"><VendorDashboard /></ProtectedRoute>} />
-          <Route path="/vendor/inventory" element={<ProtectedRoute role="vendor"><Inventory /></ProtectedRoute>} />
-          <Route path="/vendor/bookings" element={<ProtectedRoute role="vendor"><VendorBookings /></ProtectedRoute>} />
-          <Route path="/vendor/bookings/calendar" element={<ProtectedRoute role="vendor"><VendorBookingsCalendar /></ProtectedRoute>} />
-          <Route path="/vendor/bookings/:bookingId" element={<ProtectedRoute role="vendor"><VendorBookingDetails /></ProtectedRoute>} />
-          <Route path="/vendor/pricing/distance" element={<ProtectedRoute role="vendor"><DistancePricing /></ProtectedRoute>} />
-          <Route path="/vendor/pricing/helpers" element={<ProtectedRoute role="vendor"><HelperPricing /></ProtectedRoute>} />
-          <Route path="/vendor/vehicles" element={<ProtectedRoute role="vendor"><VendorDeliveryVehicles /></ProtectedRoute>} />
-          <Route path="/vendor/shop" element={<ProtectedRoute role="vendor"><MyShop /></ProtectedRoute>} />
-          <Route path="/vendor/packages" element={<ProtectedRoute role="vendor"><VendorPackages /></ProtectedRoute>} />
-          <Route path="/vendor/payments" element={<ProtectedRoute role="vendor"><VendorPayments /></ProtectedRoute>} />
-          <Route path="/customer" element={<ProtectedRoute role="customer"><MyBookings /></ProtectedRoute>} />
-          <Route path="/my-bookings" element={<ProtectedRoute role="customer"><MyBookings /></ProtectedRoute>} />
-          <Route path="/" element={<ProtectedRoute><StaffHome /></ProtectedRoute>} />
-          <Route path="*" element={<Navigate to="/" replace />} />
+      <Route path="/legal/:documentSlug" element={<LegalDocumentPage />} />
+      <Route path="/faq" element={<FaqPage />} />
+      <Route path="/login" element={<Login />} />
+      <Route path="/auth/callback" element={<AuthCallback />} />
+      <Route path="/admin" element={<ProtectedRoute role="admin"><AdminDashboard /></ProtectedRoute>} />
+      <Route path="/admin/customers" element={<ProtectedRoute role="admin"><CustomersList /></ProtectedRoute>} />
+      <Route path="/admin/vendors" element={<ProtectedRoute role="admin"><VendorsList /></ProtectedRoute>} />
+      <Route path="/admin/vendors/applicants" element={<ProtectedRoute role="admin"><VendorApplicantsList /></ProtectedRoute>} />
+      <Route path="/admin/vendors/applicants/:vendorId" element={<ProtectedRoute role="admin"><VendorApplicantReview /></ProtectedRoute>} />
+      <Route path="/admin/item-types" element={<ProtectedRoute role="admin"><ItemTypesList /></ProtectedRoute>} />
+      <Route path="/admin/brands" element={<ProtectedRoute role="admin"><BrandsList /></ProtectedRoute>} />
+      <Route path="/admin/packages" element={<ProtectedRoute role="admin"><PackagesList /></ProtectedRoute>} />
+      <Route path="/admin/payments/*" element={<ProtectedRoute role="admin"><AdminPayments /></ProtectedRoute>} />
+      <Route path="/admin/fraud-alerts" element={<ProtectedRoute role="admin"><FraudAlertsPage /></ProtectedRoute>} />
+      <Route path="/admin/disputes" element={<ProtectedRoute role="admin"><DisputesPage /></ProtectedRoute>} />
+      <Route path="/admin/settings" element={<Navigate to="/admin/settings/feature-flags" replace />} />
+      <Route path="/admin/settings/feature-flags" element={<ProtectedRoute role="admin"><KycSettingsPage /></ProtectedRoute>} />
+      <Route path="/admin/settings/cancellation" element={<ProtectedRoute role="admin"><KycSettingsPage /></ProtectedRoute>} />
+      <Route path="/admin/settings/kyc" element={<ProtectedRoute role="admin"><KycSettingsPage /></ProtectedRoute>} />
+      <Route path="/vendor" element={<ProtectedRoute role="vendor"><VendorDashboard /></ProtectedRoute>} />
+      <Route path="/vendor/inventory" element={<ProtectedRoute role="vendor"><Inventory /></ProtectedRoute>} />
+      <Route path="/vendor/bookings" element={<ProtectedRoute role="vendor"><VendorBookings /></ProtectedRoute>} />
+      <Route path="/vendor/bookings/calendar" element={<ProtectedRoute role="vendor"><VendorBookingsCalendar /></ProtectedRoute>} />
+      <Route path="/vendor/bookings/:bookingId" element={<ProtectedRoute role="vendor"><VendorBookingDetails /></ProtectedRoute>} />
+      <Route path="/vendor/pricing/distance" element={<ProtectedRoute role="vendor"><DistancePricing /></ProtectedRoute>} />
+      <Route path="/vendor/pricing/helpers" element={<ProtectedRoute role="vendor"><HelperPricing /></ProtectedRoute>} />
+      <Route path="/vendor/vehicles" element={<ProtectedRoute role="vendor"><VendorDeliveryVehicles /></ProtectedRoute>} />
+      <Route path="/vendor/shop" element={<ProtectedRoute role="vendor"><MyShop /></ProtectedRoute>} />
+      <Route path="/vendor/packages" element={<ProtectedRoute role="vendor"><VendorPackages /></ProtectedRoute>} />
+      <Route path="/vendor/payments" element={<ProtectedRoute role="vendor"><VendorPayments /></ProtectedRoute>} />
+      <Route path="/customer" element={<ProtectedRoute role="customer"><MyBookings /></ProtectedRoute>} />
+      <Route path="/my-bookings" element={<ProtectedRoute role="customer"><MyBookings /></ProtectedRoute>} />
+      <Route path="/" element={<ProtectedRoute><StaffHome /></ProtectedRoute>} />
+      <Route path="*" element={<Navigate to="/" replace />} />
     </Routes>
   )
 }

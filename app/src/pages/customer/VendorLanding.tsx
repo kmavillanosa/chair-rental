@@ -389,29 +389,28 @@ export default function VendorLanding({ slugOverride }: { slugOverride?: string 
             <div className="lg:col-span-2 bg-slate-950 flex">
               {galleryPhotos.length > 0 ? (
                 <>
-                  <div className="flex-1 relative flex items-center justify-center min-h-[320px] lg:min-h-[420px]">
+                  <div className="flex-1 relative flex items-center justify-center min-h-[280px] bg-slate-950">
                     <img
                       src={galleryPhotos[selectedGalleryImage]}
                       alt="Rental Partner gallery"
-                      className="w-full max-h-[420px] object-cover"
+                      className="max-w-full max-h-[280px] object-contain px-4"
                     />
-                    <div className="absolute inset-x-0 bottom-0 h-16 bg-gradient-to-t from-slate-950/70 to-transparent pointer-events-none" />
                     {galleryPhotos.length > 1 && (
-                      <span className="absolute bottom-3 right-3 rounded-full bg-black/50 px-2.5 py-0.5 text-xs font-medium text-white backdrop-blur-sm">
+                      <span className="absolute bottom-3 right-3 rounded-full bg-black/50 px-2 py-1 text-xs font-medium text-white backdrop-blur-sm">
                         {selectedGalleryImage + 1} / {galleryPhotos.length}
                       </span>
                     )}
                   </div>
                   {galleryPhotos.length > 1 && (
-                    <div className="w-16 flex flex-col gap-1 bg-slate-900 p-1.5 overflow-y-auto">
+                    <div className="w-14 flex flex-col gap-1 bg-slate-900 p-1 overflow-y-auto">
                       {galleryPhotos.map((photo, idx) => (
                         <button
                           key={idx}
                           onClick={() => setSelectedGalleryImage(idx)}
-                          className={`h-14 rounded-md overflow-hidden border-2 transition flex-shrink-0 bg-slate-950 flex items-center justify-center ${idx === selectedGalleryImage
+                          className={`h-12 rounded-md overflow-hidden border-2 transition flex-shrink-0 bg-slate-950 flex items-center justify-center ${idx === selectedGalleryImage
                             ? 'border-[#b7e92f] ring-1 ring-[#b7e92f]/50'
                             : 'border-slate-700 hover:border-slate-500'
-                          }`}
+                            }`}
                           aria-label={`Gallery image ${idx + 1}`}
                         >
                           <img src={photo} alt={`Thumbnail ${idx + 1}`} className="max-w-full max-h-full object-contain" />
