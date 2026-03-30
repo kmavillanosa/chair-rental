@@ -11,6 +11,7 @@ import VendorApplicantsList from './pages/admin/VendorApplicantsList'
 import VendorApplicantReview from './pages/admin/VendorApplicantReview'
 import ItemTypesList from './pages/admin/ItemTypesList'
 import BrandsList from './pages/admin/BrandsList'
+import PackagesList from './pages/admin/PackagesList'
 import AdminPayments from './pages/admin/AdminPayments'
 import FraudAlertsPage from './pages/admin/FraudAlerts'
 import DisputesPage from './pages/admin/DisputesPage'
@@ -127,6 +128,7 @@ export default function App() {
           <Route path="/admin/vendors/applicants/:vendorId" element={<ProtectedRoute role="admin"><VendorApplicantReview /></ProtectedRoute>} />
           <Route path="/admin/item-types" element={<ProtectedRoute role="admin"><ItemTypesList /></ProtectedRoute>} />
           <Route path="/admin/brands" element={<ProtectedRoute role="admin"><BrandsList /></ProtectedRoute>} />
+          <Route path="/admin/packages" element={<ProtectedRoute role="admin"><PackagesList /></ProtectedRoute>} />
           <Route path="/admin/payments/*" element={<ProtectedRoute role="admin"><AdminPayments /></ProtectedRoute>} />
           <Route path="/admin/fraud-alerts" element={<ProtectedRoute role="admin"><FraudAlertsPage /></ProtectedRoute>} />
           <Route path="/admin/disputes" element={<ProtectedRoute role="admin"><DisputesPage /></ProtectedRoute>} />

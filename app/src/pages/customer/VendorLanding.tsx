@@ -1,14 +1,17 @@
 import { useEffect, useMemo, useState } from 'react';
 import { useParams, useNavigate, useSearchParams } from 'react-router-dom';
 import { Button } from 'flowbite-react';
+import toast from 'react-hot-toast';
 import CustomerLayout from '../../components/layout/CustomerLayout';
-import { getVendorBySlug } from '../../api/vendors';
+import { getVendorBySlug, getVendorReviews, submitVendorReview } from '../../api/vendors';
 import { getInventory, getInventoryBreakdown } from '../../api/items';
 import { getVendorDeliveryRates } from '../../api/payments';
-import type { Vendor, InventoryItem, DeliveryRate } from '../../types';
+import type { Vendor, InventoryItem, DeliveryRate, VendorReview } from '../../types';
 import LoadingSpinner from '../../components/common/LoadingSpinner';
-import { formatCurrency } from '../../utils/format';
+import { formatCurrency, formatDate } from '../../utils/format';
 import { useTranslation } from 'react-i18next';
+import { useAuthStore } from '../../store/authStore';
+import { getCurrentAppPath, savePostLoginRedirect } from '../../utils/postLoginRedirect';
 
 const ITEM_PALETTE = [
   { bg: 'bg-rose-400', pill: 'bg-rose-100 text-rose-700 border-rose-300' },
@@ -139,12 +142,18 @@ function estimateDeliveryRate(
   );
 }
 
+function renderStars(rating: number) {
+  const rounded = Math.max(0, Math.min(5, Math.round(Number(rating) || 0)));
+  return '★★★★★'.slice(0, rounded) + '☆☆☆☆☆'.slice(0, 5 - rounded);
+}
+
 export default function VendorLanding({ slugOverride }: { slugOverride?: string | null } = {}) {
   const { t } = useTranslation();
   const { slug } = useParams<{ slug: string }>();
   const resolvedSlug = slugOverride || slug;
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
+  const { token, user } = useAuthStore();
   const [vendor, setVendor] = useState<Vendor | null>(null);
   const [inventory, setInventory] = useState<InventoryItem[]>([]);
   const [loading, setLoading] = useState(true);
@@ -153,6 +162,11 @@ export default function VendorLanding({ slugOverride }: { slugOverride?: string 
   const [deliveryRates, setDeliveryRates] = useState<DeliveryRate[]>([]);
   const [deliveryRatesLoading, setDeliveryRatesLoading] = useState(false);
   const [selectedGalleryImage, setSelectedGalleryImage] = useState(0);
+  const [reviews, setReviews] = useState<VendorReview[]>([]);
+  const [reviewsLoading, setReviewsLoading] = useState(false);
+  const [reviewRating, setReviewRating] = useState(5);
+  const [reviewComment, setReviewComment] = useState('');
+  const [submittingReview, setSubmittingReview] = useState(false);
 
   useEffect(() => {
     if (!resolvedSlug) {
@@ -178,6 +192,7 @@ export default function VendorLanding({ slugOverride }: { slugOverride?: string 
     if (vendor) {
       setBreakdownLoading(true);
       setDeliveryRatesLoading(true);
+      setReviewsLoading(true);
       getInventoryBreakdown(vendor.id)
         .then(setBreakdown)
         .finally(() => setBreakdownLoading(false));
@@ -186,8 +201,46 @@ export default function VendorLanding({ slugOverride }: { slugOverride?: string 
         .then(setDeliveryRates)
         .catch(() => setDeliveryRates([]))
         .finally(() => setDeliveryRatesLoading(false));
+
+      getVendorReviews(vendor.id)
+        .then(setReviews)
+        .catch(() => setReviews([]))
+        .finally(() => setReviewsLoading(false));
     }
   }, [vendor]);
+
+  const customerExistingReview = useMemo(() => {
+    if (!user?.id) return null;
+    return reviews.find((review) => review.reviewerUserId === user.id) || null;
+  }, [reviews, user?.id]);
+
+  const displayedTotalRatings = useMemo(() => {
+    return reviews.length > 0 ? reviews.length : Number(vendor?.totalRatings || 0);
+  }, [reviews, vendor?.totalRatings]);
+
+  const displayedAverageRating = useMemo(() => {
+    if (reviews.length > 0) {
+      return Number(
+        (
+          reviews.reduce((sum, review) => sum + Number(review.rating || 0), 0) /
+          reviews.length
+        ).toFixed(1),
+      );
+    }
+
+    return Number(Number(vendor?.averageRating || 0).toFixed(1));
+  }, [reviews, vendor?.averageRating]);
+
+  useEffect(() => {
+    if (!customerExistingReview) {
+      setReviewRating(5);
+      setReviewComment('');
+      return;
+    }
+
+    setReviewRating(Math.max(1, Math.min(5, Number(customerExistingReview.rating) || 5)));
+    setReviewComment(customerExistingReview.comment || '');
+  }, [customerExistingReview]);
 
   const colorMap = useMemo(() => {
     const map: ItemColorMap = {};
@@ -280,6 +333,32 @@ export default function VendorLanding({ slugOverride }: { slugOverride?: string 
     window.open(vendorMapUrl, '_blank', 'noopener,noreferrer');
   };
 
+  const handleSubmitReview = async () => {
+    if (!vendor) return;
+
+    if (!token) {
+      savePostLoginRedirect(getCurrentAppPath());
+      navigate('/login');
+      return;
+    }
+
+    if (user?.role !== 'customer') {
+      toast.error('Only customer accounts can submit rental partner reviews.');
+      return;
+    }
+
+    setSubmittingReview(true);
+    try {
+      const updatedReviews = await submitVendorReview(vendor.id, reviewRating, reviewComment.trim() || undefined);
+      setReviews(updatedReviews);
+      toast.success(customerExistingReview ? 'Review updated.' : 'Review submitted.');
+    } catch (error: any) {
+      toast.error(error?.response?.data?.message || 'Failed to submit review.');
+    } finally {
+      setSubmittingReview(false);
+    }
+  };
+
   return (
     <CustomerLayout>
       <div className="max-w-7xl mx-auto px-3 py-6 space-y-6">
@@ -332,7 +411,7 @@ export default function VendorLanding({ slugOverride }: { slugOverride?: string 
 
                 {(vendor.verificationBadge || vendor.isVerified) && (
                   <span className="inline-flex items-center gap-1 rounded-full border border-emerald-500/30 bg-emerald-500/15 px-2.5 py-0.5 text-[11px] font-semibold text-emerald-700 mb-4">
-                     {vendor.verificationBadge || t('vendorLandingPage.verifiedVendor')}
+                    {vendor.verificationBadge || t('vendorLandingPage.verifiedVendor')}
                   </span>
                 )}
 
@@ -531,6 +610,99 @@ export default function VendorLanding({ slugOverride }: { slugOverride?: string 
             )}
           </section>
         </div>
+
+        <section className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
+          <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
+            <div>
+              <p className="text-xs font-semibold uppercase tracking-[0.18em] text-slate-500">
+                Customer reviews
+              </p>
+              <div className="mt-3 flex items-end gap-3">
+                <p className="text-4xl font-bold text-slate-900">
+                  {displayedAverageRating.toFixed(1)}
+                </p>
+                <div className="pb-1">
+                  <p className="text-base font-semibold text-amber-600">
+                    {renderStars(displayedAverageRating)}
+                  </p>
+                  <p className="text-sm text-slate-500">
+                    {displayedTotalRatings} total review{displayedTotalRatings === 1 ? '' : 's'}
+                  </p>
+                </div>
+              </div>
+            </div>
+
+            <div className="w-full max-w-xl rounded-2xl border border-slate-200 bg-slate-50 p-4">
+              <p className="text-sm font-semibold text-slate-900">
+                {customerExistingReview ? 'Update your review' : 'Leave a review'}
+              </p>
+              <div className="mt-3 flex flex-wrap gap-2">
+                {[1, 2, 3, 4, 5].map((rating) => (
+                  <button
+                    key={rating}
+                    type="button"
+                    onClick={() => setReviewRating(rating)}
+                    className={`rounded-full px-3 py-1.5 text-sm font-semibold transition ${reviewRating === rating
+                      ? 'bg-amber-500 text-white'
+                      : 'border border-slate-300 bg-white text-slate-700 hover:border-slate-400'}`}
+                  >
+                    {rating} star{rating === 1 ? '' : 's'}
+                  </button>
+                ))}
+              </div>
+              <textarea
+                value={reviewComment}
+                onChange={(event) => setReviewComment(event.target.value)}
+                rows={4}
+                placeholder="Share what customers should know about this rental partner."
+                className="mt-3 w-full rounded-xl border border-slate-300 px-3 py-2 text-sm text-slate-800 focus:border-blue-600 focus:outline-none"
+              />
+              <div className="mt-3 flex items-center justify-between gap-3">
+                {!token ? (
+                  <p className="text-xs text-slate-500">Sign in as customer to post a review.</p>
+                ) : user?.role !== 'customer' ? (
+                  <p className="text-xs text-slate-500">Only customer accounts can post reviews.</p>
+                ) : (
+                  <p className="text-xs text-slate-500">One review per customer account. You can update it anytime.</p>
+                )}
+                <Button onClick={() => void handleSubmitReview()} isProcessing={submittingReview}>
+                  {customerExistingReview ? 'Update Review' : 'Post Review'}
+                </Button>
+              </div>
+            </div>
+          </div>
+
+          <div className="mt-5 space-y-3">
+            {reviewsLoading ? (
+              <div className="flex justify-center py-6">
+                <LoadingSpinner size="md" />
+              </div>
+            ) : reviews.length === 0 ? (
+              <div className="rounded-xl border border-dashed border-slate-300 px-4 py-6 text-center text-sm text-slate-500">
+                No reviews yet. Be the first customer to share feedback.
+              </div>
+            ) : (
+              reviews.map((review) => (
+                <article key={review.id} className="rounded-xl border border-slate-200 p-4">
+                  <div className="flex flex-col gap-1 sm:flex-row sm:items-start sm:justify-between">
+                    <div>
+                      <p className="font-semibold text-slate-900">
+                        {review.reviewerUser?.name || 'Customer'}
+                      </p>
+                      <p className="text-sm font-medium text-amber-600">{renderStars(review.rating)}</p>
+                    </div>
+                    <p className="text-xs text-slate-500">
+                      {formatDate(review.updatedAt || review.createdAt)}
+                    </p>
+                  </div>
+                  <p className="mt-3 text-sm leading-6 text-slate-600">
+                    {review.comment?.trim() || 'Rated this rental partner without a written comment.'}
+                  </p>
+                </article>
+              ))
+            )}
+          </div>
+        </section>
 
         {/* Main Content: Equipment Grid + Breakdown Sidebar */}
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">

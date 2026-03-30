@@ -155,6 +155,28 @@ export interface ProductBrand {
   createdAt: string;
 }
 
+export interface AdminPackageTemplateItem {
+  id: string;
+  packageId: string;
+  itemTypeId: string;
+  itemType?: ItemType;
+  requiredQty: number;
+  suggestedUnitPrice?: number | null;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface AdminPackageTemplate {
+  id: string;
+  code: string;
+  name: string;
+  description?: string | null;
+  isActive: boolean;
+  items: AdminPackageTemplateItem[];
+  createdAt: string;
+  updatedAt: string;
+}
+
 export interface InventoryItem {
   id: string;
   vendorId: string;

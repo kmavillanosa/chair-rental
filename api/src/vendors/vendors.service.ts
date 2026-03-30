@@ -17,6 +17,8 @@ import {
   VendorType,
   VendorVerificationStatus,
 } from './entities/vendor.entity';
+import { CustomerFavoriteVendor } from './entities/customer-favorite-vendor.entity';
+import { VendorReview } from './entities/vendor-review.entity';
 import {
   VendorDocument,
   VendorDocumentStatus,
@@ -40,6 +42,7 @@ import { DeliveryRate } from '../payments/entities/delivery-rate.entity';
 import { UsersService } from '../users/users.service';
 import { UserRole } from '../users/entities/user.entity';
 import { Booking, BookingStatus } from '../bookings/entities/booking.entity';
+import { BookingReview } from '../bookings/entities/booking-review.entity';
 import { EmailService } from '../common/email.service';
 import { SettingsService } from '../settings/settings.service';
 import { PricingConfigBootstrapService } from '../payments/services/pricing-config-bootstrap.service';
@@ -55,6 +58,10 @@ export class VendorsService {
   constructor(
     @InjectRepository(Vendor)
     private readonly vendorsRepo: Repository<Vendor>,
+    @InjectRepository(CustomerFavoriteVendor)
+    private readonly customerFavoriteVendorsRepo: Repository<CustomerFavoriteVendor>,
+    @InjectRepository(VendorReview)
+    private readonly vendorReviewsRepo: Repository<VendorReview>,
     @InjectRepository(VendorDocument)
     private readonly documentsRepo: Repository<VendorDocument>,
     @InjectRepository(VendorVerificationStatusEntry)
@@ -71,6 +78,8 @@ export class VendorsService {
     private readonly deliveryRatesRepo: Repository<DeliveryRate>,
     @InjectRepository(Booking)
     private readonly bookingsRepo: Repository<Booking>,
+    @InjectRepository(BookingReview)
+    private readonly bookingReviewsRepo: Repository<BookingReview>,
     private readonly dataSource: DataSource,
     private readonly usersService: UsersService,
     private readonly emailService: EmailService,
@@ -89,6 +98,96 @@ export class VendorsService {
   async findById(id: string, withKycDetails = false) {
     const vendor = await this.findByIdRaw(id, withKycDetails);
     return this.withVerificationBadge(vendor);
+  }
+
+  async listFavoriteVendorIdsForCustomer(customerUserId: string) {
+    const favorites = await this.customerFavoriteVendorsRepo.find({
+      where: { customerUserId },
+      order: { createdAt: 'DESC' },
+    });
+
+    return favorites.map((favorite) => favorite.vendorId);
+  }
+
+  async addFavoriteVendorForCustomer(customerUserId: string, vendorId: string) {
+    const vendor = await this.vendorsRepo.findOne({ where: { id: vendorId } });
+    if (!vendor) {
+      throw new NotFoundException('Rental partner not found');
+    }
+
+    const existingFavorite = await this.customerFavoriteVendorsRepo.findOne({
+      where: { customerUserId, vendorId },
+    });
+    if (existingFavorite) {
+      return { vendorId, isFavorite: true };
+    }
+
+    const favorite = this.customerFavoriteVendorsRepo.create({
+      customerUserId,
+      vendorId,
+    });
+    await this.customerFavoriteVendorsRepo.save(favorite);
+
+    return { vendorId, isFavorite: true };
+  }
+
+  async removeFavoriteVendorForCustomer(customerUserId: string, vendorId: string) {
+    await this.customerFavoriteVendorsRepo.delete({ customerUserId, vendorId });
+    return { vendorId, isFavorite: false };
+  }
+
+  async listVendorReviews(vendorId: string) {
+    const vendor = await this.vendorsRepo.findOne({ where: { id: vendorId } });
+    if (!vendor) {
+      throw new NotFoundException('Rental partner not found');
+    }
+
+    return this.vendorReviewsRepo.find({
+      where: { vendorId },
+      relations: ['reviewerUser'],
+      order: { updatedAt: 'DESC' },
+    });
+  }
+
+  async submitVendorReview(
+    vendorId: string,
+    reviewerUserId: string,
+    ratingInput: number,
+    commentInput?: string,
+  ) {
+    const vendor = await this.vendorsRepo.findOne({ where: { id: vendorId } });
+    if (!vendor) {
+      throw new NotFoundException('Rental partner not found');
+    }
+
+    const rating = Math.round(Number(ratingInput));
+    if (!Number.isInteger(rating) || rating < 1 || rating > 5) {
+      throw new BadRequestException('rating must be between 1 and 5');
+    }
+
+    const comment = String(commentInput || '').trim() || null;
+
+    const existingReview = await this.vendorReviewsRepo.findOne({
+      where: { vendorId, reviewerUserId },
+    });
+
+    if (existingReview) {
+      existingReview.rating = rating;
+      existingReview.comment = comment;
+      await this.vendorReviewsRepo.save(existingReview);
+    } else {
+      await this.vendorReviewsRepo.save(
+        this.vendorReviewsRepo.create({
+          vendorId,
+          reviewerUserId,
+          rating,
+          comment,
+        }),
+      );
+    }
+
+    await this.refreshVendorRatingSummary(vendor.id, vendor.userId);
+    return this.listVendorReviews(vendorId);
   }
 
   async findBySlug(slug: string) {
@@ -2094,6 +2193,37 @@ export class VendorsService {
   private normalizeText(input: unknown): string | null {
     const normalized = String(input || '').trim();
     return normalized || null;
+  }
+
+  private async refreshVendorRatingSummary(vendorId: string, vendorUserId: string) {
+    const [bookingReviews, vendorReviews] = await Promise.all([
+      this.bookingReviewsRepo.find({
+        where: {
+          revieweeUserId: vendorUserId,
+          revieweeRole: UserRole.VENDOR,
+        },
+      }),
+      this.vendorReviewsRepo.find({ where: { vendorId } }),
+    ]);
+
+    const ratings = [
+      ...bookingReviews.map((review) => Number(review.rating || 0)),
+      ...vendorReviews.map((review) => Number(review.rating || 0)),
+    ];
+    const totalRatings = ratings.length;
+    const averageRating = totalRatings
+      ? Number(
+          (
+            ratings.reduce((sum, rating) => sum + rating, 0) / totalRatings
+          ).toFixed(2),
+        )
+      : 0;
+
+    await this.vendorsRepo.update(vendorId, {
+      averageRating,
+      totalRatings,
+      lowRatingFlag: totalRatings >= 3 && averageRating < 3,
+    });
   }
 
   /** Trims and validates a PayMongo organisation merchant ID (must start with org_ and be at least 14 chars). */

@@ -3,12 +3,15 @@ import { TypeOrmModule } from '@nestjs/typeorm';
 import { VendorsService } from './vendors.service';
 import { VendorsController } from './vendors.controller';
 import { Vendor } from './entities/vendor.entity';
+import { CustomerFavoriteVendor } from './entities/customer-favorite-vendor.entity';
 import { VendorDocument } from './entities/vendor-document.entity';
+import { VendorReview } from './entities/vendor-review.entity';
 import { VendorVerificationStatusEntry } from './entities/vendor-verification-status.entity';
 import { VendorItem } from './entities/vendor-item.entity';
 import { VendorItemPhoto } from './entities/vendor-item-photo.entity';
 import { VendorPhoneOtpChallenge } from './entities/vendor-phone-otp-challenge.entity';
 import { InventoryItem } from '../inventory/entities/inventory-item.entity';
+import { BookingReview } from '../bookings/entities/booking-review.entity';
 import { DeliveryRate } from '../payments/entities/delivery-rate.entity';
 import { UsersModule } from '../users/users.module';
 import { Booking } from '../bookings/entities/booking.entity';
@@ -20,12 +23,15 @@ import { PaymentsModule } from '../payments/payments.module';
   imports: [
     TypeOrmModule.forFeature([
       Vendor,
+      CustomerFavoriteVendor,
       VendorDocument,
+      VendorReview,
       VendorVerificationStatusEntry,
       VendorItem,
       VendorItemPhoto,
       VendorPhoneOtpChallenge,
       InventoryItem,
+      BookingReview,
       DeliveryRate,
       Booking,
     ]),

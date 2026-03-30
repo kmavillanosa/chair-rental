@@ -28,6 +28,12 @@ import { VendorPricingConfig } from './payments/entities/vendor-pricing-config.e
 import { VendorDeliveryPricingTier } from './payments/entities/vendor-delivery-pricing-tier.entity';
 import { VendorHelperPricingTier } from './payments/entities/vendor-helper-pricing-tier.entity';
 import { VendorDocument } from './vendors/entities/vendor-document.entity';
+import { CustomerFavoriteVendor } from './vendors/entities/customer-favorite-vendor.entity';
+import { VendorReview } from './vendors/entities/vendor-review.entity';
+import { AdminPackageTemplate } from './packages/entities/admin-package-template.entity';
+import { AdminPackageTemplateItem } from './packages/entities/admin-package-template-item.entity';
+import { VendorPackage } from './packages/entities/vendor-package.entity';
+import { VendorPackageItem } from './packages/entities/vendor-package-item.entity';
 import { VendorVerificationStatusEntry } from './vendors/entities/vendor-verification-status.entity';
 import { VendorItem } from './vendors/entities/vendor-item.entity';
 import { VendorItemPhoto } from './vendors/entities/vendor-item-photo.entity';
@@ -43,6 +49,7 @@ import { BookingDisputeEvidence } from './disputes/entities/booking-dispute-evid
 import { ChatModule } from './chat/chat.module';
 import { NotificationsModule } from './notifications/notifications.module';
 import { PushSubscription } from './notifications/entities/push-subscription.entity';
+import { PackagesModule } from './packages/packages.module';
 
 const uploadRootPath = process.env.UPLOAD_DIR || join(process.cwd(), 'uploads');
 
@@ -58,7 +65,9 @@ const uploadRootPath = process.env.UPLOAD_DIR || join(process.cwd(), 'uploads');
       entities: [
         User,
         Vendor,
+        CustomerFavoriteVendor,
         VendorDocument,
+        VendorReview,
         VendorVerificationStatusEntry,
         VendorItem,
         VendorItemPhoto,
@@ -79,6 +88,10 @@ const uploadRootPath = process.env.UPLOAD_DIR || join(process.cwd(), 'uploads');
         VendorPricingConfig,
         VendorDeliveryPricingTier,
         VendorHelperPricingTier,
+        AdminPackageTemplate,
+        AdminPackageTemplateItem,
+        VendorPackage,
+        VendorPackageItem,
         FraudAlert,
         BookingDispute,
         BookingDisputeEvidence,
@@ -108,6 +121,7 @@ const uploadRootPath = process.env.UPLOAD_DIR || join(process.cwd(), 'uploads');
     SeedsModule,
     ChatModule,
     NotificationsModule,
+    PackagesModule,
   ],
 })
 export class AppModule {}

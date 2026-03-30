@@ -165,6 +165,9 @@ function createService() {
     increment: vi.fn(),
     update: vi.fn(),
   };
+  const vendorReviewsRepo = {
+    find: vi.fn().mockResolvedValue([]),
+  };
   const usersRepo = {
     update: vi.fn(),
   };
@@ -206,6 +209,7 @@ function createService() {
     paymentsRepo as any,
     vendorPayoutsRepo as any,
     vendorsRepo as any,
+    vendorReviewsRepo as any,
     usersRepo as any,
     dataSource as any,
     settingsService as any,
@@ -227,6 +231,7 @@ function createService() {
       paymentsRepo,
       vendorPayoutsRepo,
       vendorsRepo,
+      vendorReviewsRepo,
       usersRepo,
       dataSource,
       settingsService,

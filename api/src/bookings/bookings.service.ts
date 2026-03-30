@@ -28,6 +28,7 @@ import { PricingCalculationService } from '../payments/services/pricing-calculat
 import { PricingConfigBootstrapService } from '../payments/services/pricing-config-bootstrap.service';
 import { differenceInDays } from 'date-fns';
 import { Vendor, VendorPaymentMode } from '../vendors/entities/vendor.entity';
+import { VendorReview } from '../vendors/entities/vendor-review.entity';
 import { SettingsService } from '../settings/settings.service';
 import { User, UserRole } from '../users/entities/user.entity';
 import { FraudService } from '../fraud/fraud.service';
@@ -113,6 +114,8 @@ export class BookingsService {
     @InjectRepository(VendorPayment) private readonly paymentsRepo: Repository<VendorPayment>,
     @InjectRepository(VendorPayout) private readonly vendorPayoutsRepo: Repository<VendorPayout>,
     @InjectRepository(Vendor) private readonly vendorsRepo: Repository<Vendor>,
+    @InjectRepository(VendorReview)
+    private readonly vendorReviewsRepo: Repository<VendorReview>,
     @InjectRepository(User) private readonly usersRepo: Repository<User>,
     private readonly dataSource: DataSource,
     private readonly settingsService: SettingsService,
@@ -2129,21 +2132,36 @@ export class BookingsService {
       const vendor = await this.vendorsRepo.findOne({ where: { userId: revieweeUserId } });
       if (!vendor) return;
 
+      const vendorReviews = await this.vendorReviewsRepo.find({ where: { vendorId: vendor.id } });
+      const combinedRatings = [
+        ...reviews.map((review) => Number(review.rating || 0)),
+        ...vendorReviews.map((review) => Number(review.rating || 0)),
+      ];
+      const vendorTotal = combinedRatings.length;
+      const vendorAverage = vendorTotal
+        ? Number(
+            (
+              combinedRatings.reduce((sum, rating) => sum + rating, 0) /
+              vendorTotal
+            ).toFixed(2),
+          )
+        : 0;
+
       await this.vendorsRepo.update(vendor.id, {
-        averageRating: average,
-        totalRatings: total,
-        lowRatingFlag: total >= 3 && average < 3,
+        averageRating: vendorAverage,
+        totalRatings: vendorTotal,
+        lowRatingFlag: vendorTotal >= 3 && vendorAverage < 3,
       });
 
-      if (total >= 3 && average < 3) {
+      if (vendorTotal >= 3 && vendorAverage < 3) {
         await this.fraudService.createAlert({
           type: FraudAlertType.LOW_RATING_VENDOR,
           severity: FraudAlertSeverity.MEDIUM,
           title: 'Vendor flagged for low ratings',
-          description: `${vendor.businessName} has an average rating of ${average} (${total} ratings).`,
+          description: `${vendor.businessName} has an average rating of ${vendorAverage} (${vendorTotal} ratings).`,
           vendorId: vendor.id,
           userId: revieweeUserId,
-          metadata: { averageRating: average, totalRatings: total },
+          metadata: { averageRating: vendorAverage, totalRatings: vendorTotal },
         });
       }
 

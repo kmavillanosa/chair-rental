@@ -13,6 +13,7 @@ import { VendorPayment } from '../payments/entities/vendor-payment.entity';
 import { VendorPayout } from '../payments/entities/vendor-payout.entity';
 import { VendorsModule } from '../vendors/vendors.module';
 import { Vendor } from '../vendors/entities/vendor.entity';
+import { VendorReview } from '../vendors/entities/vendor-review.entity';
 import { SettingsModule } from '../settings/settings.module';
 import { FraudModule } from '../fraud/fraud.module';
 import { User } from '../users/entities/user.entity';
@@ -33,6 +34,7 @@ import { NotificationsModule } from '../notifications/notifications.module';
       VendorPayment,
       VendorPayout,
       Vendor,
+      VendorReview,
       User,
     ]),
     VendorsModule,

@@ -1,5 +1,5 @@
 import api from './axios';
-import type { Vendor } from '../types';
+import type { Vendor, VendorReview } from '../types';
 
 export type CreateVendorPayload = Partial<Vendor> & {
   userEmail?: string;
@@ -41,6 +41,27 @@ export const getNearbyVendors = (
 
 export const getVendorBySlug = (slug: string) =>
   api.get<Vendor>(`/vendors/slug/${slug}`).then(r => r.data);
+
+export const getVendorReviews = (vendorId: string) =>
+  api.get<VendorReview[]>(`/vendors/${vendorId}/reviews`).then((r) => r.data);
+
+export const submitVendorReview = (
+  vendorId: string,
+  rating: number,
+  comment?: string,
+) =>
+  api
+    .post<VendorReview[]>(`/vendors/${vendorId}/reviews`, { rating, comment })
+    .then((r) => r.data);
+
+export const getMyFavoriteVendorIds = () =>
+  api.get<string[]>('/vendors/favorites/me').then(r => r.data);
+
+export const addFavoriteVendor = (vendorId: string) =>
+  api.post<{ vendorId: string; isFavorite: boolean }>(`/vendors/${vendorId}/favorite`).then(r => r.data);
+
+export const removeFavoriteVendor = (vendorId: string) =>
+  api.delete<{ vendorId: string; isFavorite: boolean }>(`/vendors/${vendorId}/favorite`).then(r => r.data);
 
 export const checkSlugAvailability = (slug: string) =>
   api.get<{ available: boolean; slug: string }>(`/vendors/slug/check`, { params: { slug } }).then(r => r.data);

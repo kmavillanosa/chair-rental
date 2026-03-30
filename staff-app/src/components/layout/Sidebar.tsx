@@ -48,10 +48,11 @@ const adminLinks: MenuLink[] = [
   {
     label: 'Catalog',
     icon: HiCollection,
-    matchPrefixes: ['/admin/item-types', '/admin/brands'],
+    matchPrefixes: ['/admin/item-types', '/admin/brands', '/admin/packages'],
     children: [
       { to: '/admin/item-types', label: 'Item Types' },
       { to: '/admin/brands', label: 'Brands' },
+      { to: '/admin/packages', label: 'Packages' },
     ],
   },
   { to: '/admin/payments', label: 'Payments', icon: HiCreditCard },

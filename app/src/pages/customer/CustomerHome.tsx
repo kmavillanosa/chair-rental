@@ -944,6 +944,14 @@ export default function CustomerHome() {
                             >
                                 {t('customerHome.heroCreateAccount', { defaultValue: 'Create Account' })}
                             </Button>
+                            <Button
+                                size="lg"
+                                color="light"
+                                onClick={() => navigate('/rental-partners')}
+                                className="!rounded-xl !border-white/40 !bg-white/10 !px-8 !py-3 !text-base !font-semibold !text-white backdrop-blur-md transition hover:!bg-white/20 hover:!border-white/60"
+                            >
+                                {t('customerHome.heroBrowsePartners', { defaultValue: 'Browse Rental Partners' })}
+                            </Button>
                             {showInstallButton && (
                                 <Button
                                     size="lg"

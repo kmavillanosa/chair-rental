@@ -358,6 +358,48 @@ export class VendorsController {
     return this.vendorsService.findBySlug(slug);
   }
 
+  @Get(':id/reviews')
+  listVendorReviews(@Param('id') id: string) {
+    return this.vendorsService.listVendorReviews(id);
+  }
+
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles(UserRole.CUSTOMER)
+  @ApiBearerAuth()
+  @Get('favorites/me')
+  listMyFavoriteVendorIds(@Request() req) {
+    return this.vendorsService.listFavoriteVendorIdsForCustomer(req.user.id);
+  }
+
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles(UserRole.CUSTOMER)
+  @ApiBearerAuth()
+  @Post(':id/favorite')
+  addFavoriteVendor(@Request() req, @Param('id') id: string) {
+    return this.vendorsService.addFavoriteVendorForCustomer(req.user.id, id);
+  }
+
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles(UserRole.CUSTOMER)
+  @ApiBearerAuth()
+  @Delete(':id/favorite')
+  removeFavoriteVendor(@Request() req, @Param('id') id: string) {
+    return this.vendorsService.removeFavoriteVendorForCustomer(req.user.id, id);
+  }
+
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles(UserRole.CUSTOMER)
+  @ApiBearerAuth()
+  @Post(':id/reviews')
+  submitVendorReview(
+    @Request() req,
+    @Param('id') id: string,
+    @Body('rating') rating: number,
+    @Body('comment') comment?: string,
+  ) {
+    return this.vendorsService.submitVendorReview(id, req.user.id, rating, comment);
+  }
+
   @UseGuards(JwtAuthGuard, RolesGuard)
   @Roles(UserRole.ADMIN)
   @ApiBearerAuth()

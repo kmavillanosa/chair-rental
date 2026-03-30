@@ -18,6 +18,7 @@ import MyShop from './pages/vendor/MyShop'
 import VendorPayments from './pages/vendor/VendorPayments'
 import CustomerHome from './pages/customer/CustomerHome.tsx'
 import CustomerResults from './pages/customer/CustomerResults.tsx'
+import RentalPartners from './pages/customer/RentalPartners'
 import VendorLanding from './pages/customer/VendorLanding'
 import BookingFlow from './pages/customer/BookingFlow'
 import MyBookings from './pages/customer/MyBookings'
@@ -116,6 +117,7 @@ function AppRoutes({
       {!vendorSlug && <Route path="/vendor/shop" element={<ProtectedRoute role="vendor"><MyShop /></ProtectedRoute>} />}
       {!vendorSlug && <Route path="/vendor/payments" element={<ProtectedRoute role="vendor"><VendorPayments /></ProtectedRoute>} />}
       <Route path="/" element={vendorSlug ? <VendorLanding slugOverride={vendorSlug} /> : <CustomerHome />} />
+      <Route path="/rental-partners" element={<RentalPartners />} />
       <Route path="/results" element={<CustomerResults />} />
       <Route path="/book/:slug" element={<BookingFlow />} />
       <Route path="/my-bookings" element={<ProtectedRoute><MyBookings /></ProtectedRoute>} />

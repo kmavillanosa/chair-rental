@@ -22,8 +22,9 @@ export default function CustomerLayout({ children, hideHeaderBackground = false 
   const docsUrl = resolveSafeDocsUrl();
 
   const isHomePage = location.pathname === '/';
+  const isRentalPartnersPage = location.pathname.startsWith('/rental-partners');
   const shouldHideLegalFooter = location.pathname === '/results' || location.pathname === '/';
-  const showHeader = Boolean(user) || isHomePage;
+  const showHeader = Boolean(user) || isHomePage || isRentalPartnersPage;
 
   const headerClassName = hideHeaderBackground || isHomePage
     ? 'absolute inset-x-0 top-0 z-[1100] border-b border-white/10 bg-transparent text-white shadow-sm backdrop-blur'
@@ -54,6 +55,12 @@ export default function CustomerLayout({ children, hideHeaderBackground = false 
   };
 
   const navLinks = [
+    {
+      to: '/rental-partners',
+      label: t('nav.rentalPartners', { defaultValue: 'Rental Partners' }),
+      active: location.pathname.startsWith('/rental-partners'),
+      dataTour: 'nav-rental-partners',
+    },
     ...(user
       ? [
         {

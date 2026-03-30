@@ -103,6 +103,8 @@ export interface Vendor {
   isActive: boolean;
   isVerified: boolean;
   isTestAccount?: boolean;
+  averageRating?: number;
+  totalRatings?: number;
   commissionRate: number;
   balance: number;
   warningCount: number;
@@ -197,6 +199,17 @@ export interface BookingReview {
   revieweeUserId: string;
   reviewerRole: UserRole;
   revieweeRole: UserRole;
+  rating: number;
+  comment?: string | null;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface VendorReview {
+  id: string;
+  vendorId: string;
+  reviewerUserId: string;
+  reviewerUser?: User;
   rating: number;
   comment?: string | null;
   createdAt: string;
