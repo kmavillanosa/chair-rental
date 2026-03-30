@@ -1,9 +1,9 @@
 import { MigrationInterface, QueryRunner } from 'typeorm';
 
-export class Add2026032500002VendorTestAccountAndMapFlag
+export class AddVendorTestAccountAndMapFlag2026032500002
   implements MigrationInterface
 {
-  name = 'Add2026032500002VendorTestAccountAndMapFlag';
+  name = 'AddVendorTestAccountAndMapFlag2026032500002';
 
   public async up(queryRunner: QueryRunner): Promise<void> {
     await queryRunner.query(`
