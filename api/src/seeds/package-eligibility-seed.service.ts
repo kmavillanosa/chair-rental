@@ -33,6 +33,19 @@ type AdminPackageSeedDefinition = {
 
 const ADMIN_PACKAGE_SEED_DEFINITIONS: AdminPackageSeedDefinition[] = [
   {
+    code: 'starter_party_core_60pax',
+    name: 'Starter Party Core (60 pax)',
+    description:
+      'Low-complexity package intentionally aligned with seeded demo vendor inventory for quick package testing.',
+    items: [
+      { itemTypeName: 'Monoblock chairs', requiredQty: 60, suggestedUnitPrice: 28 },
+      { itemTypeName: 'Folding tables', requiredQty: 8, suggestedUnitPrice: 300 },
+      { itemTypeName: 'Open tent', requiredQty: 1, suggestedUnitPrice: 7600 },
+      { itemTypeName: 'Balloon arches', requiredQty: 1, suggestedUnitPrice: 2400 },
+      { itemTypeName: 'PAR lights', requiredQty: 6, suggestedUnitPrice: 520 },
+    ],
+  },
+  {
     code: 'wedding_standard_150pax',
     name: 'Wedding Standard (150 pax)',
     description:
@@ -105,6 +118,63 @@ const ADMIN_PACKAGE_SEED_DEFINITIONS: AdminPackageSeedDefinition[] = [
       { itemTypeName: 'Audio mixers', requiredQty: 1, suggestedUnitPrice: 1800 },
       { itemTypeName: 'Industrial fans', requiredQty: 6, suggestedUnitPrice: 700 },
       { itemTypeName: 'Extension cords', requiredQty: 12, suggestedUnitPrice: 100 },
+    ],
+  },
+  {
+    code: 'funeral_memorial_canopy_80pax',
+    name: 'Funeral Memorial Canopy (80 pax)',
+    description:
+      'Respectful memorial setup with seating, shade, lighting, and essential sound support for wakes and services.',
+    items: [
+      { itemTypeName: 'Monoblock chairs', requiredQty: 80, suggestedUnitPrice: 26 },
+      { itemTypeName: 'Rectangular banquet tables', requiredQty: 10, suggestedUnitPrice: 320 },
+      { itemTypeName: 'Open tent', requiredQty: 2, suggestedUnitPrice: 8200 },
+      { itemTypeName: 'PA speakers', requiredQty: 2, suggestedUnitPrice: 2300 },
+      { itemTypeName: 'PAR lights', requiredQty: 4, suggestedUnitPrice: 500 },
+      { itemTypeName: 'Industrial fans', requiredQty: 4, suggestedUnitPrice: 650 },
+    ],
+  },
+  {
+    code: 'baptism_reception_family_50pax',
+    name: 'Baptism Reception Family (50 pax)',
+    description:
+      'Compact church-to-reception package with kid-friendly seating and simple decor accents.',
+    items: [
+      { itemTypeName: 'Monoblock chairs', requiredQty: 50, suggestedUnitPrice: 28 },
+      { itemTypeName: 'Rectangular banquet tables', requiredQty: 6, suggestedUnitPrice: 300 },
+      { itemTypeName: 'Open tent', requiredQty: 1, suggestedUnitPrice: 7600 },
+      { itemTypeName: 'Backdrop frames', requiredQty: 1, suggestedUnitPrice: 3200 },
+      { itemTypeName: 'Balloon arches', requiredQty: 1, suggestedUnitPrice: 2200 },
+      { itemTypeName: 'PAR lights', requiredQty: 4, suggestedUnitPrice: 520 },
+    ],
+  },
+  {
+    code: 'graduation_program_night_120pax',
+    name: 'Graduation Program Night (120 pax)',
+    description:
+      'Stage-focused school graduation package with ceremony setup, AV support, and lighting coverage.',
+    items: [
+      { itemTypeName: 'Folding chairs', requiredQty: 120, suggestedUnitPrice: 42 },
+      { itemTypeName: 'Rectangular banquet tables', requiredQty: 12, suggestedUnitPrice: 360 },
+      { itemTypeName: 'Modular stage platforms', requiredQty: 8, suggestedUnitPrice: 1400 },
+      { itemTypeName: 'PA speakers', requiredQty: 4, suggestedUnitPrice: 2800 },
+      { itemTypeName: 'Audio mixers', requiredQty: 1, suggestedUnitPrice: 2100 },
+      { itemTypeName: 'PAR lights', requiredQty: 10, suggestedUnitPrice: 600 },
+      { itemTypeName: 'LED wall panels', requiredQty: 4, suggestedUnitPrice: 2800 },
+    ],
+  },
+  {
+    code: 'reunion_garden_chill_90pax',
+    name: 'Reunion Garden Chill (90 pax)',
+    description:
+      'Relaxed family reunion setup for afternoon-to-evening events with comfort and ambience basics.',
+    items: [
+      { itemTypeName: 'Monoblock chairs', requiredQty: 90, suggestedUnitPrice: 27 },
+      { itemTypeName: 'Round banquet tables', requiredQty: 11, suggestedUnitPrice: 390 },
+      { itemTypeName: 'Open tent', requiredQty: 2, suggestedUnitPrice: 8600 },
+      { itemTypeName: 'String lights', requiredQty: 8, suggestedUnitPrice: 340 },
+      { itemTypeName: 'Industrial fans', requiredQty: 4, suggestedUnitPrice: 700 },
+      { itemTypeName: 'Coffee tables', requiredQty: 4, suggestedUnitPrice: 250 },
     ],
   },
 ];
