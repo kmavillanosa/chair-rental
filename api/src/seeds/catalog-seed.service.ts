@@ -258,6 +258,24 @@ const SIZE_VARIANT_RULES: SizeVariantRule[] = [
 
 @Injectable()
 export class CatalogSeedService {
+  private static readonly DEFAULT_MIN_ITEM_TYPES = 300;
+
+  private static readonly GENERATED_VARIANT_LABELS = [
+    'Starter',
+    'Standard',
+    'Premium',
+    'Pro',
+    'Deluxe',
+  ];
+
+  private static readonly GENERATED_VARIANT_RATE_MULTIPLIERS = [
+    0.85,
+    1,
+    1.1,
+    1.25,
+    1.4,
+  ];
+
   private static readonly IMAGE_EXTENSIONS = new Set([
     '.png',
     '.jpg',
@@ -331,6 +349,10 @@ export class CatalogSeedService {
     let brandsCreated = 0;
     let itemTypesWithSeededPictures = 0;
     let itemTypesMissingSeededPictures = 0;
+    const minimumItemTypes = this.parsePositiveInt(
+      process.env.SEED_MIN_ITEM_TYPES,
+      CatalogSeedService.DEFAULT_MIN_ITEM_TYPES,
+    );
 
     const existingTypes = await this.itemTypesRepo.find();
     const itemTypeByName = new Map<string, ItemType>();
@@ -432,6 +454,67 @@ export class CatalogSeedService {
       }
 
       folderToTypeNames.set(folderName, seededTypeNamesForFolder);
+    }
+
+    const activeSeededTypes = Array.from(itemTypeByName.values()).filter(
+      (itemType) => itemType.isActive !== false,
+    );
+
+    if (minimumItemTypes > activeSeededTypes.length && activeSeededTypes.length) {
+      const variantsNeeded = minimumItemTypes - activeSeededTypes.length;
+
+      for (let index = 0; index < variantsNeeded; index += 1) {
+        const baseType = activeSeededTypes[index % activeSeededTypes.length];
+        const labelIndex = Math.floor(index / activeSeededTypes.length);
+        const labelBase =
+          CatalogSeedService.GENERATED_VARIANT_LABELS[
+          labelIndex % CatalogSeedService.GENERATED_VARIANT_LABELS.length
+          ];
+        const labelRound =
+          Math.floor(
+            labelIndex / CatalogSeedService.GENERATED_VARIANT_LABELS.length,
+          ) + 1;
+        const variantLabel = `${labelBase} ${labelRound}`;
+        const generatedName = `${baseType.name} (${variantLabel})`;
+        const normalizedGeneratedName = generatedName.trim().toLowerCase();
+
+        if (itemTypeByName.has(normalizedGeneratedName)) {
+          continue;
+        }
+
+        const multiplier =
+          CatalogSeedService.GENERATED_VARIANT_RATE_MULTIPLIERS[
+          labelIndex % CatalogSeedService.GENERATED_VARIANT_RATE_MULTIPLIERS.length
+          ];
+        const generatedRate = Math.max(
+          50,
+          Number((Number(baseType.defaultRatePerDay || 0) * multiplier).toFixed(2)),
+        );
+        const generatedDescription =
+          `Generated variant from ${baseType.name} to meet the seeded minimum item type target.`;
+
+        const createdType = await this.itemTypesRepo.save(
+          this.itemTypesRepo.create({
+            name: generatedName,
+            description: generatedDescription,
+            defaultRatePerDay: generatedRate,
+            eventTags: this.normalizeTags(baseType.eventTags),
+            setTags: this.normalizeTags(baseType.setTags),
+            pictureUrl: baseType.pictureUrl || undefined,
+            isActive: true,
+          }),
+        );
+
+        itemTypeByName.set(normalizedGeneratedName, createdType);
+        seededItemTypeNames.add(normalizedGeneratedName);
+        itemTypesCreated += 1;
+
+        if (createdType.pictureUrl) {
+          itemTypesWithSeededPictures += 1;
+        } else {
+          itemTypesMissingSeededPictures += 1;
+        }
+      }
     }
 
     if (this.parseBooleanFlag(process.env.SEED_DEACTIVATE_MISSING_ITEM_TYPES)) {
@@ -700,6 +783,15 @@ export class CatalogSeedService {
   private parseBooleanFlag(input: unknown) {
     const normalized = String(input || '').trim().toLowerCase();
     return ['1', 'true', 'yes', 'on'].includes(normalized);
+  }
+
+  private parsePositiveInt(input: unknown, fallback: number): number {
+    const parsed = Number.parseInt(String(input || '').trim(), 10);
+    if (!Number.isFinite(parsed) || parsed <= 0) {
+      return fallback;
+    }
+
+    return parsed;
   }
 
   private toBrandKey(itemTypeId: string, brandName: string) {

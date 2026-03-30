@@ -46,6 +46,41 @@ const ADMIN_PACKAGE_SEED_DEFINITIONS: AdminPackageSeedDefinition[] = [
     ],
   },
   {
+    code: 'micro_backyard_party_12pax',
+    name: 'Micro Backyard Party (12 pax)',
+    description:
+      'Very small party package for home celebrations, ideal for intimate gatherings around 10-12 people.',
+    items: [
+      { itemTypeName: 'Monoblock chairs', requiredQty: 12, suggestedUnitPrice: 28 },
+      { itemTypeName: 'Folding tables', requiredQty: 2, suggestedUnitPrice: 300 },
+      { itemTypeName: 'PAR lights', requiredQty: 2, suggestedUnitPrice: 520 },
+    ],
+  },
+  {
+    code: 'small_family_celebration_16pax',
+    name: 'Small Family Celebration (16 pax)',
+    description:
+      'Small family event package for birthdays, anniversaries, and reunions with a 15-16 guest setup.',
+    items: [
+      { itemTypeName: 'Monoblock chairs', requiredQty: 16, suggestedUnitPrice: 28 },
+      { itemTypeName: 'Folding tables', requiredQty: 3, suggestedUnitPrice: 300 },
+      { itemTypeName: 'Balloon arches', requiredQty: 1, suggestedUnitPrice: 2200 },
+      { itemTypeName: 'PAR lights', requiredQty: 3, suggestedUnitPrice: 520 },
+    ],
+  },
+  {
+    code: 'small_tent_party_20pax',
+    name: 'Small Tent Party (20 pax)',
+    description:
+      'Small outdoor party package sized for around 18-20 attendees with basic shelter and ambience.',
+    items: [
+      { itemTypeName: 'Monoblock chairs', requiredQty: 20, suggestedUnitPrice: 28 },
+      { itemTypeName: 'Folding tables', requiredQty: 3, suggestedUnitPrice: 300 },
+      { itemTypeName: 'Open tent', requiredQty: 1, suggestedUnitPrice: 7600 },
+      { itemTypeName: 'PAR lights', requiredQty: 4, suggestedUnitPrice: 520 },
+    ],
+  },
+  {
     code: 'chairs_bulk_bonus_50_plus_5',
     name: 'Chair Bulk Bonus (Rent 50 + 5 Free)',
     description:
