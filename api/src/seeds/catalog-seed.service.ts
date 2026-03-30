@@ -133,7 +133,8 @@ const CATALOG_PROFILES: CatalogProfile[] = [
       'monitor-speakers',
       'pa-speakers',
     ],
-    defaultRatePerDay: 1400,
+    // PH market: PA speaker pair ₱600–1,200/day, mixer ₱600–1,000, mic system ₱500–1,000
+    defaultRatePerDay: 1000,
     eventTags: TECH_EVENT_TAGS,
     setTags: ['sound-set', 'dj-set', 'karaoke-set', 'program-set'],
     brands: ['JBL', 'QSC', 'Yamaha', 'Shure', 'Sennheiser', 'Behringer'],
@@ -151,7 +152,8 @@ const CATALOG_PROFILES: CatalogProfile[] = [
       'chandelier',
       'light',
     ],
-    defaultRatePerDay: 1100,
+    // PH market: PAR/LED/disco light ₱150–300/unit; moving heads & follow spots get per-folder adjustments
+    defaultRatePerDay: 350,
     eventTags: TECH_EVENT_TAGS,
     setTags: ['lighting-set', 'party-set', 'stage-set', 'ambience-set'],
     brands: ['Chauvet DJ', 'ADJ', 'Elation Lighting', 'Martin Professional'],
@@ -219,7 +221,8 @@ const CATALOG_PROFILES: CatalogProfile[] = [
   },
   {
     matchers: ['smoke-machines', 'bubble-machines', 'snow-machines', 'confetti-machines', 'cryo-jets'],
-    defaultRatePerDay: 1800,
+    // PH market: smoke/bubble/confetti machines ₱400–800/day; cryo jets get per-folder +₱2,000
+    defaultRatePerDay: 800,
     eventTags: TECH_EVENT_TAGS,
     setTags: ['effects-set', 'party-set', 'concert-set'],
     brands: ['Antari', 'Look Solutions', 'MagicFX'],
@@ -320,12 +323,17 @@ export class CatalogSeedService {
     { name: 'Study / Training Tables',           defaultRatePerDay: 160,   eventTags: TECH_EVENT_TAGS,   setTags: ['table-set'] },
     { name: 'Registration Counter Tables',       defaultRatePerDay: 180,   eventTags: TECH_EVENT_TAGS,   setTags: ['table-set', 'event-essentials-set'] },
     // --- Tents & Structures (15) ---
-    { name: 'Stretch Tents',                     defaultRatePerDay: 8000,  eventTags: COMMON_EVENT_TAGS, setTags: ['tent-set', 'outdoor-set'] },
-    { name: 'Arabian Tents',                     defaultRatePerDay: 10000, eventTags: COMMON_EVENT_TAGS, setTags: ['tent-set', 'vip-set'] },
-    { name: 'Royal Tents',                       defaultRatePerDay: 15000, eventTags: COMMON_EVENT_TAGS, setTags: ['tent-set', 'vip-set'] },
-    { name: 'Geodesic Dome Tents',               defaultRatePerDay: 12000, eventTags: COMMON_EVENT_TAGS, setTags: ['tent-set', 'outdoor-set'] },
-    { name: 'Marquee Tents',                     defaultRatePerDay: 6000,  eventTags: COMMON_EVENT_TAGS, setTags: ['tent-set', 'outdoor-set'] },
-    { name: 'Clear-Span Structures',             defaultRatePerDay: 20000, eventTags: TECH_EVENT_TAGS,   setTags: ['tent-set', 'outdoor-set'] },
+    // PH market: stretch tent (medium) ₱4,000–8,000/day
+    { name: 'Stretch Tents',                     defaultRatePerDay: 6000,  eventTags: COMMON_EVENT_TAGS, setTags: ['tent-set', 'outdoor-set'] },
+    // PH market: Arabian tent ₱6,000–12,000/day
+    { name: 'Arabian Tents',                     defaultRatePerDay: 8000,  eventTags: COMMON_EVENT_TAGS, setTags: ['tent-set', 'vip-set'] },
+    // PH market: large luxury tent ₱8,000–15,000/day
+    { name: 'Royal Tents',                       defaultRatePerDay: 10000, eventTags: COMMON_EVENT_TAGS, setTags: ['tent-set', 'vip-set'] },
+    // PH market: 5m geodesic dome ₱5,000–10,000/day
+    { name: 'Geodesic Dome Tents',               defaultRatePerDay: 8000,  eventTags: COMMON_EVENT_TAGS, setTags: ['tent-set', 'outdoor-set'] },
+    { name: 'Marquee Tents',                     defaultRatePerDay: 5000,  eventTags: COMMON_EVENT_TAGS, setTags: ['tent-set', 'outdoor-set'] },
+    // PH market: large clear-span structure ₱15,000–30,000/day
+    { name: 'Clear-Span Structures',             defaultRatePerDay: 18000, eventTags: TECH_EVENT_TAGS,   setTags: ['tent-set', 'outdoor-set'] },
     { name: 'Sail Shade Tents',                  defaultRatePerDay: 4000,  eventTags: COMMON_EVENT_TAGS, setTags: ['tent-set', 'outdoor-set'] },
     { name: 'Safari Tents',                      defaultRatePerDay: 5500,  eventTags: COMMON_EVENT_TAGS, setTags: ['tent-set', 'outdoor-set'] },
     { name: 'Tunnel Connect Tents',              defaultRatePerDay: 3500,  eventTags: COMMON_EVENT_TAGS, setTags: ['tent-set', 'outdoor-set'] },
@@ -581,7 +589,8 @@ export class CatalogSeedService {
     { name: 'Portable Handwashing Stations',     defaultRatePerDay: 400,   eventTags: COMMON_EVENT_TAGS, setTags: ['outdoor-set', 'event-essentials-set'] },
     { name: 'Folding Trolleys',                  defaultRatePerDay: 100,   eventTags: COMMON_EVENT_TAGS, setTags: ['event-essentials-set'] },
     { name: 'Platform Dollies',                  defaultRatePerDay: 100,   eventTags: COMMON_EVENT_TAGS, setTags: ['event-essentials-set'] },
-    { name: 'Generators (Portable)',             defaultRatePerDay: 1500,  eventTags: COMMON_EVENT_TAGS, setTags: ['outdoor-set', 'power-set'] },
+    // PH market: 2–3kva portable generator ₱800–1,200/day
+    { name: 'Generators (Portable)',             defaultRatePerDay: 1000,  eventTags: COMMON_EVENT_TAGS, setTags: ['outdoor-set', 'power-set'] },
     { name: 'Power Strip Distributors',          defaultRatePerDay: 80,    eventTags: TECH_EVENT_TAGS,   setTags: ['power-set', 'event-essentials-set'] },
     { name: 'Cable Management Kits',             defaultRatePerDay: 60,    eventTags: TECH_EVENT_TAGS,   setTags: ['event-essentials-set'] },
   ];
@@ -938,13 +947,21 @@ export class CatalogSeedService {
     const normalizedFolderName = this.normalizeForPath(folderName);
     let rate = profileDefaultRate;
 
-    if (normalizedFolderName.includes('tent')) rate += 1200;
-    if (normalizedFolderName.includes('air-conditioned')) rate += 1800;
-    if (normalizedFolderName.includes('generator')) rate += 900;
-    if (normalizedFolderName.includes('led-wall')) rate += 1800;
-    if (normalizedFolderName.includes('chandelier')) rate += 450;
-    if (normalizedFolderName.includes('microphone')) rate -= 400;
-    if (normalizedFolderName.includes('extension-cords')) rate -= 120;
+    if (normalizedFolderName.includes('tent')) rate += 1200;           // PH large tent base ₱3,500+1,200=₱4,700
+    if (normalizedFolderName.includes('air-conditioned')) rate += 1800; // AC tent premium
+    if (normalizedFolderName.includes('generator')) rate += 900;        // 5kva gen: power ₱1,600+900=₱2,500
+    if (normalizedFolderName.includes('led-wall')) rate += 1800;        // LED panel: video ₱2,000+1,800=₱3,800
+    if (normalizedFolderName.includes('chandelier')) rate += 450;       // PH chandelier ₱600–1,200 (₱350+450=₱800)
+    if (normalizedFolderName.includes('moving-head')) rate += 600;      // PH moving head ₱600–1,500 (₱350+600=₱950)
+    if (normalizedFolderName.includes('follow-spot')) rate += 700;      // PH follow spot ₱800–1,500 (₱350+700=₱1,050)
+    if (normalizedFolderName.includes('laser')) rate += 200;            // PH laser ₱400–800 (₱350+200=₱550)
+    if (normalizedFolderName.includes('cryo')) rate += 2000;            // PH cryo jet ₱2,000–5,000 (₱800+2,000=₱2,800)
+    if (normalizedFolderName.includes('wedding-arch')) rate += 300;     // PH wedding arch ₱300–600 (₱140+300=₱440)
+    if (normalizedFolderName.includes('balloon-arch')) rate += 200;     // PH balloon arch ₱250–500 (₱140+200=₱340)
+    if (normalizedFolderName.includes('backdrop')) rate -= 1400;        // PH backdrop frame ₱200–400 (₱1,800−1,400=₱400)
+    if (normalizedFolderName.includes('podium')) rate -= 800;           // PH podium ₱500–1,000 (₱1,800−800=₱1,000)
+    if (normalizedFolderName.includes('microphone')) rate -= 400;       // 2-ch wireless mic (₱1,000−400=₱600)
+    if (normalizedFolderName.includes('extension-cords')) rate -= 1250; // PH drum reel ₱200–400 (₱1,600−1,250=₱350)
     if (normalizedFolderName.includes('forks-and-spoons')) rate -= 80;
     if (normalizedFolderName.includes('plates')) rate -= 100;
 
