@@ -381,33 +381,37 @@ export default function VendorLanding({ slugOverride }: { slugOverride?: string 
   return (
     <CustomerLayout normalHeader>
       <div className="max-w-7xl mx-auto px-3 py-6 space-y-6">
-        {/* Hero Section with Integrated Gallery */}
-        <section className="rounded-2xl overflow-hidden shadow-lg bg-white">
-          <div className="grid grid-cols-1 lg:grid-cols-3 gap-0">
-            {/* Gallery with Vertical Thumbnails */}
-            <div className="lg:col-span-2 bg-slate-900 flex">
+
+        {/* ── Hero ─────────────────────────────────────────────────── */}
+        <section className="rounded-2xl overflow-hidden shadow-xl">
+          <div className="grid grid-cols-1 lg:grid-cols-3 min-h-[420px]">
+            {/* Gallery */}
+            <div className="lg:col-span-2 bg-slate-950 flex">
               {galleryPhotos.length > 0 ? (
                 <>
-                  {/* Main Image */}
-                  <div className="flex-1 relative bg-slate-950 flex items-center justify-center min-h-80">
+                  <div className="flex-1 relative flex items-center justify-center min-h-[320px] lg:min-h-[420px]">
                     <img
                       src={galleryPhotos[selectedGalleryImage]}
                       alt="Rental Partner gallery"
-                      className="max-w-full max-h-80 object-contain"
+                      className="w-full max-h-[420px] object-cover"
                     />
+                    <div className="absolute inset-x-0 bottom-0 h-16 bg-gradient-to-t from-slate-950/70 to-transparent pointer-events-none" />
+                    {galleryPhotos.length > 1 && (
+                      <span className="absolute bottom-3 right-3 rounded-full bg-black/50 px-2.5 py-0.5 text-xs font-medium text-white backdrop-blur-sm">
+                        {selectedGalleryImage + 1} / {galleryPhotos.length}
+                      </span>
+                    )}
                   </div>
-
-                  {/* Vertical Thumbnail Strip */}
                   {galleryPhotos.length > 1 && (
-                    <div className="w-16 flex flex-col gap-1 bg-slate-800 p-1.5 overflow-y-auto">
+                    <div className="w-16 flex flex-col gap-1 bg-slate-900 p-1.5 overflow-y-auto">
                       {galleryPhotos.map((photo, idx) => (
                         <button
                           key={idx}
                           onClick={() => setSelectedGalleryImage(idx)}
-                          className={`h-16 rounded-md overflow-hidden border-2 transition flex-shrink-0 bg-slate-950 flex items-center justify-center ${idx === selectedGalleryImage
-                            ? 'border-[#b7e92f] ring-2 ring-[#b7e92f]/50'
-                            : 'border-slate-700 hover:border-slate-600'
-                            }`}
+                          className={`h-14 rounded-md overflow-hidden border-2 transition flex-shrink-0 bg-slate-950 flex items-center justify-center ${idx === selectedGalleryImage
+                            ? 'border-[#b7e92f] ring-1 ring-[#b7e92f]/50'
+                            : 'border-slate-700 hover:border-slate-500'
+                          }`}
                           aria-label={`Gallery image ${idx + 1}`}
                         >
                           <img src={photo} alt={`Thumbnail ${idx + 1}`} className="max-w-full max-h-full object-contain" />
@@ -417,188 +421,265 @@ export default function VendorLanding({ slugOverride }: { slugOverride?: string 
                   )}
                 </>
               ) : (
-                <div className="w-full h-80 flex items-center justify-center text-slate-400">
+                <div className="w-full min-h-[320px] flex items-center justify-center text-slate-500 text-sm">
                   No gallery images available
                 </div>
               )}
             </div>
 
-            {/* Vendor Info Card */}
-            <div className="lg:col-span-1 bg-gradient-to-br from-slate-50 to-slate-100 p-6 flex flex-col justify-between">
-              <div>
-                <h1 className="text-2xl font-bold text-slate-900 mb-1">{vendor.businessName}</h1>
-
+            {/* Vendor Info Panel */}
+            <div className="lg:col-span-1 p-6 flex flex-col justify-between bg-[#1f2944]">
+              <div className="flex-1 flex flex-col">
                 {(vendor.verificationBadge || vendor.isVerified) && (
-                  <span className="inline-flex items-center gap-1 rounded-full border border-emerald-500/30 bg-emerald-500/15 px-2.5 py-0.5 text-[11px] font-semibold text-emerald-700 mb-4">
+                  <span className="mb-3 inline-flex w-fit items-center gap-1.5 rounded-full border border-[#b7e92f]/40 bg-[#b7e92f]/15 px-2.5 py-0.5 text-[11px] font-semibold text-[#b7e92f]">
+                    <svg className="h-3 w-3" viewBox="0 0 16 16" fill="currentColor" aria-hidden="true">
+                      <path fillRule="evenodd" d="M8 1a7 7 0 1 0 0 14A7 7 0 0 0 8 1Zm3.53 5.53a.75.75 0 0 0-1.06-1.06L7 8.94 5.53 7.47a.75.75 0 0 0-1.06 1.06l2 2a.75.75 0 0 0 1.06 0l4-4Z" clipRule="evenodd" />
+                    </svg>
                     {vendor.verificationBadge || t('vendorLandingPage.verifiedVendor')}
                   </span>
                 )}
 
-                <div className="space-y-3 my-4 pb-4 border-b border-slate-200">
+                <h1 className="text-2xl font-extrabold text-white leading-tight mb-1">{vendor.businessName}</h1>
+
+                {displayedTotalRatings > 0 && (
+                  <div className="flex items-center gap-1.5 mb-4">
+                    <span className="text-amber-400 text-sm">{renderStars(displayedAverageRating)}</span>
+                    <span className="text-white/90 text-sm font-semibold">{displayedAverageRating.toFixed(1)}</span>
+                    <span className="text-white/50 text-sm">({displayedTotalRatings})</span>
+                  </div>
+                )}
+
+                <div className="space-y-2.5 mb-4">
                   {vendor.address && (
-                    <div>
-                      <p className="text-xs text-slate-500 font-medium">Address</p>
-                      <div className="mt-1 flex items-start gap-2">
-                        <p className="min-w-0 flex-1 text-sm text-slate-700">{vendor.address}</p>
+                    <div className="flex items-start gap-2">
+                      <svg className="h-4 w-4 mt-0.5 text-white/40 flex-shrink-0" viewBox="0 0 16 16" fill="currentColor" aria-hidden="true">
+                        <path fillRule="evenodd" d="M8 1.5a4.5 4.5 0 1 0 0 9 4.5 4.5 0 0 0 0-9ZM2 6a6 6 0 1 1 10.586 3.938l-3.96 4.43a.75.75 0 0 1-1.12 0l-3.96-4.43A5.972 5.972 0 0 1 2 6Zm6 1a1.5 1.5 0 1 0 0-3 1.5 1.5 0 0 0 0 3Z" clipRule="evenodd" />
+                      </svg>
+                      <div className="flex-1 min-w-0">
+                        <p className="text-white/80 text-sm leading-snug">{vendor.address}</p>
                         {vendorMapUrl && (
                           <button
                             type="button"
                             onClick={handleOpenVendorMap}
-                            className="inline-flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-full border border-slate-300 bg-white text-slate-600 shadow-sm transition hover:border-[#b7e92f] hover:bg-[#eff9c9] hover:text-[#1f2944] focus:outline-none focus:ring-2 focus:ring-[#b7e92f]/50"
-                            aria-label={t('vendorLandingPage.openMap')}
-                            title={t('vendorLandingPage.openMap')}
+                            className="mt-0.5 text-[11px] font-medium text-[#b7e92f] hover:underline focus:outline-none"
                           >
-                            <svg viewBox="0 0 24 24" fill="none" className="h-4 w-4" aria-hidden="true">
-                              <path
-                                d="M12 21s6-4.35 6-10a6 6 0 1 0-12 0c0 5.65 6 10 6 10Z"
-                                stroke="currentColor"
-                                strokeWidth="1.8"
-                                strokeLinecap="round"
-                                strokeLinejoin="round"
-                              />
-                              <circle cx="12" cy="11" r="2.5" stroke="currentColor" strokeWidth="1.8" />
-                            </svg>
+                            {t('vendorLandingPage.openMap')} →
                           </button>
                         )}
                       </div>
                     </div>
                   )}
                   {vendor.phone && (
-                    <div>
-                      <p className="text-xs text-slate-500 font-medium">Phone</p>
-                      <p className="text-sm text-slate-700">{vendor.phone}</p>
+                    <div className="flex items-center gap-2">
+                      <svg className="h-4 w-4 text-white/40 flex-shrink-0" viewBox="0 0 16 16" fill="currentColor" aria-hidden="true">
+                        <path fillRule="evenodd" d="M3.5 2A1.5 1.5 0 0 0 2 3.5V4c0 5.799 4.701 10.5 10.5 10.5h.5a1.5 1.5 0 0 0 1.5-1.5v-.663a1.5 1.5 0 0 0-.964-1.404l-2-.758a1.5 1.5 0 0 0-1.596.34l-.44.44a.75.75 0 0 1-.907.12A8.483 8.483 0 0 1 5.52 7.607a.75.75 0 0 1 .12-.907l.44-.439a1.5 1.5 0 0 0 .341-1.597l-.758-2A1.5 1.5 0 0 0 4.163 2H3.5Z" clipRule="evenodd" />
+                      </svg>
+                      <p className="text-white/80 text-sm">{vendor.phone}</p>
                     </div>
                   )}
                 </div>
 
                 {vendor.description && (
-                  <div className="mb-4">
-                    <p className="text-xs text-slate-500 font-medium mb-1">About</p>
-                    <p className="text-sm text-slate-600 line-clamp-3">{vendor.description}</p>
-                  </div>
+                  <p className="text-white/60 text-sm leading-relaxed line-clamp-3 mb-4">{vendor.description}</p>
                 )}
 
-                {vendor.deliveryVehicles && vendor.deliveryVehicles.length > 0 && (
-                  <div className="mb-4">
-                    <p className="text-xs text-slate-500 font-medium mb-2">{t('vendorLandingPage.deliveryVehicles')}</p>
-                    <div className="flex flex-wrap gap-2">
-                      {vendor.deliveryVehicles.map((vehicle, idx) => (
-                        <div key={idx} className="inline-flex items-center rounded-full border border-slate-300 bg-slate-100 px-3 py-1.5">
-                          <span className="text-sm font-medium text-slate-700">{vehicle.type}</span>
-                          {vehicle.description && (
-                            <span className="ml-1 text-xs text-slate-500">({vehicle.description})</span>
-                          )}
-                        </div>
-                      ))}
+                {/* Trust stats grid */}
+                <div className="grid grid-cols-2 gap-2 mb-5">
+                  <div className="rounded-xl bg-white/10 px-3 py-2.5">
+                    <p className="text-[11px] text-white/50 font-medium uppercase tracking-wider">Available</p>
+                    <p className="text-lg font-bold text-white mt-0.5">{totalAvailable} <span className="text-sm font-normal text-white/60">units</span></p>
+                  </div>
+                  <div className="rounded-xl bg-white/10 px-3 py-2.5">
+                    <p className="text-[11px] text-white/50 font-medium uppercase tracking-wider">From</p>
+                    <p className="text-lg font-bold text-[#b7e92f] mt-0.5">
+                      {lowestDailyRate != null
+                        ? <>{formatCurrency(lowestDailyRate)} <span className="text-xs font-normal text-white/60">/day</span></>
+                        : '—'}
+                    </p>
+                  </div>
+                  {normalizedDeliveryRates.length > 0 && lowestDeliveryCharge != null && (
+                    <div className="rounded-xl bg-white/10 px-3 py-2.5">
+                      <p className="text-[11px] text-white/50 font-medium uppercase tracking-wider">Delivery</p>
+                      <p className="text-lg font-bold text-white mt-0.5">{formatCurrency(lowestDeliveryCharge)} <span className="text-xs font-normal text-white/60">+up</span></p>
                     </div>
+                  )}
+                  {inventory.length > 0 && (
+                    <div className="rounded-xl bg-white/10 px-3 py-2.5">
+                      <p className="text-[11px] text-white/50 font-medium uppercase tracking-wider">Item Types</p>
+                      <p className="text-lg font-bold text-white mt-0.5">{inventory.length}</p>
+                    </div>
+                  )}
+                </div>
+              </div>
+
+              {/* Primary CTA */}
+              <div className="pt-3 border-t border-white/10">
+                <Button
+                  onClick={() => handleBookNow()}
+                  size="lg"
+                  className="w-full !rounded-xl !border-2 !border-[#b7e92f] !bg-[#b7e92f] !px-6 !py-3 !text-base !font-extrabold !text-[#1f2944] shadow-lg shadow-[#b7e92f]/20 hover:!bg-[#9fcd23] hover:!border-[#9fcd23] focus:!ring-2 focus:!ring-[#b7e92f]/50 transition-all"
+                >
+                  {t('vendorLandingPage.bookNow')}
+                </Button>
+                {vendor.deliveryVehicles && vendor.deliveryVehicles.length > 0 && (
+                  <div className="mt-3 flex flex-wrap gap-1.5">
+                    {vendor.deliveryVehicles.map((vehicle, idx) => (
+                      <span key={idx} className="inline-flex items-center rounded-full border border-white/20 bg-white/10 px-2.5 py-1 text-xs font-medium text-white/70">
+                        {vehicle.type}{vehicle.description ? ` · ${vehicle.description}` : ''}
+                      </span>
+                    ))}
                   </div>
                 )}
               </div>
-
-              <Button
-                onClick={() => handleBookNow()}
-                size="lg"
-                className="w-full !rounded-lg !border !border-[#b7e92f] !bg-[#b7e92f] !px-6 !py-2.5 !text-sm !font-bold !text-[#1f2944] shadow hover:!border-[#9fcd23] hover:!bg-[#9fcd23] focus:!ring-2 focus:!ring-[#b7e92f]/40"
-              >
-                {t('vendorLandingPage.bookNow')}
-              </Button>
             </div>
           </div>
         </section>
 
+        {/* ── Packages ─────────────────────────────────────────────── */}
+        {(packagesLoading || publicPackages.length > 0) && (
+          <section className="rounded-2xl overflow-hidden border-2 border-[#b7e92f]/60 bg-white shadow-md">
+            <div className="bg-gradient-to-r from-[#1f2944] to-[#2d3d5c] px-6 py-4 flex items-center justify-between gap-3">
+              <div>
+                <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-[#b7e92f]">Ready-Made Packages</p>
+                <h2 className="mt-0.5 text-xl font-extrabold text-white">Book Faster With Curated Sets</h2>
+              </div>
+              {!packagesLoading && (
+                <span className="rounded-full bg-[#b7e92f] px-3 py-1 text-xs font-bold text-[#1f2944]">
+                  {publicPackages.length} {publicPackages.length === 1 ? 'Package' : 'Packages'}
+                </span>
+              )}
+            </div>
+            <div className="p-5">
+              {packagesLoading ? (
+                <div className="flex justify-center py-8">
+                  <LoadingSpinner size="md" />
+                </div>
+              ) : (
+                <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+                  {publicPackages.map((vendorPackage) => {
+                    const packageSubtotal = vendorPackage.items.reduce((sum, item) => {
+                      const unitPrice = Number(item.unitPrice || 0);
+                      return sum + Math.max(0, unitPrice) * Math.max(0, Number(item.requiredQty) || 0);
+                    }, 0);
+                    return (
+                      <article key={vendorPackage.id} className="rounded-2xl border border-slate-200 bg-slate-50 p-5 hover:border-[#b7e92f] hover:shadow-md transition-all group">
+                        <div className="flex items-start justify-between gap-3 mb-3">
+                          <h3 className="text-lg font-bold text-slate-900 group-hover:text-[#1f2944]">{vendorPackage.packageName}</h3>
+                          <span className="flex-shrink-0 rounded-full border border-[#b7e92f]/60 bg-[#b7e92f]/15 px-2 py-1 text-xs font-semibold text-[#1f2944]">
+                            Package
+                          </span>
+                        </div>
+                        <div className="space-y-1.5 mb-4">
+                          {vendorPackage.items.map((item) => (
+                            <div key={item.id} className="flex items-center gap-2 text-sm text-slate-700">
+                              <span className="h-1.5 w-1.5 rounded-full bg-[#b7e92f] flex-shrink-0" />
+                              {item.itemType?.name || 'Item type'}
+                              <span className="ml-auto font-medium text-slate-500">×{item.requiredQty}</span>
+                            </div>
+                          ))}
+                        </div>
+                        <div className="pt-3 border-t border-slate-200 flex items-center justify-between gap-3">
+                          <div>
+                            {packageSubtotal > 0 ? (
+                              <>
+                                <p className="text-[11px] text-slate-500 font-medium uppercase tracking-wide">Est. per day</p>
+                                <p className="text-lg font-extrabold text-slate-900">{formatCurrency(packageSubtotal)}</p>
+                              </>
+                            ) : (
+                              <p className="text-sm text-slate-500">Price based on selection</p>
+                            )}
+                          </div>
+                          <Button
+                            size="sm"
+                            onClick={() => handleBookNow(vendorPackage.id)}
+                            className="!rounded-lg !border !border-[#b7e92f] !bg-[#b7e92f] !text-[#1f2944] !font-bold hover:!bg-[#9fcd23] flex-shrink-0"
+                          >
+                            Book This Package
+                          </Button>
+                        </div>
+                      </article>
+                    );
+                  })}
+                </div>
+              )}
+            </div>
+          </section>
+        )}
+
+        {/* ── Pricing & Delivery ───────────────────────────────────── */}
         <div className="grid grid-cols-1 xl:grid-cols-2 gap-4">
-          <section className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
-            <div className="flex items-start justify-between gap-4">
-              <div className="min-w-0 flex-1">
-                <p className="text-xs font-semibold uppercase tracking-[0.18em] text-slate-500">
-                  {t('vendorLandingPage.pricingAtGlance')}
-                </p>
+          <section className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
+            <div className="flex items-center gap-2 mb-5">
+              <span className="h-5 w-1 rounded-full bg-[#b7e92f]" />
+              <p className="text-xs font-semibold uppercase tracking-[0.18em] text-slate-500">{t('vendorLandingPage.pricingAtGlance')}</p>
+            </div>
+            <div className="flex items-end gap-4">
+              <div className="flex-1">
                 {lowestDailyRate != null ? (
                   <>
-                    <p className="mt-3 text-xs font-medium text-slate-500">{t('vendorLandingPage.startingAt')}</p>
-                    <p className="mt-1 text-3xl font-bold text-slate-900">
+                    <p className="text-xs font-medium text-slate-500">{t('vendorLandingPage.startingAt')}</p>
+                    <p className="mt-1 text-4xl font-extrabold text-slate-900">
                       {formatCurrency(lowestDailyRate)}
-                      <span className="ml-1 text-sm font-medium text-slate-400">/day</span>
+                      <span className="ml-1 text-base font-medium text-slate-400">/day</span>
                     </p>
                   </>
                 ) : (
-                  <p className="mt-3 text-sm text-slate-500">{t('vendorLandingPage.noItems')}</p>
+                  <p className="mt-1 text-sm text-slate-500">{t('vendorLandingPage.noItems')}</p>
+                )}
+                {cheapestItemName && (
+                  <p className="mt-1 text-sm text-slate-500">{t('vendorLandingPage.lowestPricedItem', { item: cheapestItemName })}</p>
                 )}
               </div>
-              <div className="rounded-xl border border-slate-200 bg-slate-50 px-3 py-2 text-center">
-                <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-slate-500">
-                  {t('vendorLandingPage.itemTypesLabel')}
-                </p>
-                <p className="mt-1 text-2xl font-bold text-slate-900">{inventory.length}</p>
+              <div className="rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 text-center">
+                <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-slate-500">{t('vendorLandingPage.itemTypesLabel')}</p>
+                <p className="mt-1 text-3xl font-bold text-slate-900">{inventory.length}</p>
               </div>
             </div>
-
-            {cheapestItemName && (
-              <p className="mt-3 text-sm text-slate-600">
-                {t('vendorLandingPage.lowestPricedItem', { item: cheapestItemName })}
-              </p>
-            )}
-
-            <div className="mt-4 grid grid-cols-1 sm:grid-cols-3 gap-3">
+            <div className="mt-5 grid grid-cols-3 gap-3">
               <div className="rounded-xl border border-slate-100 bg-slate-50 p-3">
-                <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-slate-500">
-                  {t('vendorLandingPage.priceRange')}
-                </p>
+                <p className="text-[11px] font-semibold uppercase tracking-[0.14em] text-slate-500">{t('vendorLandingPage.priceRange')}</p>
                 <p className="mt-1 text-sm font-semibold text-slate-900">{pricingRangeLabel ?? '—'}</p>
               </div>
               <div className="rounded-xl border border-slate-100 bg-slate-50 p-3">
-                <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-slate-500">
-                  {t('vendorLandingPage.totalUnitsLabel')}
-                </p>
+                <p className="text-[11px] font-semibold uppercase tracking-[0.14em] text-slate-500">{t('vendorLandingPage.totalUnitsLabel')}</p>
                 <p className="mt-1 text-sm font-semibold text-slate-900">{totalUnits}</p>
               </div>
-              <div className="rounded-xl border border-slate-100 bg-slate-50 p-3">
-                <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-slate-500">
-                  {t('vendorLandingPage.availableNowLabel')}
-                </p>
+              <div className="rounded-xl border border-emerald-100 bg-emerald-50 p-3">
+                <p className="text-[11px] font-semibold uppercase tracking-[0.14em] text-emerald-600">{t('vendorLandingPage.availableNowLabel')}</p>
                 <p className="mt-1 text-sm font-semibold text-emerald-700">{totalAvailable}</p>
               </div>
             </div>
           </section>
 
-          <section className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
-            <p className="text-xs font-semibold uppercase tracking-[0.18em] text-slate-500">
-              {t('vendorLandingPage.deliveryAndService')}
-            </p>
-
+          <section className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
+            <div className="flex items-center gap-2 mb-5">
+              <span className="h-5 w-1 rounded-full bg-[#b7e92f]" />
+              <p className="text-xs font-semibold uppercase tracking-[0.18em] text-slate-500">{t('vendorLandingPage.deliveryAndService')}</p>
+            </div>
             {deliveryRatesLoading ? (
               <div className="mt-6 flex justify-center">
                 <LoadingSpinner size="md" />
               </div>
             ) : normalizedDeliveryRates.length > 0 ? (
               <>
-                <p className="mt-3 text-xs font-medium text-slate-500">{t('vendorLandingPage.deliveryFrom')}</p>
-                <p className="mt-1 text-3xl font-bold text-slate-900">{formatCurrency(lowestDeliveryCharge ?? 0)}</p>
-                <p className="mt-3 text-sm text-slate-600">{t('vendorLandingPage.finalDeliveryQuoteNote')}</p>
-
-                <div className="mt-4 grid grid-cols-1 sm:grid-cols-3 gap-3">
+                <p className="text-xs font-medium text-slate-500">{t('vendorLandingPage.deliveryFrom')}</p>
+                <p className="mt-1 text-4xl font-extrabold text-slate-900">{formatCurrency(lowestDeliveryCharge ?? 0)}</p>
+                <p className="mt-2 text-sm text-slate-500">{t('vendorLandingPage.finalDeliveryQuoteNote')}</p>
+                <div className="mt-5 grid grid-cols-3 gap-3">
                   <div className="rounded-xl border border-slate-100 bg-slate-50 p-3">
-                    <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-slate-500">
-                      {t('vendorLandingPage.serviceRadius')}
-                    </p>
+                    <p className="text-[11px] font-semibold uppercase tracking-[0.14em] text-slate-500">{t('vendorLandingPage.serviceRadius')}</p>
                     <p className="mt-1 text-sm font-semibold text-slate-900">
-                      {maxDeliveryDistanceKm != null
-                        ? t('vendorLandingPage.upToKm', { km: formatDistanceKm(maxDeliveryDistanceKm) })
-                        : '—'}
+                      {maxDeliveryDistanceKm != null ? t('vendorLandingPage.upToKm', { km: formatDistanceKm(maxDeliveryDistanceKm) }) : '—'}
                     </p>
                   </div>
                   <div className="rounded-xl border border-slate-100 bg-slate-50 p-3">
-                    <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-slate-500">
-                      {t('vendorLandingPage.helpersSupported')}
-                    </p>
+                    <p className="text-[11px] font-semibold uppercase tracking-[0.14em] text-slate-500">{t('vendorLandingPage.helpersSupported')}</p>
                     <p className="mt-1 text-sm font-semibold text-slate-900">
-                      {maxHelpersSupported != null
-                        ? t('vendorLandingPage.upToHelpers', { count: maxHelpersSupported })
-                        : '—'}
+                      {maxHelpersSupported != null ? t('vendorLandingPage.upToHelpers', { count: maxHelpersSupported }) : '—'}
                     </p>
                   </div>
                   <div className="rounded-xl border border-slate-100 bg-slate-50 p-3">
-                    <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-slate-500">
+                    <p className="text-[11px] font-semibold uppercase tracking-[0.14em] text-slate-500">
                       {estimatedDeliveryRate
                         ? t('vendorLandingPage.estimateForYourLocation')
                         : estimatedDistanceKm != null
@@ -614,7 +695,6 @@ export default function VendorLanding({ slugOverride }: { slugOverride?: string 
                     </p>
                   </div>
                 </div>
-
                 {estimatedDeliveryRate && estimatedDistanceKm != null && (
                   <p className="mt-3 text-xs text-slate-500">
                     {t('vendorLandingPage.distanceToYourLocation')}: {formatDistanceKm(estimatedDistanceKm)} km
@@ -624,38 +704,89 @@ export default function VendorLanding({ slugOverride }: { slugOverride?: string 
             ) : (
               <>
                 <p className="mt-3 text-lg font-semibold text-slate-900">{t('vendorLandingPage.noDeliveryRates')}</p>
-                <p className="mt-2 text-sm text-slate-600">{t('vendorLandingPage.finalDeliveryQuoteNote')}</p>
+                <p className="mt-2 text-sm text-slate-500">{t('vendorLandingPage.finalDeliveryQuoteNote')}</p>
               </>
             )}
           </section>
         </div>
 
-        <section className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
-          <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
-            <div>
-              <p className="text-xs font-semibold uppercase tracking-[0.18em] text-slate-500">
-                Customer reviews
-              </p>
-              <div className="mt-3 flex items-end gap-3">
-                <p className="text-4xl font-bold text-slate-900">
-                  {displayedAverageRating.toFixed(1)}
-                </p>
-                <div className="pb-1">
-                  <p className="text-base font-semibold text-amber-600">
-                    {renderStars(displayedAverageRating)}
-                  </p>
-                  <p className="text-sm text-slate-500">
-                    {displayedTotalRatings} total review{displayedTotalRatings === 1 ? '' : 's'}
-                  </p>
+        {/* ── Equipment Catalog ─────────────────────────────────────── */}
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+          <section className="lg:col-span-2">
+            <div className="flex items-center gap-2 mb-5">
+              <span className="h-5 w-1 rounded-full bg-[#b7e92f]" />
+              <h2 className="text-lg font-bold text-slate-900">Equipment Catalog</h2>
+            </div>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              {inventory.map((item) => {
+                const itemImageUrls = getInventoryItemImageUrls(item);
+                const primaryItemImageUrl = itemImageUrls[0] || '';
+                const color = colorMap[item.id] ?? ITEM_PALETTE[0];
+                return (
+                  <div key={item.id} className="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden hover:shadow-md hover:border-slate-300 transition group">
+                    <div className={`${color.bg} h-1.5 w-full`} />
+                    <div className="h-32 bg-slate-50 flex items-center justify-center p-3 border-b border-slate-100">
+                      {primaryItemImageUrl
+                        ? <img src={primaryItemImageUrl} alt={item.itemType?.name ?? ''} className="h-full w-full object-contain group-hover:scale-105 transition-transform duration-200" />
+                        : <span className="text-slate-300 text-xs">No image</span>}
+                    </div>
+                    <div className="p-3.5">
+                      <p className="text-sm font-semibold text-slate-800 leading-snug line-clamp-1">
+                        {item.itemType?.name}
+                        {item.color ? <span className="font-normal text-slate-400 ml-1">· {item.color}</span> : ''}
+                      </p>
+                      {item.brand && <p className="text-xs text-slate-400 mt-0.5">{item.brand.name}</p>}
+                      <div className="mt-2.5 flex items-center justify-between gap-2">
+                        <span className={`inline-flex items-center rounded-full border px-2 py-0.5 text-xs font-semibold ${color.pill}`}>
+                          {item.availableQuantity} avail
+                        </span>
+                        <p className="text-sm font-extrabold text-slate-900">
+                          {formatCurrency(item.ratePerDay)}<span className="text-xs text-slate-400 font-normal">/day</span>
+                        </p>
+                      </div>
+                      {item.condition && <p className="mt-1 text-xs text-slate-400 capitalize">{item.condition}</p>}
+                    </div>
+                  </div>
+                );
+              })}
+              {inventory.length === 0 && (
+                <div className="col-span-full rounded-xl border border-dashed border-slate-300 py-10 text-center text-sm text-slate-400">
+                  {t('vendorLandingPage.noItems')}
                 </div>
-              </div>
+              )}
+            </div>
+          </section>
+
+          <section className="lg:col-span-1">
+            <div className="flex items-center gap-2 mb-5">
+              <span className="h-5 w-1 rounded-full bg-[#b7e92f]" />
+              <h2 className="text-lg font-bold text-slate-900">Inventory Status</h2>
+            </div>
+            <BreakdownArmy />
+          </section>
+        </div>
+
+        {/* ── Reviews ──────────────────────────────────────────────── */}
+        <section className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
+          <div className="flex items-center gap-2 mb-5">
+            <span className="h-5 w-1 rounded-full bg-amber-400" />
+            <h2 className="text-lg font-bold text-slate-900">Customer Reviews</h2>
+          </div>
+
+          <div className="flex flex-col gap-5 lg:flex-row lg:items-start lg:gap-8">
+            {/* Rating Summary */}
+            <div className="flex-shrink-0 rounded-2xl bg-slate-50 border border-slate-200 p-5 text-center lg:w-36">
+              <p className="text-5xl font-extrabold text-slate-900 leading-none">{displayedAverageRating.toFixed(1)}</p>
+              <p className="mt-2 text-base text-amber-500">{renderStars(displayedAverageRating)}</p>
+              <p className="mt-1 text-xs text-slate-500">{displayedTotalRatings} review{displayedTotalRatings === 1 ? '' : 's'}</p>
             </div>
 
-            <div className="w-full max-w-xl rounded-2xl border border-slate-200 bg-slate-50 p-4">
-              <p className="text-sm font-semibold text-slate-900">
+            {/* Review Form */}
+            <div className="flex-1 rounded-2xl border border-slate-200 bg-slate-50 p-5">
+              <p className="text-sm font-bold text-slate-900 mb-3">
                 {customerExistingReview ? 'Update your review' : 'Leave a review'}
               </p>
-              <div className="mt-3 flex flex-wrap gap-2">
+              <div className="flex flex-wrap gap-2 mb-3">
                 {[1, 2, 3, 4, 5].map((rating) => (
                   <button
                     key={rating}
@@ -663,7 +794,7 @@ export default function VendorLanding({ slugOverride }: { slugOverride?: string 
                     onClick={() => setReviewRating(rating)}
                     className={`rounded-full px-3 py-1.5 text-sm font-semibold transition ${reviewRating === rating
                       ? 'bg-amber-500 text-white'
-                      : 'border border-slate-300 bg-white text-slate-700 hover:border-slate-400'}`}
+                      : 'border border-slate-300 bg-white text-slate-700 hover:border-amber-400'}`}
                   >
                     {rating} star{rating === 1 ? '' : 's'}
                   </button>
@@ -672,10 +803,10 @@ export default function VendorLanding({ slugOverride }: { slugOverride?: string 
               <textarea
                 value={reviewComment}
                 onChange={(event) => setReviewComment(event.target.value)}
-                rows={4}
+                rows={3}
                 placeholder="Share what customers should know about this rental partner."
                 disabled={!token || user?.role !== 'customer' || submittingReview}
-                className="mt-3 w-full rounded-xl border border-slate-300 px-3 py-2 text-sm text-slate-800 focus:border-blue-600 focus:outline-none"
+                className="w-full rounded-xl border border-slate-300 px-3 py-2 text-sm text-slate-800 focus:border-[#1f2944] focus:outline-none resize-none"
               />
               <div className="mt-3 flex items-center justify-between gap-3">
                 {!token ? (
@@ -683,18 +814,14 @@ export default function VendorLanding({ slugOverride }: { slugOverride?: string 
                 ) : user?.role !== 'customer' ? (
                   <p className="text-xs text-slate-500">Only customer accounts can post reviews.</p>
                 ) : (
-                  <p className="text-xs text-slate-500">One review per customer account. You can update it anytime.</p>
+                  <p className="text-xs text-slate-500">One review per account — update anytime.</p>
                 )}
                 <Button
                   onClick={() => void handleSubmitReview()}
                   isProcessing={submittingReview}
                   disabled={Boolean(token) && user?.role !== 'customer'}
                 >
-                  {!token
-                    ? 'Sign In to Review'
-                    : customerExistingReview
-                      ? 'Update Review'
-                      : 'Post Review'}
+                  {!token ? 'Sign In to Review' : customerExistingReview ? 'Update Review' : 'Post Review'}
                 </Button>
               </div>
             </div>
@@ -714,16 +841,12 @@ export default function VendorLanding({ slugOverride }: { slugOverride?: string 
                 <article key={review.id} className="rounded-xl border border-slate-200 p-4">
                   <div className="flex flex-col gap-1 sm:flex-row sm:items-start sm:justify-between">
                     <div>
-                      <p className="font-semibold text-slate-900">
-                        {review.reviewerUser?.name || 'Customer'}
-                      </p>
-                      <p className="text-sm font-medium text-amber-600">{renderStars(review.rating)}</p>
+                      <p className="font-semibold text-slate-900">{review.reviewerUser?.name || 'Customer'}</p>
+                      <p className="text-sm font-medium text-amber-500">{renderStars(review.rating)}</p>
                     </div>
-                    <p className="text-xs text-slate-500">
-                      {formatDate(review.updatedAt || review.createdAt)}
-                    </p>
+                    <p className="text-xs text-slate-500">{formatDate(review.updatedAt || review.createdAt)}</p>
                   </div>
-                  <p className="mt-3 text-sm leading-6 text-slate-600">
+                  <p className="mt-2 text-sm leading-6 text-slate-600">
                     {review.comment?.trim() || 'Rated this rental partner without a written comment.'}
                   </p>
                 </article>
@@ -731,122 +854,6 @@ export default function VendorLanding({ slugOverride }: { slugOverride?: string 
             )}
           </div>
         </section>
-
-        <section className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
-          <div className="mb-4 flex items-center justify-between gap-3">
-            <div>
-              <p className="text-xs font-semibold uppercase tracking-[0.18em] text-slate-500">
-                Ready-Made Packages
-              </p>
-              <h2 className="mt-1 text-xl font-bold text-slate-900">
-                Book Faster With Curated Sets
-              </h2>
-            </div>
-          </div>
-
-          {packagesLoading ? (
-            <div className="flex justify-center py-8">
-              <LoadingSpinner size="md" />
-            </div>
-          ) : publicPackages.length === 0 ? (
-            <div className="rounded-xl border border-dashed border-slate-300 px-4 py-6 text-center text-sm text-slate-500">
-              This rental partner has no published packages yet.
-            </div>
-          ) : (
-            <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
-              {publicPackages.map((vendorPackage) => {
-                const packageSubtotal = vendorPackage.items.reduce((sum, item) => {
-                  const unitPrice = Number(item.unitPrice || 0);
-                  return sum + Math.max(0, unitPrice) * Math.max(0, Number(item.requiredQty) || 0);
-                }, 0);
-
-                return (
-                  <article key={vendorPackage.id} className="rounded-2xl border border-slate-200 bg-slate-50 p-4">
-                    <div className="flex items-start justify-between gap-3">
-                      <h3 className="text-lg font-semibold text-slate-900">{vendorPackage.packageName}</h3>
-                      <span className="rounded-full border border-emerald-300 bg-emerald-100 px-2 py-1 text-xs font-semibold text-emerald-700">
-                        Package
-                      </span>
-                    </div>
-
-                    <div className="mt-3 space-y-1.5">
-                      {vendorPackage.items.map((item) => (
-                        <p key={item.id} className="text-sm text-slate-700">
-                          {item.itemType?.name || 'Item type'} x {item.requiredQty}
-                        </p>
-                      ))}
-                    </div>
-
-                    <div className="mt-4 flex items-center justify-between gap-3">
-                      <p className="text-sm text-slate-600">
-                        {packageSubtotal > 0
-                          ? `Est. ${formatCurrency(packageSubtotal)}/day`
-                          : 'Price depends on selected inventory'}
-                      </p>
-                      <Button size="sm" onClick={() => handleBookNow(vendorPackage.id)}>
-                        Book This Package
-                      </Button>
-                    </div>
-                  </article>
-                );
-              })}
-            </div>
-          )}
-        </section>
-
-        {/* Main Content: Equipment Grid + Breakdown Sidebar */}
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-          {/* Equipment Grid - 2 columns on desktop, 1 on mobile */}
-          <section className="lg:col-span-2">
-            <h2 className="text-lg font-bold text-slate-900 mb-4">Equipment Catalog</h2>
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-              {inventory.map((item) => {
-                const itemImageUrls = getInventoryItemImageUrls(item);
-                const primaryItemImageUrl = itemImageUrls[0] || '';
-                const color = colorMap[item.id] ?? ITEM_PALETTE[0];
-                return (
-                  <div key={item.id} className="bg-white rounded-lg border border-slate-200 shadow-sm overflow-hidden hover:shadow-md transition">
-                    <div className={color.bg + ' h-1 w-full'} />
-                    <div className="h-28 bg-slate-50 flex items-center justify-center p-2 border-b border-slate-100">
-                      {primaryItemImageUrl
-                        ? <img src={primaryItemImageUrl} alt={item.itemType?.name ?? ''} className="h-full w-full object-contain" />
-                        : <span className="text-slate-300 text-xs">No image</span>}
-                    </div>
-                    <div className="p-3">
-                      <p className="text-sm font-semibold text-slate-800 line-clamp-2">
-                        {item.itemType?.name}
-                        {item.color ? <span className="font-normal text-slate-500 text-xs"> - {item.color}</span> : ''}
-                      </p>
-                      {item.brand && <p className="text-xs text-slate-400 mt-0.5">{item.brand.name}</p>}
-                      <div className="mt-2 space-y-1">
-                        <div className="flex items-center justify-between">
-                          <span className={`inline-flex items-center rounded-full border px-2 py-0.5 text-xs font-medium ${color.pill}`}>
-                            {item.availableQuantity} avail
-                          </span>
-                          <p className="text-xs font-bold text-slate-800">
-                            {formatCurrency(item.ratePerDay)}<span className="text-slate-400 font-normal">/day</span>
-                          </p>
-                        </div>
-                        {item.condition && <p className="text-xs text-slate-400 capitalize">{item.condition}</p>}
-                      </div>
-                    </div>
-                  </div>
-                );
-              })}
-              {inventory.length === 0 && (
-                <div className="col-span-full text-center py-10 text-sm text-slate-400">
-                  {t('vendorLandingPage.noItems')}
-                </div>
-              )}
-            </div>
-          </section>
-
-          {/* Breakdown Sidebar */}
-          <section className="lg:col-span-1">
-            <h2 className="text-lg font-bold text-slate-900 mb-4">Inventory Status</h2>
-            <BreakdownArmy />
-          </section>
-        </div>
       </div>
     </CustomerLayout>
   );
