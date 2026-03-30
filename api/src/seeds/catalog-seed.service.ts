@@ -41,6 +41,13 @@ type SizeVariantRule = {
   }>;
 };
 
+type ExtraItemTypeSeed = {
+  name: string;
+  defaultRatePerDay: number;
+  eventTags: string[];
+  setTags: string[];
+};
+
 const COMMON_EVENT_TAGS = [
   'birthday',
   'debut',
@@ -258,22 +265,325 @@ const SIZE_VARIANT_RULES: SizeVariantRule[] = [
 
 @Injectable()
 export class CatalogSeedService {
-  private static readonly DEFAULT_MIN_ITEM_TYPES = 300;
-
-  private static readonly GENERATED_VARIANT_LABELS = [
-    'Starter',
-    'Standard',
-    'Premium',
-    'Pro',
-    'Deluxe',
-  ];
-
-  private static readonly GENERATED_VARIANT_RATE_MULTIPLIERS = [
-    0.85,
-    1,
-    1.1,
-    1.25,
-    1.4,
+  // prettier-ignore
+  private static readonly EXTRA_ITEM_TYPE_SEEDS: ExtraItemTypeSeed[] = [
+    // --- Seating: additional chairs, stools & benches (30) ---
+    { name: 'Crossback Chairs',                  defaultRatePerDay: 15,    eventTags: COMMON_EVENT_TAGS, setTags: ['seating-set'] },
+    { name: 'Americana Chairs',                  defaultRatePerDay: 15,    eventTags: COMMON_EVENT_TAGS, setTags: ['seating-set'] },
+    { name: 'Vineyard Chairs',                   defaultRatePerDay: 18,    eventTags: COMMON_EVENT_TAGS, setTags: ['seating-set'] },
+    { name: 'Phoenix Chairs',                    defaultRatePerDay: 18,    eventTags: COMMON_EVENT_TAGS, setTags: ['seating-set'] },
+    { name: 'Resin Folding Chairs',              defaultRatePerDay: 12,    eventTags: COMMON_EVENT_TAGS, setTags: ['seating-set'] },
+    { name: 'Gold Chiavari Chairs',              defaultRatePerDay: 45,    eventTags: COMMON_EVENT_TAGS, setTags: ['seating-set', 'ceremony-set'] },
+    { name: 'Silver Chiavari Chairs',            defaultRatePerDay: 45,    eventTags: COMMON_EVENT_TAGS, setTags: ['seating-set', 'ceremony-set'] },
+    { name: 'Black Chiavari Chairs',             defaultRatePerDay: 40,    eventTags: COMMON_EVENT_TAGS, setTags: ['seating-set'] },
+    { name: 'White Padded Banquet Chairs',       defaultRatePerDay: 20,    eventTags: COMMON_EVENT_TAGS, setTags: ['seating-set', 'reception-set'] },
+    { name: 'Black Padded Banquet Chairs',       defaultRatePerDay: 20,    eventTags: COMMON_EVENT_TAGS, setTags: ['seating-set', 'reception-set'] },
+    { name: 'Rattan Chairs',                     defaultRatePerDay: 25,    eventTags: COMMON_EVENT_TAGS, setTags: ['seating-set', 'outdoor-set'] },
+    { name: 'Bamboo Chairs',                     defaultRatePerDay: 22,    eventTags: COMMON_EVENT_TAGS, setTags: ['seating-set', 'outdoor-set'] },
+    { name: 'Wooden Rustic Chairs',              defaultRatePerDay: 25,    eventTags: COMMON_EVENT_TAGS, setTags: ['seating-set'] },
+    { name: 'Throne Chair (King)',               defaultRatePerDay: 500,   eventTags: COMMON_EVENT_TAGS, setTags: ['seating-set', 'vip-set'] },
+    { name: 'Throne Chair (Queen)',              defaultRatePerDay: 500,   eventTags: COMMON_EVENT_TAGS, setTags: ['seating-set', 'vip-set'] },
+    { name: 'Velvet Accent Chairs',              defaultRatePerDay: 80,    eventTags: COMMON_EVENT_TAGS, setTags: ['seating-set', 'styling-set'] },
+    { name: 'Love Seat Sofa',                    defaultRatePerDay: 450,   eventTags: COMMON_EVENT_TAGS, setTags: ['lounge-set', 'vip-set'] },
+    { name: 'Garden Bench (Wooden)',             defaultRatePerDay: 80,    eventTags: COMMON_EVENT_TAGS, setTags: ['seating-set', 'outdoor-set'] },
+    { name: 'Pew Benches',                       defaultRatePerDay: 60,    eventTags: COMMON_EVENT_TAGS, setTags: ['seating-set', 'ceremony-set'] },
+    { name: 'Floor Cushions',                    defaultRatePerDay: 15,    eventTags: COMMON_EVENT_TAGS, setTags: ['seating-set', 'outdoor-set'] },
+    { name: 'Pouf Ottomans',                     defaultRatePerDay: 50,    eventTags: COMMON_EVENT_TAGS, setTags: ['seating-set', 'lounge-set'] },
+    { name: 'Kids Bean Bag Seats',               defaultRatePerDay: 25,    eventTags: COMMON_EVENT_TAGS, setTags: ['seating-set', 'kids-set'] },
+    { name: 'Sweetheart Chair (Bridal)',         defaultRatePerDay: 300,   eventTags: COMMON_EVENT_TAGS, setTags: ['seating-set', 'ceremony-set'] },
+    { name: 'Wicker Chairs',                     defaultRatePerDay: 28,    eventTags: COMMON_EVENT_TAGS, setTags: ['seating-set', 'outdoor-set'] },
+    { name: 'Acrylic Ghost Stools',              defaultRatePerDay: 50,    eventTags: COMMON_EVENT_TAGS, setTags: ['seating-set'] },
+    { name: 'Cross-Back Bar Stools',             defaultRatePerDay: 40,    eventTags: COMMON_EVENT_TAGS, setTags: ['seating-set'] },
+    { name: 'Folding Chairs (White)',            defaultRatePerDay: 12,    eventTags: COMMON_EVENT_TAGS, setTags: ['seating-set', 'ceremony-set'] },
+    { name: 'Folding Chairs (Black)',            defaultRatePerDay: 12,    eventTags: COMMON_EVENT_TAGS, setTags: ['seating-set'] },
+    { name: 'Banquet Chairs (Red)',              defaultRatePerDay: 22,    eventTags: COMMON_EVENT_TAGS, setTags: ['seating-set'] },
+    { name: 'Stack Chairs (Plastic)',            defaultRatePerDay: 10,    eventTags: COMMON_EVENT_TAGS, setTags: ['seating-set'] },
+    // --- Tables: additional varieties (20) ---
+    { name: 'Sweetheart Tables',                 defaultRatePerDay: 500,   eventTags: COMMON_EVENT_TAGS, setTags: ['table-set', 'ceremony-set'] },
+    { name: 'Farm Tables (6 ft)',                defaultRatePerDay: 280,   eventTags: COMMON_EVENT_TAGS, setTags: ['table-set', 'dining-set'] },
+    { name: 'Farm Tables (8 ft)',                defaultRatePerDay: 400,   eventTags: COMMON_EVENT_TAGS, setTags: ['table-set', 'dining-set'] },
+    { name: 'Harvest Tables',                    defaultRatePerDay: 350,   eventTags: COMMON_EVENT_TAGS, setTags: ['table-set', 'dining-set'] },
+    { name: 'Rustic Wood Tables',                defaultRatePerDay: 300,   eventTags: COMMON_EVENT_TAGS, setTags: ['table-set'] },
+    { name: 'Marble-Top Tables',                 defaultRatePerDay: 500,   eventTags: COMMON_EVENT_TAGS, setTags: ['table-set', 'vip-set'] },
+    { name: 'Cake Display Tables',               defaultRatePerDay: 200,   eventTags: COMMON_EVENT_TAGS, setTags: ['table-set', 'event-essentials-set'] },
+    { name: 'Gift Tables',                       defaultRatePerDay: 150,   eventTags: COMMON_EVENT_TAGS, setTags: ['table-set', 'event-essentials-set'] },
+    { name: 'Sign-In Registry Tables',           defaultRatePerDay: 150,   eventTags: COMMON_EVENT_TAGS, setTags: ['table-set', 'event-essentials-set'] },
+    { name: 'Kids Activity Tables',              defaultRatePerDay: 100,   eventTags: COMMON_EVENT_TAGS, setTags: ['table-set', 'kids-set'] },
+    { name: 'High-Top Tables (Counter Height)',  defaultRatePerDay: 180,   eventTags: COMMON_EVENT_TAGS, setTags: ['table-set'] },
+    { name: 'Communal Long Tables',              defaultRatePerDay: 250,   eventTags: COMMON_EVENT_TAGS, setTags: ['table-set', 'dining-set'] },
+    { name: 'Trestle Tables',                    defaultRatePerDay: 200,   eventTags: COMMON_EVENT_TAGS, setTags: ['table-set'] },
+    { name: 'Oval Banquet Tables',               defaultRatePerDay: 280,   eventTags: COMMON_EVENT_TAGS, setTags: ['table-set', 'dining-set'] },
+    { name: 'Half-Moon Tables',                  defaultRatePerDay: 220,   eventTags: COMMON_EVENT_TAGS, setTags: ['table-set', 'reception-set'] },
+    { name: 'Serpentine Tables',                 defaultRatePerDay: 300,   eventTags: COMMON_EVENT_TAGS, setTags: ['table-set', 'buffet-set'] },
+    { name: 'Mirrored Table Tops',               defaultRatePerDay: 400,   eventTags: COMMON_EVENT_TAGS, setTags: ['table-set', 'vip-set'] },
+    { name: "King's Tables",                     defaultRatePerDay: 600,   eventTags: COMMON_EVENT_TAGS, setTags: ['table-set', 'ceremony-set'] },
+    { name: 'Study / Training Tables',           defaultRatePerDay: 160,   eventTags: TECH_EVENT_TAGS,   setTags: ['table-set'] },
+    { name: 'Registration Counter Tables',       defaultRatePerDay: 180,   eventTags: TECH_EVENT_TAGS,   setTags: ['table-set', 'event-essentials-set'] },
+    // --- Tents & Structures (15) ---
+    { name: 'Stretch Tents',                     defaultRatePerDay: 8000,  eventTags: COMMON_EVENT_TAGS, setTags: ['tent-set', 'outdoor-set'] },
+    { name: 'Arabian Tents',                     defaultRatePerDay: 10000, eventTags: COMMON_EVENT_TAGS, setTags: ['tent-set', 'vip-set'] },
+    { name: 'Royal Tents',                       defaultRatePerDay: 15000, eventTags: COMMON_EVENT_TAGS, setTags: ['tent-set', 'vip-set'] },
+    { name: 'Geodesic Dome Tents',               defaultRatePerDay: 12000, eventTags: COMMON_EVENT_TAGS, setTags: ['tent-set', 'outdoor-set'] },
+    { name: 'Marquee Tents',                     defaultRatePerDay: 6000,  eventTags: COMMON_EVENT_TAGS, setTags: ['tent-set', 'outdoor-set'] },
+    { name: 'Clear-Span Structures',             defaultRatePerDay: 20000, eventTags: TECH_EVENT_TAGS,   setTags: ['tent-set', 'outdoor-set'] },
+    { name: 'Sail Shade Tents',                  defaultRatePerDay: 4000,  eventTags: COMMON_EVENT_TAGS, setTags: ['tent-set', 'outdoor-set'] },
+    { name: 'Safari Tents',                      defaultRatePerDay: 5500,  eventTags: COMMON_EVENT_TAGS, setTags: ['tent-set', 'outdoor-set'] },
+    { name: 'Tunnel Connect Tents',              defaultRatePerDay: 3500,  eventTags: COMMON_EVENT_TAGS, setTags: ['tent-set', 'outdoor-set'] },
+    { name: 'Hexagonal Tents',                   defaultRatePerDay: 5000,  eventTags: COMMON_EVENT_TAGS, setTags: ['tent-set', 'vip-set'] },
+    { name: 'Transparent Tent Panels',           defaultRatePerDay: 1200,  eventTags: COMMON_EVENT_TAGS, setTags: ['tent-set'] },
+    { name: 'Tent Flooring Systems',             defaultRatePerDay: 2000,  eventTags: COMMON_EVENT_TAGS, setTags: ['tent-set', 'outdoor-set'] },
+    { name: 'Tent Sidewall Extensions',          defaultRatePerDay: 800,   eventTags: COMMON_EVENT_TAGS, setTags: ['tent-set', 'outdoor-set'] },
+    { name: 'Tent Carpeting',                    defaultRatePerDay: 80,    eventTags: COMMON_EVENT_TAGS, setTags: ['tent-set'] },
+    { name: 'Tent Lighting Rigging',             defaultRatePerDay: 1500,  eventTags: COMMON_EVENT_TAGS, setTags: ['tent-set', 'lighting-set'] },
+    // --- Wedding & Ceremony (20) ---
+    { name: 'Wedding Arch (Wooden)',             defaultRatePerDay: 500,   eventTags: COMMON_EVENT_TAGS, setTags: ['ceremony-set', 'wedding-set'] },
+    { name: 'Wedding Arch (Metal Circle)',       defaultRatePerDay: 400,   eventTags: COMMON_EVENT_TAGS, setTags: ['ceremony-set', 'wedding-set'] },
+    { name: 'Wedding Arch (Metal Hexagon)',      defaultRatePerDay: 700,   eventTags: COMMON_EVENT_TAGS, setTags: ['ceremony-set', 'wedding-set'] },
+    { name: 'Wedding Arch (Metal Square)',       defaultRatePerDay: 450,   eventTags: COMMON_EVENT_TAGS, setTags: ['ceremony-set', 'wedding-set'] },
+    { name: 'Floral Wedding Arch',               defaultRatePerDay: 1200,  eventTags: COMMON_EVENT_TAGS, setTags: ['ceremony-set', 'wedding-set', 'decor-set'] },
+    { name: 'Ceremony Aisle Runners',            defaultRatePerDay: 120,   eventTags: COMMON_EVENT_TAGS, setTags: ['ceremony-set'] },
+    { name: 'Ceremony Columns',                  defaultRatePerDay: 400,   eventTags: COMMON_EVENT_TAGS, setTags: ['ceremony-set', 'decor-set'] },
+    { name: 'Unity Candle Sets',                 defaultRatePerDay: 150,   eventTags: COMMON_EVENT_TAGS, setTags: ['ceremony-set', 'wedding-set'] },
+    { name: 'Sand Ceremony Sets',                defaultRatePerDay: 150,   eventTags: COMMON_EVENT_TAGS, setTags: ['ceremony-set', 'wedding-set'] },
+    { name: 'Memory Table Displays',             defaultRatePerDay: 300,   eventTags: COMMON_EVENT_TAGS, setTags: ['ceremony-set', 'event-essentials-set'] },
+    { name: 'Guest Book Stands',                 defaultRatePerDay: 120,   eventTags: COMMON_EVENT_TAGS, setTags: ['event-essentials-set'] },
+    { name: 'Wishing Well Boxes',                defaultRatePerDay: 180,   eventTags: COMMON_EVENT_TAGS, setTags: ['event-essentials-set'] },
+    { name: 'Card Boxes (Acrylic)',              defaultRatePerDay: 180,   eventTags: COMMON_EVENT_TAGS, setTags: ['event-essentials-set'] },
+    { name: '"Mr & Mrs" Signage',               defaultRatePerDay: 200,   eventTags: COMMON_EVENT_TAGS, setTags: ['wedding-set', 'event-essentials-set'] },
+    { name: 'Head Table Garland',                defaultRatePerDay: 500,   eventTags: COMMON_EVENT_TAGS, setTags: ['wedding-set', 'decor-set'] },
+    { name: 'Sweetheart Table Backdrop',         defaultRatePerDay: 800,   eventTags: COMMON_EVENT_TAGS, setTags: ['ceremony-set', 'wedding-set'] },
+    { name: 'Flower Girl Baskets',               defaultRatePerDay: 80,    eventTags: COMMON_EVENT_TAGS, setTags: ['wedding-set'] },
+    { name: 'Coin Bearer Pillows',               defaultRatePerDay: 80,    eventTags: COMMON_EVENT_TAGS, setTags: ['wedding-set', 'ceremony-set'] },
+    { name: 'Arras Coin Sets (Display)',         defaultRatePerDay: 100,   eventTags: COMMON_EVENT_TAGS, setTags: ['wedding-set', 'ceremony-set'] },
+    { name: 'Veil and Cord Sets (Display)',      defaultRatePerDay: 150,   eventTags: COMMON_EVENT_TAGS, setTags: ['wedding-set', 'ceremony-set'] },
+    // --- Décor & Styling (35) ---
+    { name: 'Marquee Letters (Large LED)',       defaultRatePerDay: 300,   eventTags: COMMON_EVENT_TAGS, setTags: ['decor-set', 'styling-set'] },
+    { name: 'Giant Number Balloons',             defaultRatePerDay: 100,   eventTags: COMMON_EVENT_TAGS, setTags: ['decor-set'] },
+    { name: 'LED Neon Signs (Custom)',           defaultRatePerDay: 500,   eventTags: COMMON_EVENT_TAGS, setTags: ['decor-set', 'styling-set'] },
+    { name: 'Photo Booth Frames (Standalone)',   defaultRatePerDay: 400,   eventTags: COMMON_EVENT_TAGS, setTags: ['decor-set'] },
+    { name: 'Selfie Wall Frames',                defaultRatePerDay: 500,   eventTags: COMMON_EVENT_TAGS, setTags: ['decor-set'] },
+    { name: 'Floral Walls (Artificial)',         defaultRatePerDay: 800,   eventTags: COMMON_EVENT_TAGS, setTags: ['decor-set', 'wedding-set', 'styling-set'] },
+    { name: 'Greenery Walls',                    defaultRatePerDay: 700,   eventTags: COMMON_EVENT_TAGS, setTags: ['decor-set', 'styling-set'] },
+    { name: 'Pampas Grass Arrangements',         defaultRatePerDay: 350,   eventTags: COMMON_EVENT_TAGS, setTags: ['decor-set', 'styling-set'] },
+    { name: 'Ribbon Curtain Backdrops',          defaultRatePerDay: 250,   eventTags: COMMON_EVENT_TAGS, setTags: ['decor-set'] },
+    { name: 'Sequin Backdrop Curtains (Gold)',   defaultRatePerDay: 350,   eventTags: COMMON_EVENT_TAGS, setTags: ['decor-set', 'styling-set'] },
+    { name: 'Sequin Backdrop Curtains (Silver)', defaultRatePerDay: 350,   eventTags: COMMON_EVENT_TAGS, setTags: ['decor-set', 'styling-set'] },
+    { name: 'Fringe Backdrop Curtains',          defaultRatePerDay: 250,   eventTags: COMMON_EVENT_TAGS, setTags: ['decor-set'] },
+    { name: 'Balloon Columns',                   defaultRatePerDay: 200,   eventTags: COMMON_EVENT_TAGS, setTags: ['decor-set'] },
+    { name: 'Organza Drapes',                    defaultRatePerDay: 100,   eventTags: COMMON_EVENT_TAGS, setTags: ['decor-set', 'wedding-set'] },
+    { name: 'Ceiling Drapes',                    defaultRatePerDay: 400,   eventTags: COMMON_EVENT_TAGS, setTags: ['decor-set', 'wedding-set'] },
+    { name: 'Column Wraps',                      defaultRatePerDay: 50,    eventTags: COMMON_EVENT_TAGS, setTags: ['decor-set'] },
+    { name: 'Tall Floral Tower Stands',          defaultRatePerDay: 600,   eventTags: COMMON_EVENT_TAGS, setTags: ['decor-set', 'wedding-set'] },
+    { name: 'Mercury Glass Vases',               defaultRatePerDay: 80,    eventTags: COMMON_EVENT_TAGS, setTags: ['decor-set'] },
+    { name: 'Geometric Terrarium Centerpieces',  defaultRatePerDay: 150,   eventTags: COMMON_EVENT_TAGS, setTags: ['decor-set', 'styling-set'] },
+    { name: 'Floating Candle Bowls',             defaultRatePerDay: 60,    eventTags: COMMON_EVENT_TAGS, setTags: ['decor-set'] },
+    { name: 'Lantern Centerpieces',              defaultRatePerDay: 80,    eventTags: COMMON_EVENT_TAGS, setTags: ['decor-set'] },
+    { name: 'Succulent Centerpieces',            defaultRatePerDay: 120,   eventTags: COMMON_EVENT_TAGS, setTags: ['decor-set'] },
+    { name: 'Orchid Floral Arrangements',        defaultRatePerDay: 250,   eventTags: COMMON_EVENT_TAGS, setTags: ['decor-set', 'wedding-set'] },
+    { name: 'Hanging Floral Installations',      defaultRatePerDay: 800,   eventTags: COMMON_EVENT_TAGS, setTags: ['decor-set', 'wedding-set'] },
+    { name: 'Tree Branch Centerpieces',          defaultRatePerDay: 300,   eventTags: COMMON_EVENT_TAGS, setTags: ['decor-set'] },
+    { name: 'Rustic Mason Jar Arrangements',     defaultRatePerDay: 100,   eventTags: COMMON_EVENT_TAGS, setTags: ['decor-set'] },
+    { name: 'Giant Balloon Arches (Custom)',     defaultRatePerDay: 1500,  eventTags: COMMON_EVENT_TAGS, setTags: ['decor-set'] },
+    { name: 'Paper Pompom Decorations',          defaultRatePerDay: 40,    eventTags: COMMON_EVENT_TAGS, setTags: ['decor-set'] },
+    { name: 'Tissue Tassel Garlands',            defaultRatePerDay: 30,    eventTags: COMMON_EVENT_TAGS, setTags: ['decor-set'] },
+    { name: 'Photo Gallery Walls',               defaultRatePerDay: 500,   eventTags: COMMON_EVENT_TAGS, setTags: ['decor-set', 'styling-set'] },
+    { name: 'Framed Photo Easels',               defaultRatePerDay: 100,   eventTags: COMMON_EVENT_TAGS, setTags: ['decor-set'] },
+    { name: 'Chalkboard Welcome Signs',          defaultRatePerDay: 120,   eventTags: COMMON_EVENT_TAGS, setTags: ['event-essentials-set'] },
+    { name: 'Personalized Banner Stands',        defaultRatePerDay: 150,   eventTags: COMMON_EVENT_TAGS, setTags: ['event-essentials-set'] },
+    { name: 'Balloon Letter Garlands',           defaultRatePerDay: 80,    eventTags: COMMON_EVENT_TAGS, setTags: ['decor-set'] },
+    { name: 'Bunting Banners',                   defaultRatePerDay: 50,    eventTags: COMMON_EVENT_TAGS, setTags: ['decor-set'] },
+    // --- Candles & Lighting Accents (25) ---
+    { name: 'Candelabras (Gold)',                defaultRatePerDay: 200,   eventTags: COMMON_EVENT_TAGS, setTags: ['decor-set', 'lighting-set'] },
+    { name: 'Candelabras (Silver)',              defaultRatePerDay: 200,   eventTags: COMMON_EVENT_TAGS, setTags: ['decor-set', 'lighting-set'] },
+    { name: 'Candelabras (Black)',               defaultRatePerDay: 200,   eventTags: COMMON_EVENT_TAGS, setTags: ['decor-set', 'lighting-set'] },
+    { name: 'Pillar Candle Stands',              defaultRatePerDay: 80,    eventTags: COMMON_EVENT_TAGS, setTags: ['decor-set'] },
+    { name: 'Taper Candle Holders',              defaultRatePerDay: 40,    eventTags: COMMON_EVENT_TAGS, setTags: ['decor-set'] },
+    { name: 'Floating Candle Sets',              defaultRatePerDay: 50,    eventTags: COMMON_EVENT_TAGS, setTags: ['decor-set'] },
+    { name: 'LED Tea Light Candles (Set of 20)', defaultRatePerDay: 60,    eventTags: COMMON_EVENT_TAGS, setTags: ['decor-set', 'lighting-set'] },
+    { name: 'Metal Lanterns',                    defaultRatePerDay: 60,    eventTags: COMMON_EVENT_TAGS, setTags: ['decor-set'] },
+    { name: 'Paper Lanterns',                    defaultRatePerDay: 30,    eventTags: COMMON_EVENT_TAGS, setTags: ['decor-set'] },
+    { name: 'Moroccan Lanterns',                 defaultRatePerDay: 80,    eventTags: COMMON_EVENT_TAGS, setTags: ['decor-set', 'styling-set'] },
+    { name: 'Fairy Lights (String)',             defaultRatePerDay: 80,    eventTags: COMMON_EVENT_TAGS, setTags: ['decor-set', 'lighting-set'] },
+    { name: 'Globe String Lights',               defaultRatePerDay: 100,   eventTags: COMMON_EVENT_TAGS, setTags: ['decor-set', 'lighting-set'] },
+    { name: 'Edison Bulb String Lights',         defaultRatePerDay: 120,   eventTags: COMMON_EVENT_TAGS, setTags: ['decor-set', 'lighting-set'] },
+    { name: 'LED Canopy Lights',                 defaultRatePerDay: 180,   eventTags: COMMON_EVENT_TAGS, setTags: ['lighting-set'] },
+    { name: 'Uplights (RGB)',                    defaultRatePerDay: 300,   eventTags: TECH_EVENT_TAGS,   setTags: ['lighting-set', 'party-set'] },
+    { name: 'Uplights (White)',                  defaultRatePerDay: 250,   eventTags: COMMON_EVENT_TAGS, setTags: ['lighting-set', 'wedding-set'] },
+    { name: 'Pin Spotlights',                    defaultRatePerDay: 200,   eventTags: COMMON_EVENT_TAGS, setTags: ['lighting-set'] },
+    { name: 'Gobo Projectors',                   defaultRatePerDay: 800,   eventTags: COMMON_EVENT_TAGS, setTags: ['lighting-set', 'wedding-set'] },
+    { name: 'Starfield Projectors',              defaultRatePerDay: 600,   eventTags: COMMON_EVENT_TAGS, setTags: ['lighting-set'] },
+    { name: 'LED Strip Lights',                  defaultRatePerDay: 80,    eventTags: TECH_EVENT_TAGS,   setTags: ['lighting-set', 'party-set'] },
+    { name: 'Neon Tube Lights',                  defaultRatePerDay: 200,   eventTags: TECH_EVENT_TAGS,   setTags: ['lighting-set', 'party-set'] },
+    { name: 'Color-Changing Flood Lights',       defaultRatePerDay: 250,   eventTags: TECH_EVENT_TAGS,   setTags: ['lighting-set'] },
+    { name: 'Spotlights (Single)',               defaultRatePerDay: 180,   eventTags: TECH_EVENT_TAGS,   setTags: ['lighting-set', 'stage-set'] },
+    { name: 'LED Batten Lights',                 defaultRatePerDay: 120,   eventTags: TECH_EVENT_TAGS,   setTags: ['lighting-set'] },
+    { name: 'Floodlight Stands',                 defaultRatePerDay: 100,   eventTags: TECH_EVENT_TAGS,   setTags: ['lighting-set', 'stage-set'] },
+    // --- Signage & Stationery (10) ---
+    { name: 'Welcome Sign Boards (Large)',       defaultRatePerDay: 150,   eventTags: COMMON_EVENT_TAGS, setTags: ['event-essentials-set'] },
+    { name: 'Seating Chart Boards',              defaultRatePerDay: 200,   eventTags: COMMON_EVENT_TAGS, setTags: ['event-essentials-set'] },
+    { name: 'Table Number Stands',               defaultRatePerDay: 30,    eventTags: COMMON_EVENT_TAGS, setTags: ['table-set', 'event-essentials-set'] },
+    { name: 'Place Card Holders',                defaultRatePerDay: 15,    eventTags: COMMON_EVENT_TAGS, setTags: ['event-essentials-set'] },
+    { name: 'Menu Display Boards',               defaultRatePerDay: 80,    eventTags: COMMON_EVENT_TAGS, setTags: ['event-essentials-set'] },
+    { name: 'Directional Sign Posts',            defaultRatePerDay: 100,   eventTags: COMMON_EVENT_TAGS, setTags: ['event-essentials-set'] },
+    { name: 'Acrylic Sign Stands',               defaultRatePerDay: 150,   eventTags: COMMON_EVENT_TAGS, setTags: ['event-essentials-set'] },
+    { name: 'Countdown Timer Displays',          defaultRatePerDay: 500,   eventTags: TECH_EVENT_TAGS,   setTags: ['event-essentials-set'] },
+    { name: 'LED Message Boards',                defaultRatePerDay: 600,   eventTags: TECH_EVENT_TAGS,   setTags: ['event-essentials-set'] },
+    { name: 'Registration Booths',               defaultRatePerDay: 1800,  eventTags: TECH_EVENT_TAGS,   setTags: ['event-essentials-set'] },
+    // --- Entertainment & Photo (20) ---
+    { name: 'Digital Photo Booth Kiosks',        defaultRatePerDay: 2000,  eventTags: COMMON_EVENT_TAGS, setTags: ['party-set', 'event-essentials-set'] },
+    { name: 'Open-Air Photo Booth Setups',       defaultRatePerDay: 1500,  eventTags: COMMON_EVENT_TAGS, setTags: ['party-set'] },
+    { name: '360 Photo Booth Platforms',         defaultRatePerDay: 3000,  eventTags: COMMON_EVENT_TAGS, setTags: ['party-set'] },
+    { name: 'Magic Mirror Photo Booths',         defaultRatePerDay: 2500,  eventTags: COMMON_EVENT_TAGS, setTags: ['party-set'] },
+    { name: 'Giant Jenga Game Sets',             defaultRatePerDay: 300,   eventTags: COMMON_EVENT_TAGS, setTags: ['party-set', 'outdoor-set'] },
+    { name: 'Giant Connect Four Sets',           defaultRatePerDay: 250,   eventTags: COMMON_EVENT_TAGS, setTags: ['party-set', 'outdoor-set'] },
+    { name: 'Cornhole Game Sets',                defaultRatePerDay: 200,   eventTags: COMMON_EVENT_TAGS, setTags: ['party-set', 'outdoor-set'] },
+    { name: 'Lawn Bowling Sets',                 defaultRatePerDay: 200,   eventTags: COMMON_EVENT_TAGS, setTags: ['party-set', 'outdoor-set'] },
+    { name: 'Bocce Ball Sets',                   defaultRatePerDay: 150,   eventTags: COMMON_EVENT_TAGS, setTags: ['party-set', 'outdoor-set'] },
+    { name: 'Giant Chess Sets',                  defaultRatePerDay: 350,   eventTags: COMMON_EVENT_TAGS, setTags: ['party-set', 'outdoor-set'] },
+    { name: 'Foosball Tables',                   defaultRatePerDay: 500,   eventTags: COMMON_EVENT_TAGS, setTags: ['party-set'] },
+    { name: 'Air Hockey Tables',                 defaultRatePerDay: 600,   eventTags: COMMON_EVENT_TAGS, setTags: ['party-set'] },
+    { name: 'Ping Pong Tables',                  defaultRatePerDay: 400,   eventTags: COMMON_EVENT_TAGS, setTags: ['party-set'] },
+    { name: 'Giant Snakes and Ladders Sets',     defaultRatePerDay: 250,   eventTags: COMMON_EVENT_TAGS, setTags: ['party-set', 'kids-set'] },
+    { name: 'Giant Tic-Tac-Toe Sets',            defaultRatePerDay: 200,   eventTags: COMMON_EVENT_TAGS, setTags: ['party-set', 'kids-set'] },
+    { name: 'Giant Jenga (XL Outdoor)',          defaultRatePerDay: 500,   eventTags: COMMON_EVENT_TAGS, setTags: ['party-set', 'outdoor-set'] },
+    { name: 'Ring Toss Game Sets',               defaultRatePerDay: 150,   eventTags: COMMON_EVENT_TAGS, setTags: ['party-set', 'kids-set'] },
+    { name: 'Sack Race Kits',                    defaultRatePerDay: 80,    eventTags: COMMON_EVENT_TAGS, setTags: ['party-set', 'kids-set'] },
+    { name: 'Egg-and-Spoon Race Kits',           defaultRatePerDay: 80,    eventTags: COMMON_EVENT_TAGS, setTags: ['party-set', 'kids-set'] },
+    { name: 'Tug-of-War Ropes',                  defaultRatePerDay: 100,   eventTags: COMMON_EVENT_TAGS, setTags: ['party-set', 'outdoor-set'] },
+    // --- Food & Beverage Equipment (20) ---
+    { name: 'Cotton Candy Machines',             defaultRatePerDay: 600,   eventTags: COMMON_EVENT_TAGS, setTags: ['catering-set', 'party-set'] },
+    { name: 'Popcorn Machines',                  defaultRatePerDay: 500,   eventTags: COMMON_EVENT_TAGS, setTags: ['catering-set', 'party-set'] },
+    { name: 'Slushie Machines',                  defaultRatePerDay: 800,   eventTags: COMMON_EVENT_TAGS, setTags: ['catering-set', 'party-set'] },
+    { name: 'Snow Cone Machines',                defaultRatePerDay: 600,   eventTags: COMMON_EVENT_TAGS, setTags: ['catering-set', 'party-set'] },
+    { name: 'Chocolate Fountain Machines',       defaultRatePerDay: 1200,  eventTags: COMMON_EVENT_TAGS, setTags: ['catering-set', 'party-set'] },
+    { name: 'Waffle Makers',                     defaultRatePerDay: 400,   eventTags: COMMON_EVENT_TAGS, setTags: ['catering-set'] },
+    { name: 'Crepe Makers',                      defaultRatePerDay: 400,   eventTags: COMMON_EVENT_TAGS, setTags: ['catering-set'] },
+    { name: 'Nacho Cheese Dispensers',           defaultRatePerDay: 350,   eventTags: COMMON_EVENT_TAGS, setTags: ['catering-set'] },
+    { name: 'Hot Dog Warmers',                   defaultRatePerDay: 300,   eventTags: COMMON_EVENT_TAGS, setTags: ['catering-set'] },
+    { name: 'Churro Machines',                   defaultRatePerDay: 450,   eventTags: COMMON_EVENT_TAGS, setTags: ['catering-set', 'party-set'] },
+    { name: 'Popcorn Carts',                     defaultRatePerDay: 600,   eventTags: COMMON_EVENT_TAGS, setTags: ['catering-set', 'party-set'] },
+    { name: 'Cotton Candy Carts',                defaultRatePerDay: 700,   eventTags: COMMON_EVENT_TAGS, setTags: ['catering-set', 'party-set'] },
+    { name: 'Ice Cream Carts',                   defaultRatePerDay: 900,   eventTags: COMMON_EVENT_TAGS, setTags: ['catering-set', 'party-set'] },
+    { name: 'Fondue Sets',                       defaultRatePerDay: 350,   eventTags: COMMON_EVENT_TAGS, setTags: ['catering-set'] },
+    { name: 'Cocktail Carts',                    defaultRatePerDay: 800,   eventTags: COMMON_EVENT_TAGS, setTags: ['catering-set'] },
+    { name: 'Lemonade Stands',                   defaultRatePerDay: 500,   eventTags: COMMON_EVENT_TAGS, setTags: ['catering-set', 'party-set'] },
+    { name: "S'mores Kits (Outdoor)",            defaultRatePerDay: 300,   eventTags: COMMON_EVENT_TAGS, setTags: ['catering-set', 'outdoor-set'] },
+    { name: 'Buffet Serving Carts',              defaultRatePerDay: 400,   eventTags: COMMON_EVENT_TAGS, setTags: ['catering-set', 'buffet-set'] },
+    { name: 'Pancake Griddles',                  defaultRatePerDay: 350,   eventTags: COMMON_EVENT_TAGS, setTags: ['catering-set'] },
+    { name: 'Hot Pot Sets (Table Top)',          defaultRatePerDay: 600,   eventTags: COMMON_EVENT_TAGS, setTags: ['catering-set', 'dining-set'] },
+    // --- Catering & Serviceware (15) ---
+    { name: 'Beverage Dispensers',               defaultRatePerDay: 100,   eventTags: COMMON_EVENT_TAGS, setTags: ['catering-set', 'buffet-set'] },
+    { name: 'Water Urns',                        defaultRatePerDay: 80,    eventTags: COMMON_EVENT_TAGS, setTags: ['catering-set'] },
+    { name: 'Coffee Urns',                       defaultRatePerDay: 150,   eventTags: COMMON_EVENT_TAGS, setTags: ['catering-set'] },
+    { name: 'Tea Urns',                          defaultRatePerDay: 120,   eventTags: COMMON_EVENT_TAGS, setTags: ['catering-set'] },
+    { name: 'Punch Bowls',                       defaultRatePerDay: 80,    eventTags: COMMON_EVENT_TAGS, setTags: ['catering-set', 'buffet-set'] },
+    { name: 'Ice Buckets',                       defaultRatePerDay: 40,    eventTags: COMMON_EVENT_TAGS, setTags: ['catering-set'] },
+    { name: 'Wine Coolers',                      defaultRatePerDay: 80,    eventTags: COMMON_EVENT_TAGS, setTags: ['catering-set'] },
+    { name: 'Champagne Coolers',                 defaultRatePerDay: 100,   eventTags: COMMON_EVENT_TAGS, setTags: ['catering-set'] },
+    { name: 'Drink Dispensers on Stand',         defaultRatePerDay: 200,   eventTags: COMMON_EVENT_TAGS, setTags: ['catering-set', 'buffet-set'] },
+    { name: 'Infused Water Dispensers',          defaultRatePerDay: 100,   eventTags: COMMON_EVENT_TAGS, setTags: ['catering-set'] },
+    { name: 'Juice Dispensers',                  defaultRatePerDay: 80,    eventTags: COMMON_EVENT_TAGS, setTags: ['catering-set'] },
+    { name: 'Serving Platters (Large)',          defaultRatePerDay: 50,    eventTags: COMMON_EVENT_TAGS, setTags: ['catering-set', 'buffet-set'] },
+    { name: 'Gravy Boats',                       defaultRatePerDay: 25,    eventTags: COMMON_EVENT_TAGS, setTags: ['catering-set'] },
+    { name: 'Soup Tureens',                      defaultRatePerDay: 60,    eventTags: COMMON_EVENT_TAGS, setTags: ['catering-set', 'buffet-set'] },
+    { name: 'Bread Baskets',                     defaultRatePerDay: 20,    eventTags: COMMON_EVENT_TAGS, setTags: ['catering-set'] },
+    // --- Tableware & Linens (15) ---
+    { name: 'Charger Plates (Gold)',             defaultRatePerDay: 30,    eventTags: COMMON_EVENT_TAGS, setTags: ['catering-set', 'table-set'] },
+    { name: 'Charger Plates (Silver)',           defaultRatePerDay: 30,    eventTags: COMMON_EVENT_TAGS, setTags: ['catering-set', 'table-set'] },
+    { name: 'Charger Plates (Rose Gold)',        defaultRatePerDay: 30,    eventTags: COMMON_EVENT_TAGS, setTags: ['catering-set', 'table-set'] },
+    { name: 'Charger Plates (Black)',            defaultRatePerDay: 25,    eventTags: COMMON_EVENT_TAGS, setTags: ['catering-set', 'table-set'] },
+    { name: 'Dinner Plates (White Bone China)',  defaultRatePerDay: 15,    eventTags: COMMON_EVENT_TAGS, setTags: ['catering-set', 'dining-set'] },
+    { name: 'Dessert Plates',                    defaultRatePerDay: 10,    eventTags: COMMON_EVENT_TAGS, setTags: ['catering-set'] },
+    { name: 'Napkin Rings (Silver)',             defaultRatePerDay: 8,     eventTags: COMMON_EVENT_TAGS, setTags: ['table-set'] },
+    { name: 'Napkin Rings (Gold)',               defaultRatePerDay: 8,     eventTags: COMMON_EVENT_TAGS, setTags: ['table-set'] },
+    { name: 'Cloth Napkins (White)',             defaultRatePerDay: 5,     eventTags: COMMON_EVENT_TAGS, setTags: ['catering-set', 'table-set'] },
+    { name: 'Cloth Napkins (Colored)',           defaultRatePerDay: 6,     eventTags: COMMON_EVENT_TAGS, setTags: ['catering-set', 'table-set'] },
+    { name: 'Satin Tablecloths',                 defaultRatePerDay: 100,   eventTags: COMMON_EVENT_TAGS, setTags: ['table-set', 'wedding-set'] },
+    { name: 'Sequin Tablecloths (Gold)',         defaultRatePerDay: 180,   eventTags: COMMON_EVENT_TAGS, setTags: ['table-set', 'styling-set'] },
+    { name: 'Sequin Tablecloths (Silver)',       defaultRatePerDay: 180,   eventTags: COMMON_EVENT_TAGS, setTags: ['table-set', 'styling-set'] },
+    { name: 'Chair Sashes (White Satin)',        defaultRatePerDay: 10,    eventTags: COMMON_EVENT_TAGS, setTags: ['decor-set', 'wedding-set'] },
+    { name: 'Chair Sashes (Colored Organza)',    defaultRatePerDay: 10,    eventTags: COMMON_EVENT_TAGS, setTags: ['decor-set'] },
+    // --- Outdoor & Venue (10) ---
+    { name: 'Market Umbrellas',                  defaultRatePerDay: 250,   eventTags: COMMON_EVENT_TAGS, setTags: ['outdoor-set'] },
+    { name: 'Patio Heaters',                     defaultRatePerDay: 400,   eventTags: COMMON_EVENT_TAGS, setTags: ['outdoor-set', 'comfort-set'] },
+    { name: 'Garden Torches',                    defaultRatePerDay: 80,    eventTags: COMMON_EVENT_TAGS, setTags: ['outdoor-set', 'decor-set'] },
+    { name: 'Tiki Torches',                      defaultRatePerDay: 60,    eventTags: COMMON_EVENT_TAGS, setTags: ['outdoor-set', 'party-set'] },
+    { name: 'Bamboo Torches',                    defaultRatePerDay: 50,    eventTags: COMMON_EVENT_TAGS, setTags: ['outdoor-set', 'party-set'] },
+    { name: 'Red Carpet Runners',                defaultRatePerDay: 200,   eventTags: COMMON_EVENT_TAGS, setTags: ['event-essentials-set'] },
+    { name: 'Stanchions with Velvet Rope',       defaultRatePerDay: 80,    eventTags: COMMON_EVENT_TAGS, setTags: ['event-essentials-set'] },
+    { name: 'Crowd Control Barriers',            defaultRatePerDay: 60,    eventTags: TECH_EVENT_TAGS,   setTags: ['event-essentials-set'] },
+    { name: 'Event Barricades',                  defaultRatePerDay: 80,    eventTags: TECH_EVENT_TAGS,   setTags: ['event-essentials-set'] },
+    { name: 'Outdoor Rugs (Large)',              defaultRatePerDay: 200,   eventTags: COMMON_EVENT_TAGS, setTags: ['outdoor-set'] },
+    // --- Kids & Family Events (15) ---
+    { name: 'Bounce Houses (Standard)',          defaultRatePerDay: 2000,  eventTags: COMMON_EVENT_TAGS, setTags: ['kids-set', 'party-set'] },
+    { name: 'Bounce Houses (Castle)',            defaultRatePerDay: 2500,  eventTags: COMMON_EVENT_TAGS, setTags: ['kids-set', 'party-set'] },
+    { name: 'Bounce Houses (Slide Combo)',       defaultRatePerDay: 3000,  eventTags: COMMON_EVENT_TAGS, setTags: ['kids-set', 'party-set'] },
+    { name: 'Moon Bouncers',                     defaultRatePerDay: 1800,  eventTags: COMMON_EVENT_TAGS, setTags: ['kids-set', 'party-set'] },
+    { name: 'Kids Soft Play Sets',               defaultRatePerDay: 1500,  eventTags: COMMON_EVENT_TAGS, setTags: ['kids-set', 'party-set'] },
+    { name: 'Kids Obstacle Courses',             defaultRatePerDay: 2200,  eventTags: COMMON_EVENT_TAGS, setTags: ['kids-set', 'party-set'] },
+    { name: 'Water Slide Inflatables',           defaultRatePerDay: 2500,  eventTags: COMMON_EVENT_TAGS, setTags: ['kids-set', 'outdoor-set'] },
+    { name: 'Kiddie Pools',                      defaultRatePerDay: 300,   eventTags: COMMON_EVENT_TAGS, setTags: ['kids-set', 'outdoor-set'] },
+    { name: 'Pinata Frames',                     defaultRatePerDay: 150,   eventTags: COMMON_EVENT_TAGS, setTags: ['kids-set', 'party-set'] },
+    { name: 'Bubble Stations',                   defaultRatePerDay: 200,   eventTags: COMMON_EVENT_TAGS, setTags: ['kids-set', 'party-set'] },
+    { name: 'Arts and Crafts Stations',          defaultRatePerDay: 400,   eventTags: COMMON_EVENT_TAGS, setTags: ['kids-set', 'party-set'] },
+    { name: 'Face Painting Stations',            defaultRatePerDay: 300,   eventTags: COMMON_EVENT_TAGS, setTags: ['kids-set', 'party-set'] },
+    { name: 'Giant Yard Stake Letters',          defaultRatePerDay: 200,   eventTags: COMMON_EVENT_TAGS, setTags: ['kids-set', 'decor-set'] },
+    { name: "Kids' Balloon Twisting Kits",       defaultRatePerDay: 150,   eventTags: COMMON_EVENT_TAGS, setTags: ['kids-set', 'party-set'] },
+    { name: 'Party Game Prize Stands',           defaultRatePerDay: 200,   eventTags: COMMON_EVENT_TAGS, setTags: ['kids-set', 'party-set'] },
+    // --- Professional AV & Staging (20) ---
+    { name: 'Wireless Presentation Clickers',    defaultRatePerDay: 80,    eventTags: TECH_EVENT_TAGS,   setTags: ['event-essentials-set'] },
+    { name: 'Teleprompters',                     defaultRatePerDay: 1500,  eventTags: TECH_EVENT_TAGS,   setTags: ['stage-set', 'program-set'] },
+    { name: 'Confidence Monitors (Presenter)',   defaultRatePerDay: 800,   eventTags: TECH_EVENT_TAGS,   setTags: ['stage-set'] },
+    { name: 'Line Array Speaker Systems',        defaultRatePerDay: 5000,  eventTags: TECH_EVENT_TAGS,   setTags: ['sound-set', 'concert-set'] },
+    { name: 'Delay Tower Speakers',              defaultRatePerDay: 1200,  eventTags: TECH_EVENT_TAGS,   setTags: ['sound-set'] },
+    { name: 'Column Array PA Systems',           defaultRatePerDay: 2000,  eventTags: TECH_EVENT_TAGS,   setTags: ['sound-set'] },
+    { name: 'Foldback Stage Monitors',           defaultRatePerDay: 600,   eventTags: TECH_EVENT_TAGS,   setTags: ['sound-set', 'stage-set'] },
+    { name: 'Guitar Amplifiers',                 defaultRatePerDay: 500,   eventTags: TECH_EVENT_TAGS,   setTags: ['sound-set', 'stage-set'] },
+    { name: 'Bass Amplifiers',                   defaultRatePerDay: 600,   eventTags: TECH_EVENT_TAGS,   setTags: ['sound-set', 'stage-set'] },
+    { name: 'Keyboard Amplifiers',               defaultRatePerDay: 450,   eventTags: TECH_EVENT_TAGS,   setTags: ['sound-set', 'stage-set'] },
+    { name: 'In-Ear Monitor Systems',            defaultRatePerDay: 800,   eventTags: TECH_EVENT_TAGS,   setTags: ['sound-set', 'stage-set'] },
+    { name: 'DJ Booth Facades',                  defaultRatePerDay: 1500,  eventTags: TECH_EVENT_TAGS,   setTags: ['dj-set', 'stage-set'] },
+    { name: 'Truss Systems (Lighting Rig)',      defaultRatePerDay: 3000,  eventTags: TECH_EVENT_TAGS,   setTags: ['stage-set', 'lighting-set'] },
+    { name: 'Ground Support Systems',            defaultRatePerDay: 2500,  eventTags: TECH_EVENT_TAGS,   setTags: ['stage-set'] },
+    { name: 'Stage Risers',                      defaultRatePerDay: 400,   eventTags: TECH_EVENT_TAGS,   setTags: ['stage-set', 'program-set'] },
+    { name: 'Cable Ramps',                       defaultRatePerDay: 80,    eventTags: TECH_EVENT_TAGS,   setTags: ['stage-set', 'event-essentials-set'] },
+    { name: 'Cable Covers',                      defaultRatePerDay: 50,    eventTags: TECH_EVENT_TAGS,   setTags: ['event-essentials-set'] },
+    { name: 'Drum Shield Risers',                defaultRatePerDay: 400,   eventTags: TECH_EVENT_TAGS,   setTags: ['stage-set', 'sound-set'] },
+    { name: 'Acoustic Panels (Temporary)',       defaultRatePerDay: 600,   eventTags: TECH_EVENT_TAGS,   setTags: ['stage-set'] },
+    { name: 'Monitor Speaker Stands',            defaultRatePerDay: 150,   eventTags: TECH_EVENT_TAGS,   setTags: ['sound-set', 'stage-set'] },
+    // --- Special Effects (10) ---
+    { name: 'Dry Ice Machines',                  defaultRatePerDay: 800,   eventTags: COMMON_EVENT_TAGS, setTags: ['effects-set', 'party-set'] },
+    { name: 'CO2 Cannons',                       defaultRatePerDay: 600,   eventTags: TECH_EVENT_TAGS,   setTags: ['effects-set', 'concert-set'] },
+    { name: 'Powder Cannons',                    defaultRatePerDay: 300,   eventTags: COMMON_EVENT_TAGS, setTags: ['effects-set', 'party-set'] },
+    { name: 'Flower Cannons',                    defaultRatePerDay: 250,   eventTags: COMMON_EVENT_TAGS, setTags: ['effects-set', 'party-set'] },
+    { name: 'Cold Sparkler Machines',            defaultRatePerDay: 1500,  eventTags: COMMON_EVENT_TAGS, setTags: ['effects-set', 'party-set'] },
+    { name: 'Glow Sticks (Pack of 100)',         defaultRatePerDay: 150,   eventTags: TECH_EVENT_TAGS,   setTags: ['effects-set', 'party-set'] },
+    { name: 'Glow Bracelets (Pack of 100)',      defaultRatePerDay: 80,    eventTags: TECH_EVENT_TAGS,   setTags: ['effects-set', 'party-set'] },
+    { name: 'Ribbon Wands (Pack of 50)',         defaultRatePerDay: 80,    eventTags: COMMON_EVENT_TAGS, setTags: ['effects-set', 'ceremony-set'] },
+    { name: 'Foam Party Equipment',              defaultRatePerDay: 1500,  eventTags: COMMON_EVENT_TAGS, setTags: ['effects-set', 'party-set'] },
+    { name: 'Haze Machines',                     defaultRatePerDay: 600,   eventTags: TECH_EVENT_TAGS,   setTags: ['effects-set', 'stage-set'] },
+    // --- Lounge & Furniture (10) ---
+    { name: 'Cocktail Lounge Sets',              defaultRatePerDay: 1800,  eventTags: COMMON_EVENT_TAGS, setTags: ['lounge-set', 'vip-set'] },
+    { name: 'Pallet Lounge Sets (Rustic)',       defaultRatePerDay: 1500,  eventTags: COMMON_EVENT_TAGS, setTags: ['lounge-set'] },
+    { name: 'Boho Lounge Sets',                  defaultRatePerDay: 1200,  eventTags: COMMON_EVENT_TAGS, setTags: ['lounge-set', 'styling-set'] },
+    { name: 'White Lounge Sets',                 defaultRatePerDay: 1600,  eventTags: COMMON_EVENT_TAGS, setTags: ['lounge-set', 'vip-set'] },
+    { name: 'Rattan Lounge Sets',                defaultRatePerDay: 1400,  eventTags: COMMON_EVENT_TAGS, setTags: ['lounge-set', 'outdoor-set'] },
+    { name: 'L-Shaped Modular Couches',          defaultRatePerDay: 2000,  eventTags: COMMON_EVENT_TAGS, setTags: ['lounge-set', 'vip-set'] },
+    { name: 'Accent Coffee Table Sets',          defaultRatePerDay: 400,   eventTags: COMMON_EVENT_TAGS, setTags: ['lounge-set', 'table-set'] },
+    { name: 'Display Pedestals',                 defaultRatePerDay: 150,   eventTags: COMMON_EVENT_TAGS, setTags: ['event-essentials-set'] },
+    { name: 'Coat Racks',                        defaultRatePerDay: 80,    eventTags: COMMON_EVENT_TAGS, setTags: ['event-essentials-set'] },
+    { name: 'Registration Desks',                defaultRatePerDay: 500,   eventTags: TECH_EVENT_TAGS,   setTags: ['event-essentials-set'] },
+    // --- Safety & Utilities (10) ---
+    { name: 'First Aid Kits',                    defaultRatePerDay: 80,    eventTags: COMMON_EVENT_TAGS, setTags: ['event-essentials-set'] },
+    { name: 'Fire Extinguishers (Event)',        defaultRatePerDay: 100,   eventTags: COMMON_EVENT_TAGS, setTags: ['event-essentials-set'] },
+    { name: 'Hand Sanitizer Stations',           defaultRatePerDay: 60,    eventTags: COMMON_EVENT_TAGS, setTags: ['event-essentials-set'] },
+    { name: 'Portable Toilets',                  defaultRatePerDay: 1200,  eventTags: COMMON_EVENT_TAGS, setTags: ['outdoor-set', 'event-essentials-set'] },
+    { name: 'Portable Handwashing Stations',     defaultRatePerDay: 400,   eventTags: COMMON_EVENT_TAGS, setTags: ['outdoor-set', 'event-essentials-set'] },
+    { name: 'Folding Trolleys',                  defaultRatePerDay: 100,   eventTags: COMMON_EVENT_TAGS, setTags: ['event-essentials-set'] },
+    { name: 'Platform Dollies',                  defaultRatePerDay: 100,   eventTags: COMMON_EVENT_TAGS, setTags: ['event-essentials-set'] },
+    { name: 'Generators (Portable)',             defaultRatePerDay: 1500,  eventTags: COMMON_EVENT_TAGS, setTags: ['outdoor-set', 'power-set'] },
+    { name: 'Power Strip Distributors',          defaultRatePerDay: 80,    eventTags: TECH_EVENT_TAGS,   setTags: ['power-set', 'event-essentials-set'] },
+    { name: 'Cable Management Kits',             defaultRatePerDay: 60,    eventTags: TECH_EVENT_TAGS,   setTags: ['event-essentials-set'] },
   ];
 
   private static readonly IMAGE_EXTENSIONS = new Set([
@@ -349,11 +659,6 @@ export class CatalogSeedService {
     let brandsCreated = 0;
     let itemTypesWithSeededPictures = 0;
     let itemTypesMissingSeededPictures = 0;
-    const minimumItemTypes = this.parsePositiveInt(
-      process.env.SEED_MIN_ITEM_TYPES,
-      CatalogSeedService.DEFAULT_MIN_ITEM_TYPES,
-    );
-
     const existingTypes = await this.itemTypesRepo.find();
     const itemTypeByName = new Map<string, ItemType>();
 
@@ -456,65 +761,54 @@ export class CatalogSeedService {
       folderToTypeNames.set(folderName, seededTypeNamesForFolder);
     }
 
-    const activeSeededTypes = Array.from(itemTypeByName.values()).filter(
-      (itemType) => itemType.isActive !== false,
-    );
+    for (const extraSeed of CatalogSeedService.EXTRA_ITEM_TYPE_SEEDS) {
+      const normalizedName = extraSeed.name.trim().toLowerCase();
+      seededItemTypeNames.add(normalizedName);
 
-    if (minimumItemTypes > activeSeededTypes.length && activeSeededTypes.length) {
-      const variantsNeeded = minimumItemTypes - activeSeededTypes.length;
+      const normalizedEventTags = this.normalizeTags(extraSeed.eventTags);
+      const normalizedSetTags = this.normalizeTags(extraSeed.setTags);
+      const existingType = itemTypeByName.get(normalizedName);
 
-      for (let index = 0; index < variantsNeeded; index += 1) {
-        const baseType = activeSeededTypes[index % activeSeededTypes.length];
-        const labelIndex = Math.floor(index / activeSeededTypes.length);
-        const labelBase =
-          CatalogSeedService.GENERATED_VARIANT_LABELS[
-          labelIndex % CatalogSeedService.GENERATED_VARIANT_LABELS.length
-          ];
-        const labelRound =
-          Math.floor(
-            labelIndex / CatalogSeedService.GENERATED_VARIANT_LABELS.length,
-          ) + 1;
-        const variantLabel = `${labelBase} ${labelRound}`;
-        const generatedName = `${baseType.name} (${variantLabel})`;
-        const normalizedGeneratedName = generatedName.trim().toLowerCase();
+      if (existingType) {
+        const currentEventTags = this.normalizeTags(existingType.eventTags);
+        const currentSetTags = this.normalizeTags(existingType.setTags);
+        const shouldUpdate =
+          !this.sameTags(currentEventTags, normalizedEventTags)
+          || !this.sameTags(currentSetTags, normalizedSetTags)
+          || Number(existingType.defaultRatePerDay || 0) !== extraSeed.defaultRatePerDay
+          || existingType.isActive !== true;
 
-        if (itemTypeByName.has(normalizedGeneratedName)) {
-          continue;
+        if (shouldUpdate) {
+          existingType.eventTags = normalizedEventTags;
+          existingType.setTags = normalizedSetTags;
+          existingType.defaultRatePerDay = extraSeed.defaultRatePerDay;
+          existingType.isActive = true;
+          await this.itemTypesRepo.save(existingType);
+          itemTypesUpdated += 1;
         }
 
-        const multiplier =
-          CatalogSeedService.GENERATED_VARIANT_RATE_MULTIPLIERS[
-          labelIndex % CatalogSeedService.GENERATED_VARIANT_RATE_MULTIPLIERS.length
-          ];
-        const generatedRate = Math.max(
-          50,
-          Number((Number(baseType.defaultRatePerDay || 0) * multiplier).toFixed(2)),
-        );
-        const generatedDescription =
-          `Generated variant from ${baseType.name} to meet the seeded minimum item type target.`;
-
-        const createdType = await this.itemTypesRepo.save(
-          this.itemTypesRepo.create({
-            name: generatedName,
-            description: generatedDescription,
-            defaultRatePerDay: generatedRate,
-            eventTags: this.normalizeTags(baseType.eventTags),
-            setTags: this.normalizeTags(baseType.setTags),
-            pictureUrl: baseType.pictureUrl || undefined,
-            isActive: true,
-          }),
-        );
-
-        itemTypeByName.set(normalizedGeneratedName, createdType);
-        seededItemTypeNames.add(normalizedGeneratedName);
-        itemTypesCreated += 1;
-
-        if (createdType.pictureUrl) {
+        if (existingType.pictureUrl) {
           itemTypesWithSeededPictures += 1;
         } else {
           itemTypesMissingSeededPictures += 1;
         }
+        continue;
       }
+
+      const createdType = await this.itemTypesRepo.save(
+        this.itemTypesRepo.create({
+          name: extraSeed.name,
+          description: 'Seeded catalog item type',
+          defaultRatePerDay: extraSeed.defaultRatePerDay,
+          eventTags: normalizedEventTags,
+          setTags: normalizedSetTags,
+          isActive: true,
+        }),
+      );
+
+      itemTypeByName.set(normalizedName, createdType);
+      itemTypesCreated += 1;
+      itemTypesMissingSeededPictures += 1;
     }
 
     if (this.parseBooleanFlag(process.env.SEED_DEACTIVATE_MISSING_ITEM_TYPES)) {
@@ -783,15 +1077,6 @@ export class CatalogSeedService {
   private parseBooleanFlag(input: unknown) {
     const normalized = String(input || '').trim().toLowerCase();
     return ['1', 'true', 'yes', 'on'].includes(normalized);
-  }
-
-  private parsePositiveInt(input: unknown, fallback: number): number {
-    const parsed = Number.parseInt(String(input || '').trim(), 10);
-    if (!Number.isFinite(parsed) || parsed <= 0) {
-      return fallback;
-    }
-
-    return parsed;
   }
 
   private toBrandKey(itemTypeId: string, brandName: string) {
