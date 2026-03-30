@@ -72,6 +72,11 @@ const UserRole = {
   CUSTOMER: 'customer',
 } as const;
 
+const VendorPaymentMode = {
+  FULL_PAYMENT: 'full_payment',
+  DOWNPAYMENT_REQUIRED: 'downpayment_required',
+} as const;
+
 const BookingStatus = {
   PENDING: 'pending',
   CONFIRMED: 'confirmed',
@@ -86,6 +91,7 @@ vi.mock('./entities/vendor.entity', () => ({
   VendorRegistrationStatus,
   VendorKycStatus,
   VendorVerificationStatus,
+  VendorPaymentMode,
 }));
 
 vi.mock('./entities/vendor-document.entity', () => ({
@@ -717,6 +723,175 @@ describe('VendorsService', () => {
     it('treats undefined as false', () => {
       const { service } = createService();
       expect((service as any).parseBooleanFlag(undefined)).toBe(false);
+    });
+  });
+
+  describe('getMyPaymentSettings', () => {
+    it('returns default full_payment mode when vendor has no explicit mode set', async () => {
+      const { service, mocks } = createService();
+      const vendor = {
+        id: 'v-1',
+        paymentMode: null,
+        downpaymentPercent: null,
+      };
+      vi.spyOn(service as any, 'findByUserIdRaw').mockResolvedValue(vendor);
+
+      const result = await service.getMyPaymentSettings('user-1');
+
+      expect(result.paymentMode).toBe('full_payment');
+      expect(result.downpaymentPercent).toBe(30);
+    });
+
+    it('returns configured downpayment_required mode and percent', async () => {
+      const { service } = createService();
+      const vendor = {
+        id: 'v-2',
+        paymentMode: 'downpayment_required',
+        downpaymentPercent: 50,
+      };
+      vi.spyOn(service as any, 'findByUserIdRaw').mockResolvedValue(vendor);
+
+      const result = await service.getMyPaymentSettings('user-1');
+
+      expect(result.paymentMode).toBe('downpayment_required');
+      expect(result.downpaymentPercent).toBe(50);
+    });
+
+    it('throws NotFoundException when vendor profile does not exist', async () => {
+      const { service } = createService();
+      vi.spyOn(service as any, 'findByUserIdRaw').mockResolvedValue(null);
+
+      await expect(service.getMyPaymentSettings('user-x')).rejects.toThrow(
+        'Vendor profile not found',
+      );
+    });
+  });
+
+  describe('updateMyPaymentSettings', () => {
+    it('updates paymentMode to downpayment_required', async () => {
+      const { service, mocks } = createService();
+      const vendor = {
+        id: 'v-1',
+        paymentMode: 'full_payment',
+        downpaymentPercent: 30,
+      };
+      vi.spyOn(service as any, 'findByUserIdRaw').mockResolvedValue(vendor);
+      vi.spyOn(service, 'getMyPaymentSettings').mockResolvedValue({
+        paymentMode: 'downpayment_required' as any,
+        downpaymentPercent: 30,
+      });
+
+      await service.updateMyPaymentSettings('user-1', {
+        paymentMode: 'downpayment_required',
+      });
+
+      expect(mocks.vendorsRepo.update).toHaveBeenCalledWith(
+        'v-1',
+        expect.objectContaining({ paymentMode: 'downpayment_required' }),
+      );
+    });
+
+    it('updates downpaymentPercent', async () => {
+      const { service, mocks } = createService();
+      const vendor = {
+        id: 'v-1',
+        paymentMode: 'downpayment_required',
+        downpaymentPercent: 30,
+      };
+      vi.spyOn(service as any, 'findByUserIdRaw').mockResolvedValue(vendor);
+      vi.spyOn(service, 'getMyPaymentSettings').mockResolvedValue({
+        paymentMode: 'downpayment_required' as any,
+        downpaymentPercent: 40,
+      });
+
+      await service.updateMyPaymentSettings('user-1', { downpaymentPercent: 40 });
+
+      expect(mocks.vendorsRepo.update).toHaveBeenCalledWith(
+        'v-1',
+        expect.objectContaining({ downpaymentPercent: 40 }),
+      );
+    });
+
+    it('rejects invalid paymentMode value', async () => {
+      const { service } = createService();
+      vi.spyOn(service as any, 'findByUserIdRaw').mockResolvedValue({ id: 'v-1' });
+
+      await expect(
+        service.updateMyPaymentSettings('user-1', { paymentMode: 'invalid_mode' }),
+      ).rejects.toBeInstanceOf(BadRequestException);
+    });
+
+    it('rejects downpaymentPercent of 0 (out of range)', async () => {
+      const { service } = createService();
+      vi.spyOn(service as any, 'findByUserIdRaw').mockResolvedValue({ id: 'v-1' });
+
+      await expect(
+        service.updateMyPaymentSettings('user-1', { downpaymentPercent: 0 }),
+      ).rejects.toBeInstanceOf(BadRequestException);
+    });
+
+    it('rejects downpaymentPercent of 100 (out of range)', async () => {
+      const { service } = createService();
+      vi.spyOn(service as any, 'findByUserIdRaw').mockResolvedValue({ id: 'v-1' });
+
+      await expect(
+        service.updateMyPaymentSettings('user-1', { downpaymentPercent: 100 }),
+      ).rejects.toBeInstanceOf(BadRequestException);
+    });
+
+    it('rejects downpaymentPercent of 100 ensures vendor cannot set full payment via percent field', async () => {
+      const { service } = createService();
+      vi.spyOn(service as any, 'findByUserIdRaw').mockResolvedValue({ id: 'v-1' });
+
+      // 100% downpayment would mean "full payment" effectively, so 99 is the max
+      await expect(
+        service.updateMyPaymentSettings('user-1', { downpaymentPercent: 100 }),
+      ).rejects.toBeInstanceOf(BadRequestException);
+    });
+
+    it('accepts boundary value of 1 for downpaymentPercent', async () => {
+      const { service, mocks } = createService();
+      vi.spyOn(service as any, 'findByUserIdRaw').mockResolvedValue({ id: 'v-1' });
+      vi.spyOn(service, 'getMyPaymentSettings').mockResolvedValue({
+        paymentMode: 'downpayment_required' as any,
+        downpaymentPercent: 1,
+      });
+
+      await service.updateMyPaymentSettings('user-1', { downpaymentPercent: 1 });
+
+      expect(mocks.vendorsRepo.update).toHaveBeenCalledWith(
+        'v-1',
+        expect.objectContaining({ downpaymentPercent: 1 }),
+      );
+    });
+
+    it('accepts boundary value of 99 for downpaymentPercent', async () => {
+      const { service, mocks } = createService();
+      vi.spyOn(service as any, 'findByUserIdRaw').mockResolvedValue({ id: 'v-1' });
+      vi.spyOn(service, 'getMyPaymentSettings').mockResolvedValue({
+        paymentMode: 'downpayment_required' as any,
+        downpaymentPercent: 99,
+      });
+
+      await service.updateMyPaymentSettings('user-1', { downpaymentPercent: 99 });
+
+      expect(mocks.vendorsRepo.update).toHaveBeenCalledWith(
+        'v-1',
+        expect.objectContaining({ downpaymentPercent: 99 }),
+      );
+    });
+
+    it('does not call update when no fields are provided', async () => {
+      const { service, mocks } = createService();
+      vi.spyOn(service as any, 'findByUserIdRaw').mockResolvedValue({ id: 'v-1' });
+      vi.spyOn(service, 'getMyPaymentSettings').mockResolvedValue({
+        paymentMode: 'full_payment' as any,
+        downpaymentPercent: 30,
+      });
+
+      await service.updateMyPaymentSettings('user-1', {});
+
+      expect(mocks.vendorsRepo.update).not.toHaveBeenCalled();
     });
   });
 });

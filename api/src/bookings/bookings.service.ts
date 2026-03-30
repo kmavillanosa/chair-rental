@@ -27,7 +27,7 @@ import { VendorPayout, VendorPayoutStatus } from '../payments/entities/vendor-pa
 import { PricingCalculationService } from '../payments/services/pricing-calculation.service';
 import { PricingConfigBootstrapService } from '../payments/services/pricing-config-bootstrap.service';
 import { differenceInDays } from 'date-fns';
-import { Vendor } from '../vendors/entities/vendor.entity';
+import { Vendor, VendorPaymentMode } from '../vendors/entities/vendor.entity';
 import { SettingsService } from '../settings/settings.service';
 import { User, UserRole } from '../users/entities/user.entity';
 import { FraudService } from '../fraud/fraud.service';
@@ -229,8 +229,15 @@ export class BookingsService {
       createdFromIp,
     });
 
-    // Full-payment flow: collect 100% at checkout, no remaining balance.
-    const depositPercentage = 100;
+    // Determine deposit percentage from vendor's payment mode setting.
+    // FULL_PAYMENT: 100% collected at checkout (no remaining balance).
+    // DOWNPAYMENT_REQUIRED: vendor-configured percentage upfront, remainder
+    //   collected separately after the vendor confirms the booking.
+    const vendorPaymentMode = vendor.paymentMode || VendorPaymentMode.FULL_PAYMENT;
+    const depositPercentage =
+      vendorPaymentMode === VendorPaymentMode.DOWNPAYMENT_REQUIRED
+        ? this.clampDownpaymentPercent(Number(vendor.downpaymentPercent))
+        : 100;
 
     const createdBooking = await this.dataSource.transaction(async (manager) => {
       const days = Math.max(1, differenceInDays(endDate, startDate) + 1);
@@ -308,8 +315,8 @@ export class BookingsService {
 
       const totalAmount = subtotalItems + delivery + service;
       const platformFee = totalAmount * commissionRate;
-      const depositAmount = this.toMoney(totalAmount);
-      const remainingBalanceAmount = 0;
+      const depositAmount = this.toMoney(totalAmount * (depositPercentage / 100));
+      const remainingBalanceAmount = this.toMoney(totalAmount - depositAmount);
 
       const booking = manager.create(Booking, {
         customerId,
@@ -507,9 +514,27 @@ export class BookingsService {
       throw new NotFoundException('Booking not found');
     }
 
-    throw new BadRequestException(
-      'Remaining-balance checkout is no longer supported. Full payment is required at booking checkout.',
-    );
+    if (booking.paymentStatus !== BookingPaymentStatus.DOWNPAYMENT_PAID) {
+      throw new BadRequestException(
+        'Remaining-balance checkout is only available after the downpayment has been completed.',
+      );
+    }
+
+    if ([BookingStatus.CANCELLED, BookingStatus.COMPLETED].includes(booking.status)) {
+      throw new BadRequestException('Checkout is unavailable for this booking status');
+    }
+
+    if (!this.isPayMongoEnabled()) {
+      throw new BadRequestException('Online payment checkout is not enabled');
+    }
+
+    await this.createPayMongoCheckoutForBooking(booking.id, customerId, true, true);
+    const refreshed = await this.findById(booking.id);
+    if (refreshed) {
+      await this.tryEnsureBookingDocuments(refreshed.id);
+    }
+
+    return refreshed;
   }
 
   async verifyPayMongoCheckout(
@@ -560,7 +585,12 @@ export class BookingsService {
 
     const sessionPayload = await this.fetchPayMongoCheckoutSession(storedSessionId);
     const checkoutReference = this.extractPayMongoCheckoutReference(sessionPayload);
-    if (checkoutReference && checkoutReference !== `booking_${booking.id}`) {
+    // Accept both the initial checkout reference and the remaining-balance reference.
+    const validReferences = [
+      `booking_${booking.id}`,
+      `booking_${booking.id}_final`,
+    ];
+    if (checkoutReference && !validReferences.includes(checkoutReference)) {
       throw new BadRequestException(
         'Checkout session reference does not belong to this booking',
       );
@@ -576,30 +606,75 @@ export class BookingsService {
       storedSessionId;
 
     const paidAt = new Date();
-    const nextTotalPaid = this.toMoney(booking.totalAmount);
 
-    await this.bookingsRepo.update(booking.id, {
-      paymentStatus: BookingPaymentStatus.HELD,
-      paymentPaidAt: paidAt,
-      paymentReference,
-      totalPaidAmount: nextTotalPaid,
-      escrowHeldAmount: nextTotalPaid,
-      remainingBalanceAmount: 0,
-      depositPaidAt: paidAt,
-      finalPaymentPaidAt: paidAt,
-      escrowHeldAt: paidAt,
-      paymentCheckoutSessionId: null,
-      paymentCheckoutUrl: null,
-    });
+    // Determine whether this is the FIRST payment (downpayment) or the FINAL payment.
+    // Detection rule:
+    //   - remainingBalanceAmount > 0 AND totalPaidAmount = 0  → first payment (downpayment)
+    //   - remainingBalanceAmount > 0 AND totalPaidAmount > 0  → second payment (remaining balance)
+    //   - remainingBalanceAmount = 0                           → full single-payment
+    const remainingBalance = this.toMoney(booking.remainingBalanceAmount);
+    const alreadyPaid = this.toMoney(booking.totalPaidAmount);
+    const isDownpaymentMode = remainingBalance > 0;
+    const isFirstPayment = alreadyPaid === 0;
 
-    await this.vendorPayoutsRepo.update(
-      { bookingId: booking.id },
-      {
-        status: VendorPayoutStatus.HELD,
-        heldAt: paidAt,
-        outstandingBalanceAmount: 0,
-      },
-    );
+    if (isDownpaymentMode && isFirstPayment) {
+      // ── Downpayment received ───────────────────────────────────────────────
+      const depositPaidAmount = this.toMoney(booking.depositAmount);
+
+      await this.bookingsRepo.update(booking.id, {
+        paymentStatus: BookingPaymentStatus.DOWNPAYMENT_PAID,
+        paymentPaidAt: paidAt,
+        paymentReference,
+        // Store the first-leg pay_xxx so executePayMongoRefund can issue a
+        // separate refund against it if the booking is later cancelled.
+        depositPaymentReference: paymentReference,
+        totalPaidAmount: depositPaidAmount,
+        escrowHeldAmount: depositPaidAmount,
+        depositPaidAt: paidAt,
+        // remainingBalanceAmount stays as-is — still owed by customer
+        escrowHeldAt: paidAt,
+        paymentCheckoutSessionId: null,
+        paymentCheckoutUrl: null,
+      });
+
+      await this.vendorPayoutsRepo.update(
+        { bookingId: booking.id },
+        {
+          status: VendorPayoutStatus.HELD,
+          heldAt: paidAt,
+          outstandingBalanceAmount: remainingBalance,
+        },
+      );
+    } else {
+      // ── Full payment OR remaining balance payment ──────────────────────────
+      const nextTotalPaid = this.toMoney(booking.totalAmount);
+
+      await this.bookingsRepo.update(booking.id, {
+        paymentStatus: BookingPaymentStatus.HELD,
+        paymentPaidAt: paidAt,
+        // paymentReference becomes the second-leg (or only) pay_xxx.
+        // depositPaymentReference already holds the first-leg pay_xxx (set during
+        // DOWNPAYMENT_PAID verification); leave it untouched for single-leg bookings.
+        paymentReference,
+        totalPaidAmount: nextTotalPaid,
+        escrowHeldAmount: nextTotalPaid,
+        remainingBalanceAmount: 0,
+        depositPaidAt: booking.depositPaidAt || paidAt,
+        finalPaymentPaidAt: paidAt,
+        escrowHeldAt: paidAt,
+        paymentCheckoutSessionId: null,
+        paymentCheckoutUrl: null,
+      });
+
+      await this.vendorPayoutsRepo.update(
+        { bookingId: booking.id },
+        {
+          status: VendorPayoutStatus.HELD,
+          heldAt: paidAt,
+          outstandingBalanceAmount: 0,
+        },
+      );
+    }
 
     return this.findById(booking.id);
   }
@@ -653,12 +728,13 @@ export class BookingsService {
       (booking.paymentProvider || '').toLowerCase() === 'paymongo' &&
       ![
         BookingPaymentStatus.PAID,
+        BookingPaymentStatus.DOWNPAYMENT_PAID,
         BookingPaymentStatus.HELD,
         BookingPaymentStatus.COMPLETED,
       ].includes(booking.paymentStatus)
     ) {
       throw new BadRequestException(
-        'Booking cannot be confirmed until payment is completed',
+        'Booking cannot be confirmed until at least the downpayment has been completed',
       );
     }
 
@@ -1317,32 +1393,82 @@ export class BookingsService {
   ): Promise<void> {
     if (!this.isPayMongoEnabled()) return;
 
-    const rawRef = String(booking.paymentReference || '').trim();
-    if (!rawRef || !rawRef.startsWith('pay_')) {
-      this.logger.warn(
-        `Skipping PayMongo refund for booking ${booking.id}: stored reference "${rawRef}" is not a payment ID (pay_xxx)`,
-      );
-      return;
-    }
-
     const secretKey = String(process.env.PAYMONGO_SECRET_KEY || '').trim();
     if (!secretKey) return;
 
     const baseApi = String(
       process.env.PAYMONGO_API_BASE_URL || 'https://api.paymongo.com/v1',
     ).replace(/\/$/, '');
-    const amountMinor = this.toMinorUnits(refundAmount);
+
+    const totalRefundNeeded = this.toMoney(refundAmount);
+    if (totalRefundNeeded <= 0) return;
+
+    // Determine whether this was a two-leg (downpayment) booking.
+    // If depositPaymentReference exists and differs from paymentReference, the
+    // booking was paid in two separate checkout sessions.  We must issue a
+    // separate PayMongo refund against each original payment_id because
+    // PayMongo does not allow refunding more than what was captured per payment.
+    //
+    // Leg layout:
+    //   leg2 payment_id = paymentReference      (remaining balance)
+    //   leg1 payment_id = depositPaymentReference (downpayment)
+    // depositAmount tells us the leg1 portion; leg2 portion = totalAmount - depositAmount.
+    const leg2Ref = String(booking.paymentReference || '').trim();
+    const leg1Ref = String(booking.depositPaymentReference || '').trim();
+    const isTwoLeg =
+      leg1Ref.startsWith('pay_') &&
+      leg2Ref.startsWith('pay_') &&
+      leg1Ref !== leg2Ref;
+
+    if (isTwoLeg) {
+      const leg2Amount = this.toMoney(
+        this.toMoney(booking.totalAmount) - this.toMoney(booking.depositAmount),
+      );
+      // Refund from the second leg first, then from the first leg for the remainder.
+      const leg2Refund = Math.min(totalRefundNeeded, leg2Amount);
+      const leg1Refund = this.toMoney(totalRefundNeeded - leg2Refund);
+
+      if (leg2Refund > 0) {
+        await this.issuePayMongoRefund(baseApi, secretKey, leg2Ref, leg2Refund, booking.id, booking.cancellationPolicyCode, 'final');
+      }
+      if (leg1Refund > 0) {
+        await this.issuePayMongoRefund(baseApi, secretKey, leg1Ref, leg1Refund, booking.id, booking.cancellationPolicyCode, 'deposit');
+      }
+      return;
+    }
+
+    // Single-leg (full payment or downpayment-only cancellation).
+    const ref = leg2Ref || leg1Ref;
+    if (!ref || !ref.startsWith('pay_')) {
+      this.logger.warn(
+        `Skipping PayMongo refund for booking ${booking.id}: stored reference "${ref}" is not a payment ID (pay_xxx)`,
+      );
+      return;
+    }
+    await this.issuePayMongoRefund(baseApi, secretKey, ref, totalRefundNeeded, booking.id, booking.cancellationPolicyCode);
+  }
+
+  /** Issues a single PayMongo refund API call. Errors are non-fatal (logged only). */
+  private async issuePayMongoRefund(
+    baseApi: string,
+    secretKey: string,
+    paymentId: string,
+    amount: number,
+    bookingId: string,
+    policyCode?: string,
+    leg?: 'deposit' | 'final',
+  ): Promise<void> {
+    const amountMinor = this.toMinorUnits(amount);
     if (amountMinor <= 0) return;
 
+    const legNote = leg ? ` (${leg} leg)` : '';
     const payload = {
       data: {
         attributes: {
           amount: amountMinor,
-          payment_id: rawRef,
+          payment_id: paymentId,
           reason: 'others',
-          notes: `Booking ${booking.id} cancelled. Policy: ${
-            booking.cancellationPolicyCode || 'unknown'
-          }`,
+          notes: `Booking ${bookingId} cancelled${legNote}. Policy: ${policyCode || 'unknown'}`,
         },
       },
     };
@@ -1360,19 +1486,17 @@ export class BookingsService {
       const data = (await response.json()) as Record<string, any>;
       if (!response.ok) {
         this.logger.error(
-          `PayMongo refund failed for booking ${booking.id}: ${JSON.stringify(data?.errors || data)}`,
+          `PayMongo refund failed for booking ${bookingId}${legNote}: ${JSON.stringify(data?.errors || data)}`,
         );
         return;
       }
 
       this.logger.log(
-        `PayMongo refund initiated for booking ${booking.id}: refund ID ${
-          data?.data?.id
-        }, amount ${refundAmount}`,
+        `PayMongo refund initiated for booking ${bookingId}${legNote}: refund ID ${data?.data?.id}, amount ${amount}`,
       );
     } catch (error) {
       this.logger.error(
-        `PayMongo refund exception for booking ${booking.id}`,
+        `PayMongo refund exception for booking ${bookingId}${legNote}`,
         error instanceof Error ? error.stack : String(error),
       );
     }
@@ -1469,6 +1593,16 @@ export class BookingsService {
     return Math.round(parsed * 100) / 100;
   }
 
+  /**
+   * Clamps a downpayment percentage to the valid range 1–99.
+   * Values outside the range fall back to 30 (the default).
+   */
+  private clampDownpaymentPercent(value: number): number {
+    const parsed = Number(value);
+    if (!Number.isFinite(parsed) || parsed < 1 || parsed > 99) return 30;
+    return Math.round(parsed * 100) / 100;
+  }
+
   private isPayMongoEnabled() {
     const flag = String(process.env.PAYMONGO_ENABLED || '').trim().toLowerCase();
     return ['1', 'true', 'yes', 'on'].includes(flag);
@@ -1529,14 +1663,26 @@ export class BookingsService {
       throw new BadRequestException('PAYMONGO_SECRET_KEY is not configured');
     }
 
-    const payableAmount = this.toMoney(
-      Math.max(0, Number(booking.totalAmount || 0) - Number(booking.totalPaidAmount || 0)),
-    );
+    // Choose the correct amount to charge for this checkout:
+    //   - Remaining-balance checkout (DOWNPAYMENT_PAID state): charge remainingBalanceAmount
+    //   - First / only checkout: charge depositAmount
+    //     • Full-payment mode  → depositAmount = totalAmount (100%)
+    //     • Downpayment mode   → depositAmount = <downpaymentPercent>% of total
+    const isRemainingBalanceCheckout =
+      booking.paymentStatus === BookingPaymentStatus.DOWNPAYMENT_PAID;
+    const payableAmount = isRemainingBalanceCheckout
+      ? this.toMoney(booking.remainingBalanceAmount)
+      : this.toMoney(booking.depositAmount || booking.totalAmount);
 
     const payableMinor = this.toMinorUnits(payableAmount);
     if (payableMinor <= 0) {
       throw new BadRequestException('Booking amount must be greater than zero');
     }
+
+    // Reference number distinguishes the two legs of a downpayment booking.
+    const referenceNumber = isRemainingBalanceCheckout
+      ? `booking_${booking.id}_final`
+      : `booking_${booking.id}`;
 
     // Resolve current commission rate for embedding in split payload (bps).
     // Uses the same rate-resolution logic as booking creation.
@@ -1566,6 +1712,10 @@ export class BookingsService {
     // Platform commission is configured as a percentage_net recipient in basis points.
     const splitPaymentBlock = this.buildSplitPaymentBlock(booking, commissionRateForSplit);
 
+    const lineItemLabel = isRemainingBalanceCheckout
+      ? `Remaining Balance - ${booking.vendor.businessName}`
+      : `Booking Payment - ${booking.vendor.businessName}`;
+
     const payload = {
       data: {
         attributes: {
@@ -1580,13 +1730,13 @@ export class BookingsService {
             {
               amount: payableMinor,
               quantity: 1,
-              name: `Booking Payment - ${booking.vendor.businessName}`,
+              name: lineItemLabel,
               description: `Booking #${booking.id}`,
               currency: 'PHP',
             },
           ],
           merchant: booking.vendor.businessName,
-          reference_number: `booking_${booking.id}`,
+          reference_number: referenceNumber,
           send_email_receipt: false,
           show_description: true,
           show_line_items: true,
@@ -1629,13 +1779,14 @@ export class BookingsService {
           commissionBasis: 'total_booking_amount',
           grossBookingAmountMinor: payableMinor,
           capturedAt: new Date().toISOString(),
+          isRemainingBalanceCheckout,
         })
       : null;
 
     await this.bookingsRepo.update(booking.id, {
       paymentStatus: BookingPaymentStatus.CHECKOUT_PENDING,
       paymentProvider: 'paymongo',
-      paymentReference: `booking_${booking.id}`,
+      paymentReference: referenceNumber,
       paymentCheckoutSessionId: checkoutSessionId,
       paymentCheckoutUrl: checkoutUrl,
       paymentPaidAt: null,

@@ -14,6 +14,7 @@ vi.mock('./entities/booking.entity', () => ({
     UNPAID: 'unpaid',
     CHECKOUT_PENDING: 'checkout_pending',
     PAID: 'paid',
+    DOWNPAYMENT_PAID: 'downpayment_paid',
     HELD: 'held',
     COMPLETED: 'completed',
     FAILED: 'failed',
@@ -79,6 +80,10 @@ vi.mock('../payments/entities/vendor-payout.entity', () => ({
 
 vi.mock('../vendors/entities/vendor.entity', () => ({
   Vendor: class Vendor {},
+  VendorPaymentMode: {
+    FULL_PAYMENT: 'full_payment',
+    DOWNPAYMENT_REQUIRED: 'downpayment_required',
+  },
 }));
 
 vi.mock('../users/entities/user.entity', () => ({
@@ -346,7 +351,7 @@ describe('BookingsService', () => {
     ).rejects.toBeInstanceOf(BadRequestException);
   });
 
-  it('marks payment as held when session is valid and belongs to booking', async () => {
+  it('marks payment as HELD for a full-payment booking (remainingBalance = 0)', async () => {
     const { service, mocks } = createService();
     const booking = {
       id: 'booking-1',
@@ -357,18 +362,15 @@ describe('BookingsService', () => {
       paymentCheckoutSessionId: 'cs_test_123',
       paymentReference: null,
       totalAmount: 1000,
-      depositAmount: 300,
+      depositAmount: 1000,
       totalPaidAmount: 0,
-      remainingBalanceAmount: 700,
+      remainingBalanceAmount: 0,
       depositPaidAt: null,
     };
 
     vi.spyOn(service, 'findById')
       .mockResolvedValueOnce(booking as any)
-      .mockResolvedValueOnce({
-        ...booking,
-        paymentStatus: 'held',
-      } as any);
+      .mockResolvedValueOnce({ ...booking, paymentStatus: 'held' } as any);
 
     fetchMock.mockResolvedValue({
       ok: true,
@@ -390,9 +392,392 @@ describe('BookingsService', () => {
       expect.objectContaining({
         paymentStatus: 'held',
         paymentReference: 'pay_123',
+        remainingBalanceAmount: 0,
+        finalPaymentPaidAt: expect.any(Date),
       }),
     );
     expect(result.paymentStatus).toBe('held');
+  });
+
+  it('marks first payment as DOWNPAYMENT_PAID for a downpayment booking', async () => {
+    const { service, mocks } = createService();
+    const booking = {
+      id: 'booking-2',
+      customerId: 'customer-1',
+      status: 'pending',
+      paymentStatus: 'checkout_pending',
+      paymentProvider: 'paymongo',
+      paymentCheckoutSessionId: 'cs_down_123',
+      paymentReference: null,
+      totalAmount: 1000,
+      depositAmount: 300,
+      totalPaidAmount: 0,
+      remainingBalanceAmount: 700,
+      depositPaidAt: null,
+    };
+
+    vi.spyOn(service, 'findById')
+      .mockResolvedValueOnce(booking as any)
+      .mockResolvedValueOnce({ ...booking, paymentStatus: 'downpayment_paid' } as any);
+
+    fetchMock.mockResolvedValue({
+      ok: true,
+      json: async () => ({
+        data: {
+          attributes: {
+            status: 'paid',
+            reference_number: 'booking_booking-2',
+            payments: [{ id: 'pay_down', attributes: { status: 'paid' } }],
+          },
+        },
+      }),
+    });
+
+    const result = await service.verifyPayMongoCheckout('booking-2', 'customer-1');
+
+    expect(mocks.bookingsRepo.update).toHaveBeenCalledWith(
+      'booking-2',
+      expect.objectContaining({
+        paymentStatus: 'downpayment_paid',
+        totalPaidAmount: 300,
+        escrowHeldAmount: 300,
+        depositPaidAt: expect.any(Date),
+        depositPaymentReference: 'pay_down', // first-leg ref stored for refund split
+      }),
+    );
+    // remainingBalanceAmount should NOT be zeroed out
+    const updateCall = mocks.bookingsRepo.update.mock.calls[0]?.[1];
+    expect(updateCall).not.toHaveProperty('remainingBalanceAmount');
+    expect(result.paymentStatus).toBe('downpayment_paid');
+  });
+
+  it('marks remaining balance payment as HELD for a downpayment booking', async () => {
+    const { service, mocks } = createService();
+    // Booking is in DOWNPAYMENT_PAID state — downpayment already captured
+    const booking = {
+      id: 'booking-2',
+      customerId: 'customer-1',
+      status: 'confirmed',
+      paymentStatus: 'checkout_pending', // set to CHECKOUT_PENDING when remaining checkout created
+      paymentProvider: 'paymongo',
+      paymentCheckoutSessionId: 'cs_final_456',
+      paymentReference: 'booking_booking-2_final',
+      totalAmount: 1000,
+      depositAmount: 300,
+      totalPaidAmount: 300,   // downpayment already paid
+      remainingBalanceAmount: 700,
+      depositPaidAt: new Date('2026-03-01'),
+    };
+
+    vi.spyOn(service, 'findById')
+      .mockResolvedValueOnce(booking as any)
+      .mockResolvedValueOnce({ ...booking, paymentStatus: 'held' } as any);
+
+    fetchMock.mockResolvedValue({
+      ok: true,
+      json: async () => ({
+        data: {
+          attributes: {
+            status: 'paid',
+            reference_number: 'booking_booking-2_final',
+            payments: [{ id: 'pay_final', attributes: { status: 'paid' } }],
+          },
+        },
+      }),
+    });
+
+    const result = await service.verifyPayMongoCheckout('booking-2', 'customer-1');
+
+    expect(mocks.bookingsRepo.update).toHaveBeenCalledWith(
+      'booking-2',
+      expect.objectContaining({
+        paymentStatus: 'held',
+        totalPaidAmount: 1000,
+        escrowHeldAmount: 1000,
+        remainingBalanceAmount: 0,
+        finalPaymentPaidAt: expect.any(Date),
+      }),
+    );
+    // depositPaidAt should be preserved (already set from downpayment)
+    const updateCall = mocks.bookingsRepo.update.mock.calls[0]?.[1];
+    expect(updateCall.depositPaidAt).toEqual(booking.depositPaidAt);
+    expect(result.paymentStatus).toBe('held');
+  });
+
+  it('createRemainingBalanceCheckout throws when booking is not in DOWNPAYMENT_PAID status', async () => {
+    const { service } = createService();
+    const booking = {
+      id: 'booking-1',
+      customerId: 'customer-1',
+      status: 'pending',
+      paymentStatus: 'checkout_pending',
+    };
+    vi.spyOn(service, 'findById').mockResolvedValue(booking as any);
+
+    await expect(
+      service.createRemainingBalanceCheckout('booking-1', 'customer-1'),
+    ).rejects.toBeInstanceOf(BadRequestException);
+  });
+
+  it('createRemainingBalanceCheckout throws when booking owner mismatches', async () => {
+    const { service } = createService();
+    vi.spyOn(service, 'findById').mockResolvedValue(null);
+
+    await expect(
+      service.createRemainingBalanceCheckout('booking-1', 'wrong-customer'),
+    ).rejects.toBeInstanceOf(Error);
+  });
+
+  it('createRemainingBalanceCheckout creates checkout when booking is DOWNPAYMENT_PAID', async () => {
+    const { service } = createService();
+    const booking = {
+      id: 'booking-2',
+      customerId: 'customer-1',
+      status: 'confirmed',
+      paymentStatus: 'downpayment_paid',
+      remainingBalanceAmount: 700,
+    };
+    const refreshed = { ...booking, paymentStatus: 'checkout_pending' };
+
+    const findByIdSpy = vi.spyOn(service, 'findById')
+      .mockResolvedValueOnce(booking as any)  // initial lookup
+      .mockResolvedValueOnce(refreshed as any); // after checkout created
+
+    const checkoutSpy = vi
+      .spyOn(service as any, 'createPayMongoCheckoutForBooking')
+      .mockResolvedValue(undefined);
+
+    const tryDocSpy = vi
+      .spyOn(service as any, 'tryEnsureBookingDocuments')
+      .mockResolvedValue(undefined);
+
+    const result = await service.createRemainingBalanceCheckout('booking-2', 'customer-1');
+
+    expect(checkoutSpy).toHaveBeenCalledWith('booking-2', 'customer-1', true, true);
+    expect(tryDocSpy).toHaveBeenCalledWith('booking-2');
+    expect(result).toEqual(refreshed);
+  });
+
+  it('deposits and remaining amounts are calculated correctly for a 30% downpayment', () => {
+    const { service } = createService();
+    // Access private toMoney helper through the service
+    const toMoney = (v: number) => (service as any).toMoney(v);
+    const total = 1500;
+    const depositPct = 30;
+    const depositAmount = toMoney(total * (depositPct / 100));
+    const remainingAmount = toMoney(total - depositAmount);
+
+    expect(depositAmount).toBe(450);
+    expect(remainingAmount).toBe(1050);
+    expect(depositAmount + remainingAmount).toBe(total);
+  });
+
+  it('clampDownpaymentPercent clamps out-of-range values to 30', () => {
+    const { service } = createService();
+    const clamp = (v: number) => (service as any).clampDownpaymentPercent(v);
+
+    expect(clamp(0)).toBe(30);      // below minimum
+    expect(clamp(100)).toBe(30);    // at/above maximum (must be < 100)
+    expect(clamp(-5)).toBe(30);     // negative
+    expect(clamp(NaN)).toBe(30);    // NaN
+    expect(clamp(50)).toBe(50);     // valid
+    expect(clamp(1)).toBe(1);       // minimum boundary
+    expect(clamp(99)).toBe(99);     // maximum boundary
+  });
+
+  it('cancellation refund uses only totalPaidAmount when only downpayment was paid', async () => {
+    const { service, mocks } = createService();
+    const startDate = new Date();
+    startDate.setDate(startDate.getDate() + 10);
+
+    const booking = {
+      id: 'booking-3',
+      customerId: 'customer-1',
+      status: 'confirmed',
+      paymentStatus: 'downpayment_paid',
+      paymentProvider: 'paymongo',
+      paymentReference: null,       // no pay_ reference so refund is skipped
+      totalAmount: 1000,
+      depositAmount: 300,
+      totalPaidAmount: 300,          // only downpayment collected
+      remainingBalanceAmount: 700,
+      startDate: startDate.toISOString(),
+      vendor: { userId: 'vendor-user-1' },
+      escrowHeldAmount: 300,
+    };
+
+    vi.spyOn(service, 'findById')
+      .mockResolvedValueOnce(booking as any)
+      .mockResolvedValueOnce({ ...booking, status: 'cancelled' } as any);
+
+    mocks.settingsService.getFeatureFlagsSettings.mockResolvedValue({
+      cancellationFullRefundMinDays: 3,
+      cancellationHalfRefundMinDays: 1,
+      cancellationHalfRefundPercent: 50,
+    });
+
+    await service.updateStatus('booking-3', 'cancelled' as any, 'customer-1', 'customer' as any);
+
+    // Cancellation refund should be 100% of the 300 paid (>= 3 days before start)
+    const updateCall = mocks.bookingsRepo.update.mock.calls.find(
+      (call: any[]) => call[1]?.cancellationRefundAmount !== undefined,
+    );
+    expect(updateCall).toBeDefined();
+    expect(updateCall![1].cancellationRefundAmount).toBe(300);
+    expect(updateCall![1].cancellationRefundPercent).toBe(100);
+  });
+
+  it('two-leg cancellation issues separate PayMongo refund calls for each leg (100% refund)', async () => {
+    // Total 1000: leg1 pay_xxx1=300 (deposit), leg2 pay_xxx2=700 (remaining)
+    // Full refund (admin cancels) → refund 700 from pay_xxx2, then 300 from pay_xxx1
+    const { service, mocks } = createService();
+    const startDate = new Date();
+    startDate.setDate(startDate.getDate() + 10);
+
+    mocks.settingsService.getFeatureFlagsSettings.mockResolvedValue({
+      cancellationFullRefundMinDays: 3,
+      cancellationHalfRefundMinDays: 1,
+      cancellationHalfRefundPercent: 50,
+    });
+
+    const booking = {
+      id: 'booking-tl',
+      customerId: 'customer-1',
+      status: 'confirmed',
+      paymentStatus: 'held',
+      paymentProvider: 'paymongo',
+      paymentReference: 'pay_leg2',
+      depositPaymentReference: 'pay_leg1',
+      totalAmount: 1000,
+      depositAmount: 300,
+      totalPaidAmount: 1000,
+      remainingBalanceAmount: 0,
+      startDate: startDate.toISOString(),
+      vendor: { userId: 'vendor-user-1' },
+      escrowHeldAmount: 1000,
+      cancellationPolicyCode: null,
+    };
+
+    vi.spyOn(service, 'findById')
+      .mockResolvedValueOnce(booking as any)
+      .mockResolvedValueOnce({ ...booking, status: 'cancelled' } as any);
+
+    fetchMock.mockResolvedValue({
+      ok: true,
+      json: async () => ({ data: { id: 'ref_ok', attributes: {} } }),
+    });
+
+    // Admin/vendor cancel → 100% refund
+    await service.updateStatus('booking-tl', 'cancelled' as any, 'vendor-user-1', 'vendor' as any);
+
+    const fetchCalls = fetchMock.mock.calls as any[][];
+    // Two refund calls expected
+    expect(fetchCalls.length).toBe(2);
+
+    // First call: leg2 (700 = totalAmount - depositAmount)
+    const body1 = JSON.parse(fetchCalls[0][1].body);
+    expect(body1.data.attributes.payment_id).toBe('pay_leg2');
+    expect(body1.data.attributes.amount).toBe(70000); // 700 * 100 minor units
+
+    // Second call: leg1 (300 = depositAmount remainder)
+    const body2 = JSON.parse(fetchCalls[1][1].body);
+    expect(body2.data.attributes.payment_id).toBe('pay_leg1');
+    expect(body2.data.attributes.amount).toBe(30000); // 300 * 100 minor units
+  });
+
+  it('two-leg cancellation with 50% refund splits correctly across both legs', async () => {
+    // Total 1000: leg1=300, leg2=700. 50% refund = 500.
+    // Refund first from leg2: min(500, 700) = 500, remainder = 0 → no leg1 refund
+    const { service, mocks } = createService();
+    const startDate = new Date();
+    startDate.setDate(startDate.getDate() + 1); // 1 day away → 50% refund tier
+
+    mocks.settingsService.getFeatureFlagsSettings.mockResolvedValue({
+      cancellationFullRefundMinDays: 3,
+      cancellationHalfRefundMinDays: 1,
+      cancellationHalfRefundPercent: 50,
+    });
+
+    const booking = {
+      id: 'booking-tl2',
+      customerId: 'customer-1',
+      status: 'confirmed',
+      paymentStatus: 'held',
+      paymentProvider: 'paymongo',
+      paymentReference: 'pay_leg2b',
+      depositPaymentReference: 'pay_leg1b',
+      totalAmount: 1000,
+      depositAmount: 300,
+      totalPaidAmount: 1000,
+      remainingBalanceAmount: 0,
+      startDate: startDate.toISOString(),
+      vendor: { userId: 'vendor-user-1' },
+      escrowHeldAmount: 1000,
+      cancellationPolicyCode: null,
+    };
+
+    vi.spyOn(service, 'findById')
+      .mockResolvedValueOnce(booking as any)
+      .mockResolvedValueOnce({ ...booking, status: 'cancelled' } as any);
+
+    fetchMock.mockResolvedValue({
+      ok: true,
+      json: async () => ({ data: { id: 'ref_ok', attributes: {} } }),
+    });
+
+    // Customer cancels 1 day out → 50% refund = 500
+    // settings mock default returns 50% for half-refund
+    await service.updateStatus('booking-tl2', 'cancelled' as any, 'customer-1', 'customer' as any);
+
+    const fetchCalls = fetchMock.mock.calls as any[][];
+    // Only one refund call because 500 fits entirely within leg2 (700)
+    expect(fetchCalls.length).toBe(1);
+    const body = JSON.parse(fetchCalls[0][1].body);
+    expect(body.data.attributes.payment_id).toBe('pay_leg2b');
+    expect(body.data.attributes.amount).toBe(50000); // 500 * 100
+  });
+
+  it('updateStatus allows vendor to confirm booking when status is DOWNPAYMENT_PAID', async () => {
+    const { service, mocks } = createService();
+    const booking = {
+      id: 'booking-4',
+      customerId: 'customer-1',
+      status: 'pending',
+      paymentStatus: 'downpayment_paid',
+      paymentProvider: 'paymongo',
+      vendor: { userId: 'vendor-user-1' },
+    };
+
+    vi.spyOn(service, 'findById')
+      .mockResolvedValueOnce(booking as any)
+      .mockResolvedValueOnce({ ...booking, status: 'confirmed' } as any);
+
+    const result = await service.updateStatus(
+      'booking-4',
+      'confirmed' as any,
+      'vendor-user-1',
+      'vendor' as any,
+    );
+
+    expect(mocks.bookingsRepo.update).toHaveBeenCalledWith('booking-4', { status: 'confirmed' });
+    expect(result.status).toBe('confirmed');
+  });
+
+  it('updateStatus blocks vendor from confirming booking with UNPAID status (PayMongo)', async () => {
+    const { service } = createService();
+    const booking = {
+      id: 'booking-5',
+      customerId: 'customer-1',
+      status: 'pending',
+      paymentStatus: 'unpaid',
+      paymentProvider: 'paymongo',
+      vendor: { userId: 'vendor-user-1' },
+    };
+    vi.spyOn(service, 'findById').mockResolvedValue(booking as any);
+
+    await expect(
+      service.updateStatus('booking-5', 'confirmed' as any, 'vendor-user-1', 'vendor' as any),
+    ).rejects.toBeInstanceOf(BadRequestException);
   });
 
   it('throws NotFoundException from getCancellationPreview when booking is missing', async () => {

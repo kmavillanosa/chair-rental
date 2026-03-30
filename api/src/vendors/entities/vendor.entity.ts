@@ -32,6 +32,11 @@ export enum VendorRegistrationStatus {
   REJECTED = 'rejected',
 }
 
+export enum VendorPaymentMode {
+  FULL_PAYMENT = 'full_payment',
+  DOWNPAYMENT_REQUIRED = 'downpayment_required',
+}
+
 export enum VendorKycStatus {
   PENDING = 'pending',
   APPROVED = 'approved',
@@ -235,6 +240,21 @@ export class Vendor {
 
   @Column({ type: 'varchar', length: 100, nullable: true, unique: true })
   paymongoMerchantId: string | null;
+
+  @Column({
+    type: 'enum',
+    enum: VendorPaymentMode,
+    default: VendorPaymentMode.FULL_PAYMENT,
+  })
+  paymentMode: VendorPaymentMode;
+
+  /**
+   * Percentage of the total booking amount required as downpayment.
+   * Only used when paymentMode = 'downpayment_required'.
+   * Valid range: 1–99 (exclusive of both bounds that represent $0 and 100%).
+   */
+  @Column({ type: 'decimal', precision: 5, scale: 2, default: 30.00 })
+  downpaymentPercent: number;
 
   @Column({ type: 'decimal', precision: 12, scale: 2, default: 0 })
   balance: number;

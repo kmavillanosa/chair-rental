@@ -12,6 +12,7 @@ import {
   BusinessRegistrationType,
   Vendor,
   VendorKycStatus,
+  VendorPaymentMode,
   VendorRegistrationStatus,
   VendorType,
   VendorVerificationStatus,
@@ -863,8 +864,58 @@ export class VendorsService {
         reviewedByUserId,
       });
     }
+  }
 
-    return this.findById(id, true);
+  // ── Vendor payment-mode settings ──────────────────────────────────────────
+
+  async getMyPaymentSettings(userId: string) {
+    const vendor = await this.findByUserIdRaw(userId, false);
+    if (!vendor) throw new NotFoundException('Vendor profile not found');
+
+    return {
+      paymentMode: vendor.paymentMode || VendorPaymentMode.FULL_PAYMENT,
+      downpaymentPercent: Number(vendor.downpaymentPercent ?? 30),
+    };
+  }
+
+  async updateMyPaymentSettings(
+    userId: string,
+    data: { paymentMode?: string; downpaymentPercent?: number },
+  ) {
+    const vendor = await this.findByUserIdRaw(userId, false);
+    if (!vendor) throw new NotFoundException('Vendor profile not found');
+
+    const validModes = Object.values(VendorPaymentMode) as string[];
+    if (data.paymentMode !== undefined && !validModes.includes(data.paymentMode)) {
+      throw new BadRequestException(
+        `paymentMode must be one of: ${validModes.join(', ')}`,
+      );
+    }
+
+    if (data.downpaymentPercent !== undefined) {
+      const pct = Number(data.downpaymentPercent);
+      if (!Number.isFinite(pct) || pct < 1 || pct > 99) {
+        throw new BadRequestException(
+          'downpaymentPercent must be a number between 1 and 99',
+        );
+      }
+    }
+
+    const updates: Partial<Vendor> = {};
+    if (data.paymentMode !== undefined) {
+      updates.paymentMode = data.paymentMode as VendorPaymentMode;
+    }
+    if (data.downpaymentPercent !== undefined) {
+      updates.downpaymentPercent = Number(
+        Number(data.downpaymentPercent).toFixed(2),
+      );
+    }
+
+    if (Object.keys(updates).length > 0) {
+      await this.vendorsRepo.update(vendor.id, updates);
+    }
+
+    return this.getMyPaymentSettings(userId);
   }
 
   async listMyVendorDocuments(userId: string) {

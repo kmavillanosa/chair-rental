@@ -163,6 +163,20 @@ export class VendorsController {
 
   @UseGuards(JwtAuthGuard)
   @ApiBearerAuth()
+  @Get('my/payment-settings')
+  getMyPaymentSettings(@Request() req) {
+    return this.vendorsService.getMyPaymentSettings(req.user.id);
+  }
+
+  @UseGuards(JwtAuthGuard)
+  @ApiBearerAuth()
+  @Patch('my/payment-settings')
+  updateMyPaymentSettings(@Request() req, @Body() body: any) {
+    return this.vendorsService.updateMyPaymentSettings(req.user.id, body);
+  }
+
+  @UseGuards(JwtAuthGuard)
+  @ApiBearerAuth()
   @Get('my/kyc')
   getMyKycSubmission(@Request() req) {
     return this.vendorsService.getMyKycSubmission(req.user.id);

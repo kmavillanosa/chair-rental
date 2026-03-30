@@ -23,6 +23,7 @@ export enum BookingPaymentStatus {
   UNPAID = 'unpaid',
   CHECKOUT_PENDING = 'checkout_pending',
   PAID = 'paid',
+  DOWNPAYMENT_PAID = 'downpayment_paid',
   HELD = 'held',
   COMPLETED = 'completed',
   FAILED = 'failed',
@@ -112,6 +113,13 @@ export class Booking {
 
   @Column({ nullable: true })
   paymentReference: string;
+
+  /** Stores the pay_xxx ID from the first-leg (downpayment) checkout. Only populated when
+   * paymentMode = downpayment_required and the booking reaches HELD status via two legs.
+   * Required so that cancellation refunds can correctly issue separate refunds against
+   * each original PayMongo payment rather than attempting an over-refund on the second leg. */
+  @Column({ nullable: true })
+  depositPaymentReference: string;
 
   @Column({ nullable: true })
   paymentCheckoutSessionId: string;

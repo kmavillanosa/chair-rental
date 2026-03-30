@@ -1,0 +1,68 @@
+site_name: RentalBasic Docs
+site_description: Public guides for customers and rental providers
+docs_dir: docs
+site_dir: site
+
+theme:
+  name: material
+  logo: assets/dark_logo.svg
+  palette:
+    - scheme: slate
+      primary: blue
+      accent: blue
+      toggle:
+        icon: material/brightness-4
+        name: Switch to light mode
+    - scheme: default
+      primary: blue
+      accent: blue
+      toggle:
+        icon: material/brightness-7
+        name: Switch to dark mode
+  features:
+    - navigation.tabs
+    - navigation.sections
+    - navigation.top
+    - navigation.indexes
+    - search.suggest
+    - search.highlight
+
+markdown_extensions:
+  - admonition
+  - pymdownx.details
+  - pymdownx.superfences:
+      custom_fences:
+        - name: mermaid
+          class: mermaid
+          format: !!python/name:pymdownx.superfences.fence_code_format
+  - pymdownx.tabbed:
+      alternate_style: true
+  - tables
+  - attr_list
+  - md_in_html
+  - toc:
+      permalink: true
+
+plugins:
+  - search
+
+exclude_docs: |
+  reference/*
+  platform-reference.md
+  architecture.md
+  payments/split-payments.md
+
+nav:
+  - Home: index.md
+  - Getting Started:
+      - guides/getting-started.md
+  - Customer Guide:
+      - guides/customer.md
+  - Rental Partner Guide:
+      - guides/vendor.md
+  - Payments:
+      - How Payments Work: payments/index.md
+      - Refunds and Cancellations: payments/refunds.md
+      - Rental Partner Payouts: payments/payouts.md
+  - Legal:
+      - Terms of Service: terms-of-service.md
