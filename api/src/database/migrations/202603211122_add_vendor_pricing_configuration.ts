@@ -1,9 +1,9 @@
 import { MigrationInterface, QueryRunner } from 'typeorm';
 
-export class AddVendorPricingConfiguration202603211122
+export class AddVendorPricingConfiguration2026032111220
   implements MigrationInterface
 {
-  name = 'AddVendorPricingConfiguration202603211122';
+  name = 'AddVendorPricingConfiguration2026032111220';
 
   public async up(queryRunner: QueryRunner): Promise<void> {
     await queryRunner.query(`
