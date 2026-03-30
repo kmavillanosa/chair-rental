@@ -40,6 +40,7 @@ export default function PackagesList() {
     const [templates, setTemplates] = useState<AdminPackageTemplate[]>([]);
     const [itemTypes, setItemTypes] = useState<ItemType[]>([]);
     const [loading, setLoading] = useState(true);
+    const [loadError, setLoadError] = useState<string | null>(null);
     const [saving, setSaving] = useState(false);
     const [showModal, setShowModal] = useState(false);
     const [editingTemplate, setEditingTemplate] = useState<AdminPackageTemplate | null>(null);
@@ -50,13 +51,28 @@ export default function PackagesList() {
         [itemTypes],
     );
 
-    const load = () =>
-        Promise.all([getAdminPackageTemplates(true), getAdminItemTypes()])
-            .then(([packageTemplates, adminItemTypes]) => {
-                setTemplates(packageTemplates);
-                setItemTypes(adminItemTypes);
-            })
-            .finally(() => setLoading(false));
+    const load = async () => {
+        setLoadError(null);
+
+        try {
+            const [packageTemplates, adminItemTypes] = await Promise.all([
+                getAdminPackageTemplates(true),
+                getAdminItemTypes(),
+            ]);
+
+            setTemplates(packageTemplates);
+            setItemTypes(adminItemTypes);
+        } catch (error: any) {
+            const message =
+                error?.response?.data?.message ||
+                'Unable to load packages. Please check API deployment, migrations, and auth.';
+            setLoadError(message);
+            setTemplates([]);
+            setItemTypes([]);
+        } finally {
+            setLoading(false);
+        }
+    };
 
     useEffect(() => {
         load();
@@ -262,66 +278,88 @@ export default function PackagesList() {
                 </Button>
             </div>
 
-            <div className="overflow-x-auto rounded-xl shadow">
-                <Table striped className="mobile-friendly-table">
-                    <Table.Head>
-                        <Table.HeadCell className="text-lg">Code</Table.HeadCell>
-                        <Table.HeadCell className="text-lg">Package</Table.HeadCell>
-                        <Table.HeadCell className="text-lg">Items</Table.HeadCell>
-                        <Table.HeadCell className="text-lg">Status</Table.HeadCell>
-                        <Table.HeadCell className="text-lg">Actions</Table.HeadCell>
-                    </Table.Head>
-                    <Table.Body>
-                        {templates.map((template) => (
-                            <Table.Row key={template.id} className="text-lg">
-                                <Table.Cell className="font-mono text-sm text-slate-600">{template.code}</Table.Cell>
-                                <Table.Cell>
-                                    <p className="font-semibold text-slate-900">{template.name}</p>
-                                    <p className="line-clamp-2 text-sm text-slate-600">{template.description || 'No description'}</p>
-                                </Table.Cell>
-                                <Table.Cell>
-                                    <ul className="space-y-1 text-sm text-slate-700">
-                                        {template.items.map((item) => (
-                                            <li key={item.id}>
-                                                {itemTypeById.get(item.itemTypeId) || item.itemType?.name || 'Unknown item'} x{item.requiredQty}
-                                                {item.suggestedUnitPrice != null
-                                                    ? ` (PHP ${Number(item.suggestedUnitPrice).toFixed(2)})`
-                                                    : ''}
-                                            </li>
-                                        ))}
-                                    </ul>
-                                </Table.Cell>
-                                <Table.Cell>
-                                    <span className={`inline-flex rounded-full px-3 py-1 text-xs font-semibold ${template.isActive ? 'bg-emerald-50 text-emerald-700' : 'bg-slate-200 text-slate-700'}`}>
-                                        {template.isActive ? 'Enabled' : 'Disabled'}
-                                    </span>
-                                </Table.Cell>
-                                <Table.Cell>
-                                    <div className="flex flex-wrap gap-2">
-                                        <Button
-                                            color="light"
-                                            size="sm"
-                                            className={template.isActive ? '!border-amber-200 !bg-amber-50 !text-amber-800 hover:!bg-amber-100' : '!border-emerald-200 !bg-emerald-50 !text-emerald-800 hover:!bg-emerald-100'}
-                                            onClick={() => void handleToggleStatus(template)}
-                                        >
-                                            {template.isActive ? 'Disable' : 'Enable'}
-                                        </Button>
-                                        <Button color="gray" size="sm" onClick={() => openEdit(template)}>Edit</Button>
-                                        <Button
-                                            color="light"
-                                            size="sm"
-                                            className="!border-rose-200 !bg-rose-50 !text-rose-700 hover:!bg-rose-100"
-                                            onClick={() => void handleDelete(template)}
-                                        >
-                                            Delete
-                                        </Button>
-                                    </div>
-                                </Table.Cell>
-                            </Table.Row>
-                        ))}
-                    </Table.Body>
-                </Table>
-            </div>
+            {loadError ? (
+                <div className="rounded-2xl border border-rose-200 bg-rose-50 p-5 text-rose-800">
+                    <p className="text-sm font-semibold">Packages failed to load</p>
+                    <p className="mt-1 text-sm">{loadError}</p>
+                    <div className="mt-3">
+                        <Button color="light" onClick={() => { setLoading(true); void load(); }}>
+                            Retry
+                        </Button>
+                    </div>
+                </div>
+            ) : templates.length === 0 ? (
+                <div className="rounded-2xl border border-slate-200 bg-white p-6 text-slate-700">
+                    <p className="text-base font-semibold">No package templates found.</p>
+                    <p className="mt-1 text-sm text-slate-600">
+                        Add your first package here, or run API seed command.
+                    </p>
+                    <p className="mt-1 rounded-md bg-slate-100 px-3 py-2 font-mono text-xs text-slate-700">
+                        npm run seed:packages
+                    </p>
+                </div>
+            ) : (
+                <div className="overflow-x-auto rounded-xl shadow">
+                    <Table striped className="mobile-friendly-table">
+                        <Table.Head>
+                            <Table.HeadCell className="text-lg">Code</Table.HeadCell>
+                            <Table.HeadCell className="text-lg">Package</Table.HeadCell>
+                            <Table.HeadCell className="text-lg">Items</Table.HeadCell>
+                            <Table.HeadCell className="text-lg">Status</Table.HeadCell>
+                            <Table.HeadCell className="text-lg">Actions</Table.HeadCell>
+                        </Table.Head>
+                        <Table.Body>
+                            {templates.map((template) => (
+                                <Table.Row key={template.id} className="text-lg">
+                                    <Table.Cell className="font-mono text-sm text-slate-600">{template.code}</Table.Cell>
+                                    <Table.Cell>
+                                        <p className="font-semibold text-slate-900">{template.name}</p>
+                                        <p className="line-clamp-2 text-sm text-slate-600">{template.description || 'No description'}</p>
+                                    </Table.Cell>
+                                    <Table.Cell>
+                                        <ul className="space-y-1 text-sm text-slate-700">
+                                            {template.items.map((item) => (
+                                                <li key={item.id}>
+                                                    {itemTypeById.get(item.itemTypeId) || item.itemType?.name || 'Unknown item'} x{item.requiredQty}
+                                                    {item.suggestedUnitPrice != null
+                                                        ? ` (PHP ${Number(item.suggestedUnitPrice).toFixed(2)})`
+                                                        : ''}
+                                                </li>
+                                            ))}
+                                        </ul>
+                                    </Table.Cell>
+                                    <Table.Cell>
+                                        <span className={`inline-flex rounded-full px-3 py-1 text-xs font-semibold ${template.isActive ? 'bg-emerald-50 text-emerald-700' : 'bg-slate-200 text-slate-700'}`}>
+                                            {template.isActive ? 'Enabled' : 'Disabled'}
+                                        </span>
+                                    </Table.Cell>
+                                    <Table.Cell>
+                                        <div className="flex flex-wrap gap-2">
+                                            <Button
+                                                color="light"
+                                                size="sm"
+                                                className={template.isActive ? '!border-amber-200 !bg-amber-50 !text-amber-800 hover:!bg-amber-100' : '!border-emerald-200 !bg-emerald-50 !text-emerald-800 hover:!bg-emerald-100'}
+                                                onClick={() => void handleToggleStatus(template)}
+                                            >
+                                                {template.isActive ? 'Disable' : 'Enable'}
+                                            </Button>
+                                            <Button color="gray" size="sm" onClick={() => openEdit(template)}>Edit</Button>
+                                            <Button
+                                                color="light"
+                                                size="sm"
+                                                className="!border-rose-200 !bg-rose-50 !text-rose-700 hover:!bg-rose-100"
+                                                onClick={() => void handleDelete(template)}
+                                            >
+                                                Delete
+                                            </Button>
+                                        </div>
+                                    </Table.Cell>
+                                </Table.Row>
+                            ))}
+                        </Table.Body>
+                    </Table>
+                </div>
+            )}
 
             <Modal className="fullscreen-modal" show={showModal} onClose={() => setShowModal(false)}>
                 <Modal.Header>{editingTemplate ? 'Edit Package' : 'Add Package'}</Modal.Header>

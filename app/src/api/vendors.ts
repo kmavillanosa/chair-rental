@@ -54,8 +54,19 @@ export const submitVendorReview = (
     .post<VendorReview[]>(`/vendors/${vendorId}/reviews`, { rating, comment })
     .then((r) => r.data);
 
-export const getMyFavoriteVendorIds = () =>
-  api.get<string[]>('/vendors/favorites/me').then(r => r.data);
+export const getMyFavoriteVendorIds = async () => {
+  try {
+    const response = await api.get<string[]>('/vendors/my/favorites');
+    return response.data;
+  } catch (error: any) {
+    if (error?.response?.status === 404) {
+      const fallbackResponse = await api.get<string[]>('/vendors/favorites/me');
+      return fallbackResponse.data;
+    }
+
+    throw error;
+  }
+};
 
 export const addFavoriteVendor = (vendorId: string) =>
   api.post<{ vendorId: string; isFavorite: boolean }>(`/vendors/${vendorId}/favorite`).then(r => r.data);

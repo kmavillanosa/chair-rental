@@ -366,6 +366,14 @@ export class VendorsController {
   @UseGuards(JwtAuthGuard, RolesGuard)
   @Roles(UserRole.CUSTOMER)
   @ApiBearerAuth()
+  @Get('my/favorites')
+  listMyFavoriteVendorIdsV2(@Request() req) {
+    return this.vendorsService.listFavoriteVendorIdsForCustomer(req.user.id);
+  }
+
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles(UserRole.CUSTOMER)
+  @ApiBearerAuth()
   @Get('favorites/me')
   listMyFavoriteVendorIds(@Request() req) {
     return this.vendorsService.listFavoriteVendorIdsForCustomer(req.user.id);
