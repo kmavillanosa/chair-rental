@@ -5,6 +5,7 @@ import { useAuthStore } from '../../store/authStore';
 import { useTranslation } from 'react-i18next';
 import LanguageSwitcher from '../common/LanguageSwitcher';
 import LegalFooter from '../common/LegalFooter';
+import PageTransition from '../common/PageTransition';
 import { clearPostLoginRedirect, getCurrentAppPath, savePostLoginRedirect } from '../../utils/postLoginRedirect';
 import { resolveSafeDocsUrl } from '../../utils/envUrl';
 
@@ -210,7 +211,7 @@ export default function CustomerLayout({ children, hideHeaderBackground = false,
           </div>
         </header>
       )}
-      <main data-tour="main-content" className="flex-1">{children}</main>
+      <main data-tour="main-content" className="flex-1"><PageTransition>{children}</PageTransition></main>
 
       {/* Floating guide button — bottom-right, out of the way */}
       <button

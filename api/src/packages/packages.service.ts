@@ -4,10 +4,13 @@ import {
   NotFoundException,
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { DataSource, In, Repository } from 'typeorm';
+import { DataSource, FindOptionsWhere, In, Repository } from 'typeorm';
 import { AdminPackageTemplate } from './entities/admin-package-template.entity';
 import { AdminPackageTemplateItem } from './entities/admin-package-template-item.entity';
+import { VendorPackage, VendorPackageStatus } from './entities/vendor-package.entity';
+import { VendorPackageItem } from './entities/vendor-package-item.entity';
 import { ItemType } from '../item-types/entities/item-type.entity';
+import { Vendor } from '../vendors/entities/vendor.entity';
 import { UpsertAdminPackageTemplateDto } from './dto/upsert-admin-package-template.dto';
 
 @Injectable()
@@ -19,6 +22,12 @@ export class PackagesService {
     private readonly adminTemplateItemRepo: Repository<AdminPackageTemplateItem>,
     @InjectRepository(ItemType)
     private readonly itemTypeRepo: Repository<ItemType>,
+    @InjectRepository(VendorPackage)
+    private readonly vendorPackageRepo: Repository<VendorPackage>,
+    @InjectRepository(VendorPackageItem)
+    private readonly vendorPackageItemRepo: Repository<VendorPackageItem>,
+    @InjectRepository(Vendor)
+    private readonly vendorRepo: Repository<Vendor>,
     private readonly dataSource: DataSource,
   ) {}
 
@@ -131,6 +140,32 @@ export class PackagesService {
     return { id, removed: true };
   }
 
+  async listVendorPackagesForUser(userId: string, includeInactive = true) {
+    const vendor = await this.findVendorByUserId(userId);
+    return this.listVendorPackagesByVendorId(vendor.id, includeInactive, true);
+  }
+
+  async updateVendorPackageActiveForUser(userId: string, packageId: string, isActive: boolean) {
+    const vendor = await this.findVendorByUserId(userId);
+    const vendorPackage = await this.vendorPackageRepo.findOne({
+      where: { id: packageId, vendorId: vendor.id },
+    });
+
+    if (!vendorPackage) {
+      throw new NotFoundException('Vendor package not found');
+    }
+
+    vendorPackage.isActive = Boolean(isActive);
+    await this.vendorPackageRepo.save(vendorPackage);
+
+    const [hydrated] = await this.hydrateVendorPackages([vendorPackage]);
+    return hydrated;
+  }
+
+  async listPublicVendorPackages(vendorId: string) {
+    return this.listVendorPackagesByVendorId(vendorId, false, false);
+  }
+
   private async getAdminTemplateById(id: string) {
     const template = await this.adminTemplateRepo.findOne({ where: { id } });
     if (!template) {
@@ -147,6 +182,67 @@ export class PackagesService {
       ...template,
       items,
     };
+  }
+
+  private async findVendorByUserId(userId: string) {
+    const vendor = await this.vendorRepo.findOne({ where: { userId } });
+    if (!vendor) {
+      throw new NotFoundException('Vendor profile not found');
+    }
+    return vendor;
+  }
+
+  private async listVendorPackagesByVendorId(
+    vendorId: string,
+    includeInactive: boolean,
+    includeDisabled: boolean,
+  ) {
+    const whereBase: FindOptionsWhere<VendorPackage> = {
+      vendorId,
+      ...(includeInactive ? {} : { isActive: true }),
+    };
+
+    const where: FindOptionsWhere<VendorPackage> = includeDisabled
+      ? whereBase
+      : {
+          ...whereBase,
+          status: In([
+            VendorPackageStatus.ELIGIBLE,
+            VendorPackageStatus.AVAILABLE,
+            VendorPackageStatus.PARTIALLY_AVAILABLE,
+          ]),
+        };
+
+    const packages = await this.vendorPackageRepo.find({
+      where,
+      relations: ['basePackage'],
+      order: { packageName: 'ASC' },
+    });
+
+    return this.hydrateVendorPackages(packages);
+  }
+
+  private async hydrateVendorPackages(packages: VendorPackage[]) {
+    if (!packages.length) return [];
+
+    const packageIds = packages.map((vendorPackage) => vendorPackage.id);
+    const items = await this.vendorPackageItemRepo.find({
+      where: { vendorPackageId: In(packageIds) },
+      relations: ['itemType'],
+      order: { createdAt: 'ASC' },
+    });
+
+    const itemsByPackageId = new Map<string, VendorPackageItem[]>();
+    for (const item of items) {
+      const packageItems = itemsByPackageId.get(item.vendorPackageId) || [];
+      packageItems.push(item);
+      itemsByPackageId.set(item.vendorPackageId, packageItems);
+    }
+
+    return packages.map((vendorPackage) => ({
+      ...vendorPackage,
+      items: itemsByPackageId.get(vendorPackage.id) || [],
+    }));
   }
 
   private normalizeCode(input: string) {

@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react'
 import { BrowserRouter, Routes, Route, Navigate, useLocation } from 'react-router-dom'
 import { TourProvider } from '@reactour/tour'
-import { AnimatePresence, motion } from 'framer-motion'
+
 import { useAuthStore } from './store/authStore'
 import { getFeatureFlagsSettings, type FeatureFlagsSettings } from './api/settings'
 import Login from './pages/Login'
@@ -28,6 +28,7 @@ import HelperPricing from './pages/vendor/HelperPricing'
 import VendorDeliveryVehicles from './pages/vendor/VendorDeliveryVehicles'
 import MyShop from './pages/vendor/MyShop'
 import VendorPayments from './pages/vendor/VendorPayments'
+import VendorPackages from './pages/vendor/VendorPackages'
 import MyBookings from './pages/customer/MyBookings'
 import LegalDocumentPage from './pages/LegalDocumentPage'
 import FaqPage from './pages/FaqPage'
@@ -129,18 +130,8 @@ export default function App() {
 }
 
 function AnimatedRoutes() {
-  const location = useLocation()
-
   return (
-    <AnimatePresence mode="wait" initial={false}>
-      <motion.div
-        key={location.pathname}
-        initial={{ opacity: 0, y: 10 }}
-        animate={{ opacity: 1, y: 0 }}
-        exit={{ opacity: 0, y: -8 }}
-        transition={{ duration: 0.2, ease: 'easeOut' }}
-      >
-        <Routes>
+    <Routes>
           <Route path="/legal/:documentSlug" element={<LegalDocumentPage />} />
           <Route path="/faq" element={<FaqPage />} />
           <Route path="/login" element={<Login />} />
@@ -169,13 +160,12 @@ function AnimatedRoutes() {
           <Route path="/vendor/pricing/helpers" element={<ProtectedRoute role="vendor"><HelperPricing /></ProtectedRoute>} />
           <Route path="/vendor/vehicles" element={<ProtectedRoute role="vendor"><VendorDeliveryVehicles /></ProtectedRoute>} />
           <Route path="/vendor/shop" element={<ProtectedRoute role="vendor"><MyShop /></ProtectedRoute>} />
+          <Route path="/vendor/packages" element={<ProtectedRoute role="vendor"><VendorPackages /></ProtectedRoute>} />
           <Route path="/vendor/payments" element={<ProtectedRoute role="vendor"><VendorPayments /></ProtectedRoute>} />
           <Route path="/customer" element={<ProtectedRoute role="customer"><MyBookings /></ProtectedRoute>} />
           <Route path="/my-bookings" element={<ProtectedRoute role="customer"><MyBookings /></ProtectedRoute>} />
           <Route path="/" element={<ProtectedRoute><StaffHome /></ProtectedRoute>} />
           <Route path="*" element={<Navigate to="/" replace />} />
-        </Routes>
-      </motion.div>
-    </AnimatePresence>
+    </Routes>
   )
 }

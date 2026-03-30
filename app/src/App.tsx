@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react'
 import { BrowserRouter, Routes, Route, Navigate, useLocation } from 'react-router-dom'
 import { TourProvider } from '@reactour/tour'
-import { AnimatePresence, motion } from 'framer-motion'
+
 import { useAuthStore } from './store/authStore'
 import { getFeatureFlagsSettings } from './api/settings'
 import Login from './pages/Login'
@@ -97,15 +97,7 @@ function AppRoutes({
   }
 
   return (
-    <AnimatePresence mode="wait" initial={false}>
-      <motion.div
-        key={location.pathname}
-        initial={{ opacity: 0, y: 10 }}
-        animate={{ opacity: 1, y: 0 }}
-        exit={{ opacity: 0, y: -8 }}
-        transition={{ duration: 0.2, ease: 'easeOut' }}
-      >
-        <Routes>
+    <Routes>
           <Route path="/legal/:documentSlug" element={<LegalDocumentPage />} />
           <Route path="/faq" element={<FaqPage />} />
           <Route path="/login" element={<Login />} />
@@ -138,9 +130,7 @@ function AppRoutes({
                 userRole === 'vendor' ? <Navigate to="/vendor" replace /> :
                   <Navigate to="/" replace />
           } />
-        </Routes>
-      </motion.div>
-    </AnimatePresence>
+    </Routes>
   )
 }
 

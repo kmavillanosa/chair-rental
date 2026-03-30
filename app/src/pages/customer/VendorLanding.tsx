@@ -5,8 +5,15 @@ import toast from 'react-hot-toast';
 import CustomerLayout from '../../components/layout/CustomerLayout';
 import { getVendorBySlug, getVendorReviews, submitVendorReview } from '../../api/vendors';
 import { getInventory, getInventoryBreakdown } from '../../api/items';
+import { getPublicVendorPackages } from '../../api/packages';
 import { getVendorDeliveryRates } from '../../api/payments';
-import type { Vendor, InventoryItem, DeliveryRate, VendorReview } from '../../types';
+import type {
+  Vendor,
+  InventoryItem,
+  DeliveryRate,
+  VendorReview,
+  PublicVendorPackage,
+} from '../../types';
 import LoadingSpinner from '../../components/common/LoadingSpinner';
 import { formatCurrency, formatDate } from '../../utils/format';
 import { useTranslation } from 'react-i18next';
@@ -167,6 +174,8 @@ export default function VendorLanding({ slugOverride }: { slugOverride?: string 
   const [reviewRating, setReviewRating] = useState(5);
   const [reviewComment, setReviewComment] = useState('');
   const [submittingReview, setSubmittingReview] = useState(false);
+  const [publicPackages, setPublicPackages] = useState<PublicVendorPackage[]>([]);
+  const [packagesLoading, setPackagesLoading] = useState(false);
 
   useEffect(() => {
     if (!resolvedSlug) {
@@ -193,6 +202,7 @@ export default function VendorLanding({ slugOverride }: { slugOverride?: string 
       setBreakdownLoading(true);
       setDeliveryRatesLoading(true);
       setReviewsLoading(true);
+      setPackagesLoading(true);
       getInventoryBreakdown(vendor.id)
         .then(setBreakdown)
         .finally(() => setBreakdownLoading(false));
@@ -206,6 +216,11 @@ export default function VendorLanding({ slugOverride }: { slugOverride?: string 
         .then(setReviews)
         .catch(() => setReviews([]))
         .finally(() => setReviewsLoading(false));
+
+      getPublicVendorPackages(vendor.id)
+        .then(setPublicPackages)
+        .catch(() => setPublicPackages([]))
+        .finally(() => setPackagesLoading(false));
     }
   }, [vendor]);
 
@@ -262,7 +277,7 @@ export default function VendorLanding({ slugOverride }: { slugOverride?: string 
     [inventory],
   );
 
-  const handleBookNow = () => {
+  const handleBookNow = (packageId?: string) => {
     const params = new URLSearchParams();
     [
       'lat',
@@ -278,6 +293,10 @@ export default function VendorLanding({ slugOverride }: { slugOverride?: string 
       const value = searchParams.get(key);
       if (value) params.set(key, value);
     });
+
+    if (packageId) {
+      params.set('packageId', packageId);
+    }
 
     const bookingUrl = params.toString()
       ? `/book/${resolvedSlug}?${params.toString()}`
@@ -477,7 +496,7 @@ export default function VendorLanding({ slugOverride }: { slugOverride?: string 
               </div>
 
               <Button
-                onClick={handleBookNow}
+                onClick={() => handleBookNow()}
                 size="lg"
                 className="w-full !rounded-lg !border !border-[#b7e92f] !bg-[#b7e92f] !px-6 !py-2.5 !text-sm !font-bold !text-[#1f2944] shadow hover:!border-[#9fcd23] hover:!bg-[#9fcd23] focus:!ring-2 focus:!ring-[#b7e92f]/40"
               >
@@ -711,6 +730,68 @@ export default function VendorLanding({ slugOverride }: { slugOverride?: string 
               ))
             )}
           </div>
+        </section>
+
+        <section className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
+          <div className="mb-4 flex items-center justify-between gap-3">
+            <div>
+              <p className="text-xs font-semibold uppercase tracking-[0.18em] text-slate-500">
+                Ready-Made Packages
+              </p>
+              <h2 className="mt-1 text-xl font-bold text-slate-900">
+                Book Faster With Curated Sets
+              </h2>
+            </div>
+          </div>
+
+          {packagesLoading ? (
+            <div className="flex justify-center py-8">
+              <LoadingSpinner size="md" />
+            </div>
+          ) : publicPackages.length === 0 ? (
+            <div className="rounded-xl border border-dashed border-slate-300 px-4 py-6 text-center text-sm text-slate-500">
+              This rental partner has no published packages yet.
+            </div>
+          ) : (
+            <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+              {publicPackages.map((vendorPackage) => {
+                const packageSubtotal = vendorPackage.items.reduce((sum, item) => {
+                  const unitPrice = Number(item.unitPrice || 0);
+                  return sum + Math.max(0, unitPrice) * Math.max(0, Number(item.requiredQty) || 0);
+                }, 0);
+
+                return (
+                  <article key={vendorPackage.id} className="rounded-2xl border border-slate-200 bg-slate-50 p-4">
+                    <div className="flex items-start justify-between gap-3">
+                      <h3 className="text-lg font-semibold text-slate-900">{vendorPackage.packageName}</h3>
+                      <span className="rounded-full border border-emerald-300 bg-emerald-100 px-2 py-1 text-xs font-semibold text-emerald-700">
+                        Package
+                      </span>
+                    </div>
+
+                    <div className="mt-3 space-y-1.5">
+                      {vendorPackage.items.map((item) => (
+                        <p key={item.id} className="text-sm text-slate-700">
+                          {item.itemType?.name || 'Item type'} x {item.requiredQty}
+                        </p>
+                      ))}
+                    </div>
+
+                    <div className="mt-4 flex items-center justify-between gap-3">
+                      <p className="text-sm text-slate-600">
+                        {packageSubtotal > 0
+                          ? `Est. ${formatCurrency(packageSubtotal)}/day`
+                          : 'Price depends on selected inventory'}
+                      </p>
+                      <Button size="sm" onClick={() => handleBookNow(vendorPackage.id)}>
+                        Book This Package
+                      </Button>
+                    </div>
+                  </article>
+                );
+              })}
+            </div>
+          )}
         </section>
 
         {/* Main Content: Equipment Grid + Breakdown Sidebar */}

@@ -11,6 +11,7 @@ import {
   HiCreditCard,
   HiCurrencyDollar,
   HiLogout,
+  HiPuzzle,
   HiShoppingBag,
   HiTruck,
 } from 'react-icons/hi';
@@ -92,6 +93,7 @@ const vendorLinks: MenuLink[] = [
   },
   { to: '/vendor/vehicles', label: 'Delivery Vehicles', icon: HiTruck },
   { to: '/vendor/shop', label: 'My Shop', icon: HiShoppingBag },
+  { to: '/vendor/packages', label: 'Packages', icon: HiPuzzle },
   { to: '/vendor/payments', label: 'Payments', icon: HiCreditCard },
 ];
 

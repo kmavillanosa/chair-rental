@@ -151,6 +151,38 @@ export interface ProductBrand {
   createdAt: string;
 }
 
+export type VendorPackageStatus =
+  | 'eligible'
+  | 'available'
+  | 'partially_available'
+  | 'disabled';
+
+export interface VendorPackageItem {
+  id: string;
+  vendorPackageId: string;
+  itemTypeId: string;
+  itemType?: ItemType;
+  requiredQty: number;
+  unitPrice?: number | null;
+  source: 'base' | 'override';
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface PublicVendorPackage {
+  id: string;
+  vendorId: string;
+  basePackageId?: string | null;
+  packageName: string;
+  status: VendorPackageStatus;
+  isActive: boolean;
+  hasOverride: boolean;
+  statusDate?: string | null;
+  items: VendorPackageItem[];
+  createdAt: string;
+  updatedAt: string;
+}
+
 export interface InventoryItem {
   id: string;
   vendorId: string;

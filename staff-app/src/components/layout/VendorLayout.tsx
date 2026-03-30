@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import { useTour } from '@reactour/tour';
 import Sidebar from './Sidebar';
 import LegalFooter from '../common/LegalFooter';
+import PageTransition from '../common/PageTransition';
 import { getStaffTourText } from '../../tour/staffTourText';
 
 export default function VendorLayout({ children }: { children?: React.ReactNode }) {
@@ -84,7 +85,7 @@ export default function VendorLayout({ children }: { children?: React.ReactNode 
               {text.common.infoButton}
             </button>
           </div>
-          <div className="flex-1">{children}</div>
+          <div className="flex-1"><PageTransition>{children}</PageTransition></div>
           <div data-tour="staff-legal-footer">
             <LegalFooter className="mt-6" />
           </div>

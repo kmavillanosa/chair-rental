@@ -15,10 +15,11 @@ import {
 import CustomerLayout from '../../components/layout/CustomerLayout';
 import { getVendorBySlug } from '../../api/vendors';
 import { getInventory } from '../../api/items';
+import { getPublicVendorPackages } from '../../api/packages';
 import { checkAvailability, createBooking } from '../../api/bookings';
 import { getVendorDeliveryRates } from '../../api/payments';
 import { getFeatureFlagsSettings } from '../../api/settings';
-import type { Vendor, InventoryItem, DeliveryRate } from '../../types';
+import type { Vendor, InventoryItem, DeliveryRate, PublicVendorPackage } from '../../types';
 import { formatCurrency, calcDays, formatDate } from '../../utils/format';
 import LoadingSpinner from '../../components/common/LoadingSpinner';
 import { useAuthStore } from '../../store/authStore';
@@ -231,6 +232,38 @@ function isNoCommissionWindowActive(until: string | null) {
   return Date.now() <= timestamp;
 }
 
+function buildPackagePrefillCart(
+  inventory: InventoryItem[],
+  vendorPackage?: PublicVendorPackage,
+) {
+  if (!vendorPackage) return {} as Record<string, number>;
+
+  const nextCart: Record<string, number> = {};
+
+  for (const packageItem of vendorPackage.items) {
+    let remainingRequired = Math.max(0, Number(packageItem.requiredQty) || 0);
+    if (remainingRequired === 0) continue;
+
+    const candidates = inventory
+      .filter((inventoryItem) => inventoryItem.itemTypeId === packageItem.itemTypeId)
+      .sort((left, right) => Number(right.availableQuantity) - Number(left.availableQuantity));
+
+    for (const candidate of candidates) {
+      if (remainingRequired <= 0) break;
+
+      const maxAssignable = Math.max(0, Number(candidate.availableQuantity) || 0);
+      const quantity = Math.min(maxAssignable, remainingRequired);
+
+      if (quantity > 0) {
+        nextCart[candidate.id] = (nextCart[candidate.id] || 0) + quantity;
+        remainingRequired -= quantity;
+      }
+    }
+  }
+
+  return nextCart;
+}
+
 export default function BookingFlow() {
   const { t } = useTranslation();
   const { slug } = useParams<{ slug: string }>();
@@ -275,6 +308,13 @@ export default function BookingFlow() {
   const [launchNoCommissionUntil, setLaunchNoCommissionUntil] = useState<string | null>(null);
   const [deliveryRoutePoints, setDeliveryRoutePoints] = useState<[number, number][]>([]);
   const [deliveryRouteOnRoads, setDeliveryRouteOnRoads] = useState(false);
+  const [selectedPackage, setSelectedPackage] = useState<PublicVendorPackage | null>(null);
+  const packagePrefillAppliedRef = useRef(false);
+  const selectedPackageId = searchParams.get('packageId');
+
+  useEffect(() => {
+    packagePrefillAppliedRef.current = false;
+  }, [selectedPackageId, slug]);
 
   const parsedHelpersNeeded = useMemo(() => {
     const parsed = Number(searchParams.get('helpersNeeded'));
@@ -362,10 +402,24 @@ export default function BookingFlow() {
     getVendorBySlug(slug)
       .then(async (v) => {
         setVendor(v);
-        const [inventoryData, rates] = await Promise.all([
+        const [inventoryData, rates, vendorPackages] = await Promise.all([
           getInventory(v.id),
           getVendorDeliveryRates(v.id).catch(() => []),
+          getPublicVendorPackages(v.id).catch(() => []),
         ]);
+
+        if (selectedPackageId) {
+          const matchedPackage = vendorPackages.find(
+            (vendorPackage) => vendorPackage.id === selectedPackageId,
+          );
+
+          if (matchedPackage && !packagePrefillAppliedRef.current) {
+            setSelectedPackage(matchedPackage);
+            setCart(buildPackagePrefillCart(inventoryData, matchedPackage));
+            packagePrefillAppliedRef.current = true;
+          }
+        }
+
         setDeliveryRates(rates);
         return inventoryData;
       })
@@ -378,10 +432,17 @@ export default function BookingFlow() {
     location.search,
     navigate,
     searchParams,
+    selectedPackageId,
     setDeliveryCoordinatesWithMode,
     slug,
     token,
   ]);
+
+  useEffect(() => {
+    if (!selectedPackageId) {
+      setSelectedPackage(null);
+    }
+  }, [selectedPackageId]);
 
   useEffect(() => {
     getFeatureFlagsSettings()
@@ -901,6 +962,11 @@ export default function BookingFlow() {
         {step === 1 && (
           <div className="space-y-4">
             <h2 className="text-2xl font-bold mb-4">{t('bookingFlow.selectItemsAndQuantities')}</h2>
+            {selectedPackage && (
+              <div className="rounded-xl border border-emerald-200 bg-emerald-50 p-3 text-sm text-emerald-800">
+                Booking package: <strong>{selectedPackage.packageName}</strong>. Quantities were prefilled and can still be adjusted.
+              </div>
+            )}
             {predefinedDateBanner && (
               <div className={`border rounded-lg p-3 flex items-center gap-2 mb-4 ${predefinedDateBanner.className}`}>
                 <span>{predefinedDateBanner.icon} {predefinedDateBanner.text}</span>
@@ -1240,6 +1306,12 @@ export default function BookingFlow() {
               <hr />
               <div className="flex justify-between text-xl"><span>{t('bookingFlow.subtotal')}</span><span>{formatCurrency(itemsSubtotal)}</span></div>
               <div className="flex justify-between text-xl"><span>{t('bookingFlow.deliveryCharge')}</span><span>{formatCurrency(deliveryCharge)}</span></div>
+              {selectedPackage && (
+                <div className="flex justify-between text-xl">
+                  <span>Package</span>
+                  <span>{selectedPackage.packageName}</span>
+                </div>
+              )}
               <div className="flex justify-between text-2xl font-bold"><span>{t('bookingFlow.total')}</span><span>{formatCurrency(total)}</span></div>
               <p className="text-gray-400 text-sm">{t('bookingFlow.platformFeeIncluded', { fee: formatCurrency(platformFee) })}</p>
             </div>

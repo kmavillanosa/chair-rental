@@ -1,5 +1,5 @@
 import api from './axios';
-import type { AdminPackageTemplate } from '../types';
+import type { AdminPackageTemplate, VendorPackage } from '../types';
 
 export type UpsertAdminPackageTemplatePayload = {
   code: string;
@@ -30,3 +30,18 @@ export const updateAdminPackageTemplate = (
 
 export const deleteAdminPackageTemplate = (id: string) =>
   api.delete<{ id: string; removed: boolean }>(`/packages/admin/templates/${id}`).then((r) => r.data);
+
+export const getMyVendorPackages = (includeInactive = true) =>
+  api
+    .get<VendorPackage[]>('/packages/vendor/me', {
+      params: { includeInactive: includeInactive ? '1' : '0' },
+    })
+    .then((r) => r.data);
+
+export const updateMyVendorPackageActive = (id: string, isActive: boolean) =>
+  api
+    .patch<VendorPackage>(`/packages/vendor/me/${id}/active`, { isActive })
+    .then((r) => r.data);
+
+export const getPublicVendorPackages = (vendorId: string) =>
+  api.get<VendorPackage[]>(`/packages/vendor/${vendorId}/public`).then((r) => r.data);

@@ -1,6 +1,7 @@
 import { Link } from 'react-router-dom';
 import { useAuthStore } from '../../store/authStore';
 import LegalFooter from '../common/LegalFooter';
+import PageTransition from '../common/PageTransition';
 import { HiCalendar, HiLogout, HiSearch } from 'react-icons/hi';
 import { clearPostLoginRedirect, getCurrentAppPath, savePostLoginRedirect } from '../../utils/postLoginRedirect';
 
@@ -48,7 +49,7 @@ export default function CustomerLayout({ children }: { children?: React.ReactNod
           </nav>
         </div>
       </header>
-      <main className="flex-1">{children}</main>
+      <main className="flex-1"><PageTransition>{children}</PageTransition></main>
       <div className="max-w-7xl mx-auto w-full px-4 py-6">
         <LegalFooter />
       </div>

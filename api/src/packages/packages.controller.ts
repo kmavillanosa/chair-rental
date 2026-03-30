@@ -7,6 +7,7 @@ import {
   Patch,
   Post,
   Query,
+  Request,
   UseGuards,
 } from '@nestjs/common';
 import { ApiBearerAuth, ApiTags } from '@nestjs/swagger';
@@ -59,5 +60,42 @@ export class PackagesController {
   @Delete('admin/templates/:id')
   removeAdminTemplate(@Param('id') id: string) {
     return this.packagesService.removeAdminTemplate(id);
+  }
+
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles(UserRole.VENDOR)
+  @ApiBearerAuth()
+  @Get('vendor/me')
+  listMyVendorPackages(
+    @Request() req,
+    @Query('includeInactive') includeInactive?: string,
+  ) {
+    const allowInactive =
+      includeInactive === undefined
+        ? true
+        : ['1', 'true', 'yes'].includes(String(includeInactive).toLowerCase());
+
+    return this.packagesService.listVendorPackagesForUser(req.user.id, allowInactive);
+  }
+
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles(UserRole.VENDOR)
+  @ApiBearerAuth()
+  @Patch('vendor/me/:id/active')
+  updateMyVendorPackageActive(
+    @Request() req,
+    @Param('id') id: string,
+    @Body() body: { isActive?: boolean },
+  ) {
+    return this.packagesService.updateVendorPackageActiveForUser(
+      req.user.id,
+      id,
+      Boolean(body?.isActive),
+    );
+  }
+
+  @Get('vendor/:vendorId/public')
+  listPublicVendorPackages(@Param('vendorId') vendorId: string) {
+    return this.packagesService.listPublicVendorPackages(vendorId);
   }
 }
