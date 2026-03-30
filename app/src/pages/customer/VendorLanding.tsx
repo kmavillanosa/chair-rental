@@ -285,8 +285,8 @@ export default function VendorLanding({ slugOverride }: { slugOverride?: string 
     navigate(bookingUrl);
   };
 
-  if (loading) return <CustomerLayout><LoadingSpinner size="lg" /></CustomerLayout>;
-  if (!vendor) return <CustomerLayout><div className="text-center py-20 text-slate-400">{t('vendorLandingPage.notFound')}</div></CustomerLayout>;
+  if (loading) return <CustomerLayout normalHeader><LoadingSpinner size="lg" /></CustomerLayout>;
+  if (!vendor) return <CustomerLayout normalHeader><div className="text-center py-20 text-slate-400">{t('vendorLandingPage.notFound')}</div></CustomerLayout>;
 
   const vendorLatitude = Number(vendor.latitude);
   const vendorLongitude = Number(vendor.longitude);
@@ -360,7 +360,7 @@ export default function VendorLanding({ slugOverride }: { slugOverride?: string 
   };
 
   return (
-    <CustomerLayout>
+    <CustomerLayout normalHeader>
       <div className="max-w-7xl mx-auto px-3 py-6 space-y-6">
         {/* Hero Section with Integrated Gallery */}
         <section className="rounded-2xl overflow-hidden shadow-lg bg-white">

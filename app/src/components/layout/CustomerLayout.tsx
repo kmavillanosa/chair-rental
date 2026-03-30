@@ -11,9 +11,10 @@ import { resolveSafeDocsUrl } from '../../utils/envUrl';
 interface CustomerLayoutProps {
   children?: React.ReactNode;
   hideHeaderBackground?: boolean;
+  normalHeader?: boolean;
 }
 
-export default function CustomerLayout({ children, hideHeaderBackground = false }: CustomerLayoutProps) {
+export default function CustomerLayout({ children, hideHeaderBackground = false, normalHeader = false }: CustomerLayoutProps) {
   const { t } = useTranslation();
   const { user, logout } = useAuthStore();
   const { setIsOpen, setCurrentStep } = useTour();
@@ -24,9 +25,9 @@ export default function CustomerLayout({ children, hideHeaderBackground = false 
   const isHomePage = location.pathname === '/';
   const isRentalPartnersPage = location.pathname.startsWith('/rental-partners');
   const shouldHideLegalFooter = location.pathname === '/results' || location.pathname === '/';
-  const showHeader = Boolean(user) || isHomePage || isRentalPartnersPage;
+  const showHeader = Boolean(user) || isHomePage || isRentalPartnersPage || normalHeader;
 
-  const headerClassName = hideHeaderBackground || isHomePage
+  const headerClassName = (hideHeaderBackground || isHomePage) && !normalHeader
     ? 'absolute inset-x-0 top-0 z-[1100] border-b border-white/10 bg-transparent text-white shadow-sm backdrop-blur'
     : 'bg-[#1f2944] text-white shadow-md';
 
