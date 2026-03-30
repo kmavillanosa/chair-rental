@@ -1,6 +1,7 @@
 import { Link, useLocation } from 'react-router-dom';
 
 const legalLinks = [
+    { to: '/faq', label: 'FAQ' },
     { to: '/legal/terms-of-service', label: 'Terms of Service' },
     { to: '/legal/vendor-agreement', label: 'Rental Partner Agreement' },
     { to: '/legal/platform-commission-policy', label: 'Commission Policy' },

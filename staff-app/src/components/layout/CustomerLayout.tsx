@@ -16,6 +16,9 @@ export default function CustomerLayout({ children }: { children?: React.ReactNod
               <HiSearch className="h-5 w-5" aria-hidden="true" />
               Find Rentals
             </Link>
+            <Link to="/faq" className="text-lg hover:text-blue-200">
+              FAQ
+            </Link>
             {user ? (
               <>
                 <Link to="/my-bookings" className="inline-flex items-center gap-2 text-lg hover:text-blue-200">

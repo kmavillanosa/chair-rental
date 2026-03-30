@@ -24,6 +24,7 @@ import MyBookings from './pages/customer/MyBookings'
 import MyBookingDetails from './pages/customer/MyBookingDetails'
 import BecomeVendor from './pages/customer/BecomeVendor'
 import LegalDocumentPage from './pages/LegalDocumentPage'
+import FaqPage from './pages/FaqPage'
 import LoadingSpinner from './components/common/LoadingSpinner'
 import LegalFooter from './components/common/LegalFooter'
 import { savePostLoginRedirect } from './utils/postLoginRedirect'
@@ -96,6 +97,7 @@ function AppRoutes({
   return (
     <Routes>
       <Route path="/legal/:documentSlug" element={<LegalDocumentPage />} />
+      <Route path="/faq" element={<FaqPage />} />
       <Route path="/login" element={<Login />} />
       <Route path="/auth/callback" element={<AuthCallback />} />
       <Route

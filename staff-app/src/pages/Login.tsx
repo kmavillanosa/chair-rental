@@ -1,6 +1,6 @@
 import { loginWithGoogle } from '../api/auth';
 import { useCallback, useEffect, useMemo, useState } from 'react';
-import { useSearchParams } from 'react-router-dom';
+import { Link, useSearchParams } from 'react-router-dom';
 import toast from 'react-hot-toast';
 import { HiDeviceMobile } from 'react-icons/hi';
 
@@ -170,15 +170,24 @@ export default function Login() {
                 <div className="mb-6 flex items-center justify-between gap-3">
                   <img src="/light_logo.svg" alt="RentalBasic" className="h-10 w-auto lg:hidden sm:h-12" />
 
-                  <a
-                    href="https://rentalbasic.com"
-                    className="ml-auto inline-flex items-center gap-2 rounded-xl border border-slate-300 bg-white px-4 py-2 text-xs font-semibold text-slate-700 shadow-sm transition hover:-translate-y-0.5 hover:bg-slate-50"
-                  >
-                    <svg className="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                      <path d="M19 12H5M12 19l-7-7 7-7" />
-                    </svg>
-                    Back to RentalBasic
-                  </a>
+                  <div className="ml-auto flex items-center gap-2">
+                    <Link
+                      to="/faq"
+                      className="inline-flex items-center gap-2 rounded-xl border border-slate-300 bg-white px-4 py-2 text-xs font-semibold text-slate-700 shadow-sm transition hover:-translate-y-0.5 hover:bg-slate-50"
+                    >
+                      FAQ
+                    </Link>
+
+                    <a
+                      href="https://rentalbasic.com"
+                      className="inline-flex items-center gap-2 rounded-xl border border-slate-300 bg-white px-4 py-2 text-xs font-semibold text-slate-700 shadow-sm transition hover:-translate-y-0.5 hover:bg-slate-50"
+                    >
+                      <svg className="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                        <path d="M19 12H5M12 19l-7-7 7-7" />
+                      </svg>
+                      Back to RentalBasic
+                    </a>
+                  </div>
                 </div>
 
                 <div className="mt-6 inline-flex items-center rounded-full bg-[#eef3ff] px-3 py-1 text-xs font-semibold uppercase tracking-[0.16em] text-[#1f2944]">

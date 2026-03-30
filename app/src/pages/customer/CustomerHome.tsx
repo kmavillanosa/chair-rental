@@ -10,6 +10,7 @@ import type { ItemType } from '../../types';
 import { useAuthStore } from '../../store/authStore';
 import { useTranslation } from 'react-i18next';
 import { getCurrentAppPath, savePostLoginRedirect } from '../../utils/postLoginRedirect';
+import { resolveSafeDocsUrl } from '../../utils/envUrl';
 import type { TFunction } from 'i18next';
 import {
     HiDeviceMobile,
@@ -194,6 +195,7 @@ function MapCenterController({ center }: { center: [number, number] }) {
 }
 
 export default function CustomerHome() {
+    const docsUrl = resolveSafeDocsUrl();
     const { t } = useTranslation();
     const navigate = useNavigate();
     const [searchParams, setSearchParams] = useSearchParams();
@@ -1536,30 +1538,80 @@ export default function CustomerHome() {
                         </p>
                     </div>
 
-                    <div className="mt-5 flex flex-wrap gap-4 text-sm sm:mt-0">
-                        <button
-                            type="button"
-                            onClick={() => navigate('/')}
-                            className="font-medium text-blue-700 hover:text-blue-900"
-                        >
-                            {t('customerHome.footerFindRentals')}
-                        </button>
-                        <button
-                            type="button"
-                            onClick={() => navigate('/my-bookings')}
-                            className="font-medium text-blue-700 hover:text-blue-900"
-                        >
-                            {t('customerHome.footerMyBookings')}
-                        </button>
-                        {user?.role === 'customer' && (
+                    <div className="mt-5 space-y-4 text-sm sm:mt-0 sm:max-w-[52rem] sm:text-right">
+                        <div className="flex flex-wrap gap-4 sm:justify-end">
                             <button
                                 type="button"
-                                onClick={() => navigate('/become-vendor')}
+                                onClick={() => navigate('/')}
                                 className="font-medium text-blue-700 hover:text-blue-900"
                             >
-                                {t('customerHome.footerBecomeVendor')}
+                                {t('customerHome.footerFindRentals')}
                             </button>
-                        )}
+                            <button
+                                type="button"
+                                onClick={() => navigate('/my-bookings')}
+                                className="font-medium text-blue-700 hover:text-blue-900"
+                            >
+                                {t('customerHome.footerMyBookings')}
+                            </button>
+                            {user?.role === 'customer' && (
+                                <button
+                                    type="button"
+                                    onClick={() => navigate('/become-vendor')}
+                                    className="font-medium text-blue-700 hover:text-blue-900"
+                                >
+                                    {t('customerHome.footerBecomeVendor')}
+                                </button>
+                            )}
+                        </div>
+
+                        <div className="flex flex-wrap gap-2 sm:justify-end" aria-label="Legal links">
+                            <button
+                                type="button"
+                                onClick={() => navigate('/faq')}
+                                className="rounded-full border border-slate-200 px-3 py-1 text-xs font-medium text-slate-700 transition hover:border-slate-300 hover:bg-slate-50"
+                            >
+                                FAQ
+                            </button>
+                            <button
+                                type="button"
+                                onClick={() => navigate('/legal/terms-of-service')}
+                                className="rounded-full border border-slate-200 px-3 py-1 text-xs font-medium text-slate-700 transition hover:border-slate-300 hover:bg-slate-50"
+                            >
+                                Terms of Service
+                            </button>
+                            <button
+                                type="button"
+                                onClick={() => navigate('/legal/vendor-agreement')}
+                                className="rounded-full border border-slate-200 px-3 py-1 text-xs font-medium text-slate-700 transition hover:border-slate-300 hover:bg-slate-50"
+                            >
+                                Rental Partner Agreement
+                            </button>
+                            <button
+                                type="button"
+                                onClick={() => navigate('/legal/platform-commission-policy')}
+                                className="rounded-full border border-slate-200 px-3 py-1 text-xs font-medium text-slate-700 transition hover:border-slate-300 hover:bg-slate-50"
+                            >
+                                Commission Policy
+                            </button>
+                            <button
+                                type="button"
+                                onClick={() => navigate('/legal/liability-disclaimer')}
+                                className="rounded-full border border-slate-200 px-3 py-1 text-xs font-medium text-slate-700 transition hover:border-slate-300 hover:bg-slate-50"
+                            >
+                                Liability Disclaimer
+                            </button>
+                            {docsUrl ? (
+                                <a
+                                    href={docsUrl}
+                                    target="_blank"
+                                    rel="noreferrer"
+                                    className="rounded-full border border-sky-200 px-3 py-1 text-xs font-medium text-sky-700 transition hover:border-sky-300 hover:bg-sky-50"
+                                >
+                                    Documentation
+                                </a>
+                            ) : null}
+                        </div>
                     </div>
                 </div>
                 <div className="border-t border-gray-100 py-3 text-center text-xs text-gray-500">

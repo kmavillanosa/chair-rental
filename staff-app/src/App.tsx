@@ -28,6 +28,7 @@ import MyShop from './pages/vendor/MyShop'
 import VendorPayments from './pages/vendor/VendorPayments'
 import MyBookings from './pages/customer/MyBookings'
 import LegalDocumentPage from './pages/LegalDocumentPage'
+import FaqPage from './pages/FaqPage'
 import { getStaffTourSteps } from './tour/staffTour'
 import { enableMobileTableEnhancer } from './utils/mobileTableEnhancer'
 
@@ -116,6 +117,7 @@ export default function App() {
         )}
         <Routes>
           <Route path="/legal/:documentSlug" element={<LegalDocumentPage />} />
+          <Route path="/faq" element={<FaqPage />} />
           <Route path="/login" element={<Login />} />
           <Route path="/auth/callback" element={<AuthCallback />} />
           <Route path="/admin" element={<ProtectedRoute role="admin"><AdminDashboard /></ProtectedRoute>} />
